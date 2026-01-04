@@ -34,24 +34,42 @@ fi
 
 echo "Starting Awebees services..."
 
+# Load backend environment variables
+if [ -f "$PROJECT_ROOT/backend/.env" ]; then
+  set -a
+  source "$PROJECT_ROOT/backend/.env"
+  set +a
+fi
+
+# Set backend defaults if not set
+BACKEND_PORT=${PORT:-5001}
+BACKEND_HOST=${HOST:-0.0.0.0}
+
+# Load frontend environment variables (separate from backend)
+if [ -f "$PROJECT_ROOT/frontend/.env.local" ]; then
+  FRONTEND_PORT_FROM_ENV=$(grep -v '^#' "$PROJECT_ROOT/frontend/.env.local" | grep "^PORT=" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+fi
+
+# Set frontend defaults if not set
+FRONTEND_PORT=${FRONTEND_PORT_FROM_ENV:-5000}
+
 # Start backend
-echo "Starting backend on port 5001..."
+echo "Starting backend on port $BACKEND_PORT..."
 cd "$PROJECT_ROOT/backend"
 if [ ! -d "venv" ]; then
   echo "Warning: Python virtual environment not found. Please create one with: python3 -m venv venv"
 fi
 
 source venv/bin/activate 2>/dev/null || true
-uvicorn app.main:app --reload --host 0.0.0.0 --port 5001 > "$SCRIPT_DIR/backend.log" 2>&1 &
+PORT=$BACKEND_PORT HOST=$BACKEND_HOST uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT" > "$SCRIPT_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
-echo "Backend started (PID: $BACKEND_PID)"
+echo "Backend started (PID: $BACKEND_PID, Port: $BACKEND_PORT)"
 
-# Start frontend
-echo "Starting frontend on port 5000..."
+# Start frontend (PORT env var is used by Next.js)
 cd "$PROJECT_ROOT/frontend"
-npm run dev > "$SCRIPT_DIR/frontend.log" 2>&1 &
+PORT=$FRONTEND_PORT npm run dev > "$SCRIPT_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
-echo "Frontend started (PID: $FRONTEND_PID)"
+echo "Frontend started (PID: $FRONTEND_PID, Port: $FRONTEND_PORT)"
 
 # Save PIDs
 echo "backend $BACKEND_PID" > "$PID_FILE"
@@ -59,8 +77,8 @@ echo "frontend $FRONTEND_PID" >> "$PID_FILE"
 
 echo ""
 echo "Services started successfully!"
-echo "Backend: http://localhost:5001 (PID: $BACKEND_PID)"
-echo "Frontend: http://localhost:5000 (PID: $FRONTEND_PID)"
+echo "Backend: http://localhost:$BACKEND_PORT (PID: $BACKEND_PID)"
+echo "Frontend: http://localhost:$FRONTEND_PORT (PID: $FRONTEND_PORT)"
 echo ""
 echo "Logs:"
 echo "  Backend: $SCRIPT_DIR/backend.log"
@@ -68,4 +86,3 @@ echo "  Frontend: $SCRIPT_DIR/frontend.log"
 echo ""
 echo "Use './scripts/status.sh' to check status"
 echo "Use './scripts/stop.sh' to stop services"
-

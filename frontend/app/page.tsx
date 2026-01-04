@@ -7,6 +7,9 @@ interface HelloResponse {
   message: string;
 }
 
+// Get API URL from environment variable
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+
 export default function Home() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,7 +21,7 @@ export default function Home() {
     setMessage(null);
 
     try {
-      const response = await fetch("http://localhost:5001/api/hello");
+      const response = await fetch(`${API_URL}/api/hello`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

@@ -24,6 +24,8 @@ Thumbs.db
 .env
 .env.local
 .env*.local
+# Allow .env.example files
+!.env.example
 
 # Logs
 *.log
