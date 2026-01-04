@@ -35,7 +35,16 @@ A local web application for analyzing Android log files with a plugin-based insi
 
 3. Start Services:
    ```bash
-   ./scripts/start.sh
+   ./scripts/start.sh        # Development mode (default)
+   ./scripts/start.sh -p     # Production mode (requires build first)
+   ```
+   
+   **Note for Production:** Build the frontend first:
+   ```bash
+   cd frontend
+   npm run build
+   cd ..
+   ./scripts/start.sh -p
    ```
 
 5. Check Status:
@@ -69,15 +78,17 @@ Default ports:
 
 ## Logs
 
-Error and application logs are stored in the `scripts/` directory:
+Error and application logs are stored in the `logs/` directory:
 
-- **Backend logs**: `scripts/backend.log`
-- **Frontend logs**: `scripts/frontend.log`
+- **Backend logs**: `logs/backend.log`
+- **Frontend logs**: `logs/frontend.log`
 
 View logs:
 ```bash
-tail -f scripts/backend.log   # Backend logs
-tail -f scripts/frontend.log  # Frontend logs
+./scripts/logs.sh        # Frontend logs (last 20 lines)
+./scripts/logs.sh -b     # Backend logs (last 20 lines)
+tail -f logs/backend.log   # Backend logs (follow mode)
+tail -f logs/frontend.log  # Frontend logs (follow mode)
 ```
 
 ## Development

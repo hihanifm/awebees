@@ -1,11 +1,13 @@
 #!/bin/bash
 
 # View logs script for Awebees
-# Shows the last 10 lines of frontend or backend logs
+# Shows the last 20 lines of frontend or backend logs
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_LOG="$SCRIPT_DIR/backend.log"
-FRONTEND_LOG="$SCRIPT_DIR/frontend.log"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOGS_DIR="$PROJECT_ROOT/logs"
+BACKEND_LOG="$LOGS_DIR/backend.log"
+FRONTEND_LOG="$LOGS_DIR/frontend.log"
 
 # Default to frontend if no argument provided
 SHOW_FRONTEND=true
@@ -45,16 +47,20 @@ done
 # Show logs
 if [ "$SHOW_FRONTEND" = true ]; then
   if [ -f "$FRONTEND_LOG" ]; then
-    echo "=== Frontend Logs (last 10 lines) ==="
-    tail -10 "$FRONTEND_LOG"
+    echo "=== Frontend Logs (last 20 lines) ==="
+    echo "File: $FRONTEND_LOG"
+    echo ""
+    tail -20 "$FRONTEND_LOG"
   else
     echo "Frontend log file not found: $FRONTEND_LOG"
     exit 1
   fi
 elif [ "$SHOW_BACKEND" = true ]; then
   if [ -f "$BACKEND_LOG" ]; then
-    echo "=== Backend Logs (last 10 lines) ==="
-    tail -10 "$BACKEND_LOG"
+    echo "=== Backend Logs (last 20 lines) ==="
+    echo "File: $BACKEND_LOG"
+    echo ""
+    tail -20 "$BACKEND_LOG"
   else
     echo "Backend log file not found: $BACKEND_LOG"
     exit 1

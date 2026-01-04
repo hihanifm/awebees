@@ -2,10 +2,54 @@
 
 # Start script for Awebees frontend and backend
 # This script starts both services as background processes
+# Usage: ./start.sh [-p] [-h]
+#   -p: Production mode (uses next start instead of next dev)
+#   -h: Show help
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PID_FILE="$SCRIPT_DIR/.pids"
+LOGS_DIR="$PROJECT_ROOT/logs"
+BACKEND_LOG="$LOGS_DIR/backend.log"
+FRONTEND_LOG="$LOGS_DIR/frontend.log"
+
+# Create logs directory if it doesn't exist
+mkdir -p "$LOGS_DIR"
+
+# Parse arguments
+MODE="dev"
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -p|--prod|--production)
+      MODE="prod"
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 [-p|--prod] [-h|--help]"
+      echo ""
+      echo "Options:"
+      echo "  -p, --prod, --production  Start in production mode (default: development)"
+      echo "  -h, --help                Show this help message"
+      echo ""
+      echo "Modes:"
+      echo "  Development (default): Uses 'next dev' for frontend with hot reload"
+      echo "  Production (-p):       Uses 'next start' for frontend (requires build first)"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Use -h or --help for usage information"
+      exit 1
+      ;;
+  esac
+done
+
+# Set NODE_ENV for Next.js (must be "development" or "production")
+if [ "$MODE" = "prod" ]; then
+  export NODE_ENV="production"
+else
+  export NODE_ENV="development"
+fi
 
 # Check if processes are already running
 if [ -f "$PID_FILE" ]; then
@@ -23,7 +67,8 @@ if [ -f "$PID_FILE" ]; then
   fi
 fi
 
-echo "Starting Awebees services..."
+MODE_UPPER=$(echo "$MODE" | tr '[:lower:]' '[:upper:]')
+echo "Starting Awebees services in $MODE_UPPER mode..."
 
 # Load backend environment variables
 if [ -f "$PROJECT_ROOT/backend/.env" ]; then
@@ -58,26 +103,26 @@ source venv/bin/activate 2>/dev/null || {
   exit 1
 }
 
-uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT" > "$SCRIPT_DIR/backend.log" 2>&1 &
+uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT" > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 
 # Wait a moment and check if backend started successfully
 sleep 2
 if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
   echo "Error: Backend failed to start (PID: $BACKEND_PID)"
-  echo "Check backend logs: $SCRIPT_DIR/backend.log"
-  tail -20 "$SCRIPT_DIR/backend.log" 2>/dev/null || echo "No logs available"
+  echo "Check backend logs: $BACKEND_LOG"
+  tail -20 "$BACKEND_LOG" 2>/dev/null || echo "No logs available"
   exit 1
 fi
 
-# Check for common errors in backend logs
-if grep -qi "error\|failed\|exception" "$SCRIPT_DIR/backend.log" 2>/dev/null | tail -5; then
-  echo "Warning: Backend logs contain errors. Check: $SCRIPT_DIR/backend.log"
+# Check for common errors in backend logs (only check recent lines to avoid false positives)
+if tail -50 "$BACKEND_LOG" 2>/dev/null | grep -qi "error\|failed\|exception" >/dev/null 2>&1; then
+  echo "Warning: Backend logs contain errors. Check: $BACKEND_LOG"
 fi
 
 echo "Backend started (PID: $BACKEND_PID, Port: $BACKEND_PORT)"
 
-# Start frontend (PORT env var is used by Next.js)
+# Start frontend
 cd "$PROJECT_ROOT/frontend"
 # Find npm in PATH - use full path from shell environment
 if [ -z "$NPM_CMD" ]; then
@@ -102,31 +147,49 @@ if [ ! -d "node_modules" ]; then
   exit 1
 fi
 
-PORT=$FRONTEND_PORT "$NPM_CMD" run dev > "$SCRIPT_DIR/frontend.log" 2>&1 &
+# Ensure PATH includes node binary location for npm to work
+NODE_DIR=$(dirname "$NPM_CMD")
+export PATH="$NODE_DIR:$PATH"
+
+# Check for production build if in production mode
+if [ "$MODE" = "prod" ]; then
+  if [ ! -d ".next" ]; then
+    echo "Error: Production build not found. Please run 'npm run build' first"
+    echo "Or run in development mode: ./scripts/start.sh"
+    exit 1
+  fi
+  echo "Starting frontend in PRODUCTION mode on port $FRONTEND_PORT..."
+  FRONTEND_CMD="start"
+else
+  echo "Starting frontend in DEVELOPMENT mode on port $FRONTEND_PORT..."
+  FRONTEND_CMD="dev"
+fi
+
+PORT=$FRONTEND_PORT "$NPM_CMD" run $FRONTEND_CMD > "$FRONTEND_LOG" 2>&1 &
 FRONTEND_PID=$!
 
 # Wait a moment and check if frontend started successfully
 sleep 3
 if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
   echo "Error: Frontend failed to start (PID: $FRONTEND_PID)"
-  echo "Check frontend logs: $SCRIPT_DIR/frontend.log"
-  tail -20 "$SCRIPT_DIR/frontend.log" 2>/dev/null || echo "No logs available"
+  echo "Check frontend logs: $FRONTEND_LOG"
+  tail -20 "$FRONTEND_LOG" 2>/dev/null || echo "No logs available"
   # Clean up backend if frontend failed
   kill "$BACKEND_PID" 2>/dev/null
   exit 1
 fi
 
-# Check for common errors in frontend logs
-if grep -qi "error\|failed\|EADDRINUSE" "$SCRIPT_DIR/frontend.log" 2>/dev/null | tail -5; then
-  echo "Warning: Frontend logs contain errors. Check: $SCRIPT_DIR/frontend.log"
-  # Check specifically for port in use
-  if grep -qi "EADDRINUSE" "$SCRIPT_DIR/frontend.log" 2>/dev/null; then
+# Check for common errors in frontend logs (only check recent lines to avoid false positives)
+if tail -50 "$FRONTEND_LOG" 2>/dev/null | grep -qi "error\|failed\|EADDRINUSE" >/dev/null 2>&1; then
+  # Check specifically for port in use (critical error)
+  if tail -50 "$FRONTEND_LOG" 2>/dev/null | grep -qi "EADDRINUSE" >/dev/null 2>&1; then
     echo "Error: Port $FRONTEND_PORT is already in use"
     echo "Try changing PORT in frontend/.env.local or stop the process using that port"
     kill "$FRONTEND_PID" 2>/dev/null
     kill "$BACKEND_PID" 2>/dev/null
     exit 1
   fi
+  echo "Warning: Frontend logs contain errors. Check: $FRONTEND_LOG"
 fi
 
 # Save PIDs
@@ -134,13 +197,13 @@ echo "backend $BACKEND_PID" > "$PID_FILE"
 echo "frontend $FRONTEND_PID" >> "$PID_FILE"
 
 echo ""
-echo "Services started successfully!"
+echo "Services started successfully in $MODE_UPPER mode!"
 echo "Backend: http://localhost:$BACKEND_PORT (PID: $BACKEND_PID)"
 echo "Frontend: http://localhost:$FRONTEND_PORT (PID: $FRONTEND_PID)"
 echo ""
 echo "Logs:"
-echo "  Backend: $SCRIPT_DIR/backend.log"
-echo "  Frontend: $SCRIPT_DIR/frontend.log"
+echo "  Backend: $BACKEND_LOG"
+echo "  Frontend: $FRONTEND_LOG"
 echo ""
 echo "Use './scripts/status.sh' to check status"
 echo "Use './scripts/stop.sh' to stop services"

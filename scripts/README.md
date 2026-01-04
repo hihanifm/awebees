@@ -19,14 +19,21 @@ Sets up the project for the first time:
 ### Start Services
 
 ```bash
-./scripts/start.sh
+./scripts/start.sh          # Development mode (default)
+./scripts/start.sh -p       # Production mode
+./scripts/start.sh --help   # Show help
 ```
 
 Starts both frontend (port 34000) and backend (port 34001) as background processes.
 
+**Modes:**
+- **Development (default)**: Uses `next dev` with hot reload
+- **Production (-p)**: Uses `next start` (requires `npm run build` first)
+
 **Requirements:**
 - Backend: Python virtual environment should be created in `backend/venv` (or dependencies installed globally)
 - Frontend: Node.js dependencies should be installed (`npm install` in the frontend directory)
+- Production mode: Frontend must be built first (`npm run build` in frontend directory)
 
 **Error Handling:**
 - The script checks if services start successfully and displays error messages if they fail
@@ -57,17 +64,17 @@ Stops both frontend and backend services.
 ./scripts/logs.sh -b       # Show backend logs
 ```
 
-Shows the last 10 lines of frontend or backend logs. Defaults to frontend logs.
+Shows the last 20 lines of frontend or backend logs with the file path. Defaults to frontend logs.
 
 ## Logs
 
-All logs are stored in the `scripts/` directory:
+All logs are stored in the `logs/` directory at the project root:
 
-- **Backend logs**: `scripts/backend.log`
+- **Backend logs**: `logs/backend.log`
   - Contains all backend server logs (startup, requests, errors)
   - Includes FastAPI/uvicorn output and application logs
   
-- **Frontend logs**: `scripts/frontend.log`
+- **Frontend logs**: `logs/frontend.log`
   - Contains Next.js development server logs (startup, build, errors)
   - Includes compilation errors and runtime errors
 
@@ -83,21 +90,19 @@ If you get errors about ports being in use:
 
 1. Check what's using the port:
    ```bash
-   lsof -i :5000  # Frontend port
-   lsof -i :5001  # Backend port
+   lsof -i :34000  # Frontend port
+   lsof -i :34001  # Backend port
    ```
 
 2. Change the port in `.env` files:
-   - Backend: Edit `backend/.env` and change `PORT=5001` to another port
-   - Frontend: Edit `frontend/.env.local` and change `PORT=5000` to another port
+   - Backend: Edit `backend/.env` and change `PORT=34001` to another port
+   - Frontend: Edit `frontend/.env.local` and change `PORT=34000` to another port
    - Update `NEXT_PUBLIC_API_URL` in `frontend/.env.local` if backend port changed
    - Update `FRONTEND_URL` in `backend/.env` if frontend port changed
 
-3. Common issue: Port 5000 on macOS is often used by Apple AirPlay. Use port 5002, 3000, or another available port.
-
 ### Services Not Starting
 
-1. Check the logs:
+1. Check the logs (stored in `logs/` directory):
    ```bash
    ./scripts/logs.sh        # Frontend logs (default)
    ./scripts/logs.sh -b     # Backend logs
@@ -118,6 +123,6 @@ If you get errors about ports being in use:
 ## Notes
 
 - The scripts track process IDs in `scripts/.pids`
-- Logs are written to `scripts/backend.log` and `scripts/frontend.log`
+- Logs are written to `logs/backend.log` and `logs/frontend.log`
 - If services are already running, `start.sh` will exit with an error
 - Services can be started/stopped independently if needed (manual process management)
