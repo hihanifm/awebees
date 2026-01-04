@@ -20,13 +20,13 @@ Run the development server:
 npm run dev
 ```
 
-Open [http://localhost:5000](http://localhost:5000) with your browser to see the result.
+Open [http://localhost:34000](http://localhost:34000) with your browser to see the result.
 
 ## Configuration
 
 Environment variables are defined in `.env.local` file (see `.env.example` for reference):
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (default: http://localhost:5001)
-- `PORT` - Development server port (default: 5000)
+- `NEXT_PUBLIC_API_URL` - Backend API URL (default: http://localhost:34001)
+- `PORT` - Development server port (default: 34000)
 
 Note: Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. Other variables are only available on the server side.

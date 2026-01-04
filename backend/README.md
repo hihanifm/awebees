@@ -25,9 +25,9 @@ FastAPI backend for Awebees Log Analyzer.
 
 Environment variables are defined in `.env` file (see `.env.example` for reference):
 
-- `PORT` - Server port (default: 5001)
+- `PORT` - Server port (default: 34001)
 - `HOST` - Server host (default: 0.0.0.0)
-- `FRONTEND_URL` - Frontend URL for CORS (default: http://localhost:5000)
+- `FRONTEND_URL` - Frontend URL for CORS (default: http://localhost:34000)
 - `LOG_LEVEL` - Logging level (default: INFO)
 
 ## Running
@@ -42,6 +42,6 @@ Or use the port from environment:
 uvicorn app.main:app --reload --port ${PORT:-5001}
 ```
 
-The API will be available at `http://localhost:5001` (or the port specified in `.env`)
+The API will be available at `http://localhost:34001` (or the port specified in `.env`)
 
-API documentation available at `http://localhost:5001/docs`
+API documentation available at `http://localhost:34001/docs`

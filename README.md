@@ -23,25 +23,17 @@ A local web application for analyzing Android log files with a plugin-based insi
    cd awebees
    ```
 
-2. Setup Backend:
+2. Run setup script (one-time setup):
    ```bash
-   cd backend
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   cp .env.example .env
-   cd ..
+   ./scripts/setup.sh
    ```
+   
+   This will:
+   - Create Python virtual environment
+   - Install all dependencies (Python and Node.js)
+   - Create `.env` files from examples
 
-3. Setup Frontend:
-   ```bash
-   cd frontend
-   npm install
-   cp .env.example .env.local
-   cd ..
-   ```
-
-4. Start Services:
+3. Start Services:
    ```bash
    ./scripts/start.sh
    ```
@@ -51,7 +43,13 @@ A local web application for analyzing Android log files with a plugin-based insi
    ./scripts/status.sh
    ```
 
-6. Stop Services:
+6. View Logs:
+   ```bash
+   ./scripts/logs.sh        # Frontend logs (default)
+   ./scripts/logs.sh -b     # Backend logs
+   ```
+
+7. Stop Services:
    ```bash
    ./scripts/stop.sh
    ```
@@ -66,13 +64,26 @@ Both frontend and backend use environment variables for configuration:
 - **Frontend**: See `frontend/.env.example` - Copy to `frontend/.env.local`
 
 Default ports:
-- Frontend: 5000
-- Backend: 5001
+- Frontend: 34000
+- Backend: 34001
+
+## Logs
+
+Error and application logs are stored in the `scripts/` directory:
+
+- **Backend logs**: `scripts/backend.log`
+- **Frontend logs**: `scripts/frontend.log`
+
+View logs:
+```bash
+tail -f scripts/backend.log   # Backend logs
+tail -f scripts/frontend.log  # Frontend logs
+```
 
 ## Development
 
-- Backend API docs: http://localhost:5001/docs
-- Frontend: http://localhost:5000
+- Backend API docs: http://localhost:34001/docs
+- Frontend: http://localhost:34000
 
 ## Project Structure
 

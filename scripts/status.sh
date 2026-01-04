@@ -20,14 +20,14 @@ echo ""
 
 # Check backend
 if [ -n "$BACKEND_PID" ] && kill -0 "$BACKEND_PID" 2>/dev/null; then
-  echo "✓ Backend: RUNNING (PID: $BACKEND_PID, Port: 5001)"
+  echo "✓ Backend: RUNNING (PID: $BACKEND_PID, Port: 34001)"
 else
   echo "✗ Backend: NOT RUNNING"
 fi
 
 # Check frontend
 if [ -n "$FRONTEND_PID" ] && kill -0 "$FRONTEND_PID" 2>/dev/null; then
-  echo "✓ Frontend: RUNNING (PID: $FRONTEND_PID, Port: 5000)"
+  echo "✓ Frontend: RUNNING (PID: $FRONTEND_PID, Port: 34000)"
 else
   echo "✗ Frontend: NOT RUNNING"
 fi
