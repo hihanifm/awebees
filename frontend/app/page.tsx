@@ -2,60 +2,111 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
-interface HelloResponse {
-  message: string;
-}
-
-// Get API URL from environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:34001";
+import { InsightList } from "@/components/insight-list/InsightList";
+import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
+import { apiClient } from "@/lib/api-client";
+import { AnalysisResultItem } from "@/lib/api-types";
 
 export default function Home() {
-  const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [filePaths, setFilePaths] = useState<string>("");
+  const [selectedInsightIds, setSelectedInsightIds] = useState<string[]>([]);
+  const [results, setResults] = useState<AnalysisResultItem[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const callBackend = async () => {
-    setLoading(true);
+  const handleAnalyze = async () => {
+    if (selectedInsightIds.length === 0) {
+      setError("Please select at least one insight");
+      return;
+    }
+
+    const paths = filePaths
+      .split("\n")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+
+    if (paths.length === 0) {
+      setError("Please enter at least one file or folder path");
+      return;
+    }
+
+    setAnalyzing(true);
     setError(null);
-    setMessage(null);
+    setResults([]);
 
     try {
-      const response = await fetch(`${API_URL}/api/hello`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // First, select files (expands folders to file list)
+      const selectResponse = await apiClient.selectFiles(paths);
+      
+      if (selectResponse.files.length === 0) {
+        setError("No valid files found in the provided paths");
+        setAnalyzing(false);
+        return;
       }
-      const data: HelloResponse = await response.json();
-      setMessage(data.message);
+
+      // Then, run analysis
+      const response = await apiClient.analyze(selectedInsightIds, selectResponse.files);
+      setResults(response.results);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to call backend");
+      setError(err instanceof Error ? err.message : "Failed to analyze files");
     } finally {
-      setLoading(false);
+      setAnalyzing(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-center gap-8 py-32 px-16 bg-white dark:bg-black">
+    <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
+      <main className="flex min-h-screen w-full max-w-5xl flex-col gap-8 py-8 px-4 mx-auto bg-white dark:bg-black">
         <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
           Awebees Log Analyzer
         </h1>
-        
-        <div className="flex flex-col items-center gap-4">
-          <Button onClick={callBackend} disabled={loading}>
-            {loading ? "Calling..." : "Call Backend"}
-          </Button>
-          
-          {message && (
-            <div className="rounded-lg border border-black/[.08] bg-zinc-50 px-4 py-3 dark:border-white/[.145] dark:bg-[#1a1a1a]">
-              <p className="text-lg text-black dark:text-zinc-50">{message}</p>
+
+        <div className="space-y-8">
+          {/* File Selection */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">1. Enter File or Folder Paths</h2>
+            <div className="space-y-2">
+              <textarea
+                value={filePaths}
+                onChange={(e) => setFilePaths(e.target.value)}
+                placeholder="Enter file or folder paths (one per line)&#10;Example:&#10;/path/to/logfile.log&#10;/path/to/logs/folder"
+                className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter absolute paths to log files or folders on the server. Folders will be scanned recursively.
+              </p>
             </div>
-          )}
-          
-          {error && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950">
-              <p className="text-lg text-red-600 dark:text-red-400">Error: {error}</p>
-            </div>
+          </section>
+
+          {/* Insight Selection */}
+          <section>
+            <InsightList
+              selectedInsightIds={selectedInsightIds}
+              onSelectionChange={setSelectedInsightIds}
+            />
+          </section>
+
+          {/* Analyze Button */}
+          <section>
+            <Button
+              onClick={handleAnalyze}
+              disabled={analyzing || selectedInsightIds.length === 0 || !filePaths.trim()}
+              className="w-full"
+            >
+              {analyzing ? "Analyzing..." : "Analyze Files"}
+            </Button>
+            {error && (
+              <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950">
+                <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
+              </div>
+            )}
+          </section>
+
+          {/* Results */}
+          {results.length > 0 && (
+            <section>
+              <ResultsPanel results={results} loading={analyzing} />
+            </section>
           )}
         </div>
       </main>
