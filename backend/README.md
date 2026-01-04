@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI backend for Awebees Log Analyzer.
+FastAPI backend for Lens.
 
 ## Setup
 

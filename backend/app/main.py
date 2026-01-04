@@ -14,8 +14,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Awebees Log Analyzer API",
-    description="API for analyzing Android log files with plugin-based insights",
+    title="Lens API",
+    description="A modular engine for extracting insight from data - API for analyzing log files with plugin-based insights",
     version=get_version()
 )
 

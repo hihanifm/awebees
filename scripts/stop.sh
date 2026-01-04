@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Stop script for Awebees frontend and backend
+# Stop script for Lens frontend and backend
 # This script stops both services
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +14,7 @@ fi
 BACKEND_PID=$(awk '/backend/{print $2}' "$PID_FILE" 2>/dev/null)
 FRONTEND_PID=$(awk '/frontend/{print $2}' "$PID_FILE" 2>/dev/null)
 
-echo "Stopping Awebees services..."
+echo "Stopping Lens services..."
 
 # Stop backend
 if [ -n "$BACKEND_PID" ] && kill -0 "$BACKEND_PID" 2>/dev/null; then

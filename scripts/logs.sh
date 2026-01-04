@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# View logs script for Awebees
+# View logs script for Lens
 # Shows the last 20 lines of frontend or backend logs
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

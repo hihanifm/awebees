@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version management script for Awebees
+# Version management script for Lens
 # Usage: ./scripts/version.sh [command] [version]
 # Commands:
 #   get     - Show current version (default)

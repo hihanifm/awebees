@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Status script for Awebees frontend and backend
+# Status script for Lens frontend and backend
 # This script checks if the services are running
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +14,7 @@ fi
 BACKEND_PID=$(awk '/backend/{print $2}' "$PID_FILE" 2>/dev/null)
 FRONTEND_PID=$(awk '/frontend/{print $2}' "$PID_FILE" 2>/dev/null)
 
-echo "Awebees Services Status"
+echo "Lens Services Status"
 echo "======================"
 echo ""
 

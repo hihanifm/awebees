@@ -1,6 +1,6 @@
 # Scripts
 
-Scripts to manage Awebees frontend and backend services.
+Scripts to manage Lens frontend and backend services.
 
 ## Usage
 

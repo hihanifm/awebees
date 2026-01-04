@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Setup script for Awebees - Run this once before starting services
+# Setup script for Lens - Run this once before starting services
 # This script sets up the Python virtual environment, installs dependencies,
 # and creates .env files from examples
 
@@ -9,7 +9,7 @@ set -e  # Exit on error
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Setting up Awebees..."
+echo "Setting up Lens..."
 echo ""
 
 # Setup Backend

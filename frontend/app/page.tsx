@@ -57,9 +57,12 @@ export default function Home() {
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-5xl flex-col gap-8 py-8 px-4 mx-auto bg-white dark:bg-black">
-        <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
-          Awebees Log Analyzer
-        </h1>
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
+            Lens
+          </h1>
+          <p className="text-muted-foreground mt-1">/- A modular engine for extracting insight from data</p>
+        </div>
 
         <div className="space-y-8">
           {/* File Selection */}

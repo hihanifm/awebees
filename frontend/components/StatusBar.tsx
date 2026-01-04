@@ -113,7 +113,7 @@ export function StatusBar() {
           {/* Build info */}
           <div className="flex items-center gap-1.5">
             <Info className="h-3.5 w-3.5" />
-            <span>Awebees</span>
+            <span>Lens</span>
           </div>
         </div>
       </div>

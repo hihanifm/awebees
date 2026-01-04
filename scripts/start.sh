@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start script for Awebees frontend and backend
+# Start script for Lens frontend and backend
 # This script starts both services as background processes
 # Usage: ./start.sh [-p] [-h]
 #   -p: Production mode (uses next start instead of next dev)
@@ -68,7 +68,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 MODE_UPPER=$(echo "$MODE" | tr '[:lower:]' '[:upper:]')
-echo "Starting Awebees services in $MODE_UPPER mode..."
+echo "Starting Lens services in $MODE_UPPER mode..."
 
 # Load backend environment variables
 if [ -f "$PROJECT_ROOT/backend/.env" ]; then

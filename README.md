@@ -1,6 +1,8 @@
-# Awebees - Android Log Analyzer
+# Lens
 
-A local web application for analyzing Android log files with a plugin-based insight system.
+/- A modular engine for extracting insight from data
+
+A local web application for analyzing log files with a plugin-based insight system.
 
 ## Architecture
 

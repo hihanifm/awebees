@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Awebees - Android Log Analyzer",
-  description: "A local web application for analyzing Android log files with a plugin-based insight system.",
+  title: "Lens - A modular engine for extracting insight from data",
+  description: "A modular engine for extracting insight from data. A local web application for analyzing log files with a plugin-based insight system.",
 };
 
 export default function RootLayout({

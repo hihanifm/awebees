@@ -1,4 +1,4 @@
-"""Version information for Awebees backend."""
+"""Version information for Lens backend."""
 
 import os
 from pathlib import Path
