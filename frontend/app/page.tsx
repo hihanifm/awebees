@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
+import { ProgressWidget } from "@/components/progress/ProgressWidget";
 import { apiClient } from "@/lib/api-client";
-import { AnalysisResultItem } from "@/lib/api-types";
+import { AnalysisResultItem, ProgressEvent } from "@/lib/api-types";
 
 const LAST_PATH_KEY = "lens_last_file_paths";
 
@@ -15,6 +16,8 @@ export default function Home() {
   const [results, setResults] = useState<AnalysisResultItem[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
   // Load last used paths from localStorage on mount
   useEffect(() => {
@@ -23,6 +26,17 @@ export default function Home() {
       setFilePaths(lastPaths);
     }
   }, []);
+
+  const handleCancel = async () => {
+    if (currentTaskId) {
+      try {
+        await apiClient.cancelAnalysis(currentTaskId);
+        setAnalyzing(false);
+      } catch (err) {
+        console.error("Error cancelling analysis:", err);
+      }
+    }
+  };
 
   const handleAnalyze = async () => {
     if (selectedInsightIds.length === 0) {
@@ -43,6 +57,8 @@ export default function Home() {
     setAnalyzing(true);
     setError(null);
     setResults([]);
+    setProgressEvents([]);
+    setCurrentTaskId(null);
 
     try {
       // Save paths to localStorage for next time
@@ -50,20 +66,39 @@ export default function Home() {
 
       // First, select files (expands folders to file list)
       const selectResponse = await apiClient.selectFiles(paths);
-      
+
       if (selectResponse.files.length === 0) {
         setError("No valid files found in the provided paths");
         setAnalyzing(false);
         return;
       }
 
-      // Then, run analysis
-      const response = await apiClient.analyze(selectedInsightIds, selectResponse.files);
+      // Extract task ID from first progress event
+      let taskIdExtracted = false;
+
+      // Then, run analysis with progress tracking
+      const response = await apiClient.analyzeWithProgress(
+        selectedInsightIds,
+        selectResponse.files,
+        (event: ProgressEvent) => {
+          setProgressEvents((prev) => [...prev, event]);
+          if (!taskIdExtracted && event.task_id) {
+            setCurrentTaskId(event.task_id);
+            taskIdExtracted = true;
+          }
+        }
+      );
+
       setResults(response.results);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to analyze files");
+      if (err instanceof Error && err.message === "Analysis cancelled") {
+        setError("Analysis was cancelled");
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to analyze files");
+      }
     } finally {
       setAnalyzing(false);
+      setCurrentTaskId(null);
     }
   };
 
@@ -87,6 +122,7 @@ export default function Home() {
                 onChange={(e) => setFilePaths(e.target.value)}
                 placeholder="Enter file or folder paths (one per line)&#10;Example:&#10;/Users/username/logs/file.log&#10;/var/log/app.log"
                 className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
+                disabled={analyzing}
               />
               <p className="text-xs text-muted-foreground">
                 Enter absolute paths to log files or folders on the server (e.g., /Users/username/logs/file.log or /var/log/app.log).
@@ -102,6 +138,17 @@ export default function Home() {
               onSelectionChange={setSelectedInsightIds}
             />
           </section>
+
+          {/* Progress Widget */}
+          {(analyzing || progressEvents.length > 0) && (
+            <section>
+              <ProgressWidget
+                events={progressEvents}
+                currentTaskId={currentTaskId}
+                onCancel={handleCancel}
+              />
+            </section>
+          )}
 
           {/* Analyze Button */}
           <section>

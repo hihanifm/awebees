@@ -1,7 +1,8 @@
 """Pydantic models for insight results and API requests/responses."""
 
 from typing import Literal, Dict, Any, Optional
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, Field
 
 
 class InsightResult(BaseModel):
@@ -16,4 +17,17 @@ class InsightMetadata(BaseModel):
     id: str
     name: str
     description: str
+
+
+class ProgressEvent(BaseModel):
+    """Progress event for real-time analysis updates."""
+    type: str  # file_verification, insight_start, file_open, file_chunk, insight_progress, insight_complete, analysis_complete, cancelled, error
+    message: str
+    task_id: str
+    insight_id: Optional[str] = None
+    file_path: Optional[str] = None
+    file_index: Optional[int] = None
+    total_files: Optional[int] = None
+    chunk_info: Optional[str] = None
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 

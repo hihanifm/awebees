@@ -1,11 +1,12 @@
 """Insight to detect errors in log files."""
 
-from typing import List
+from typing import List, Optional
 import re
 import logging
+import asyncio
 from app.insights.base import Insight
 from app.core.models import InsightResult
-from app.services.file_handler import read_file_lines
+from app.services.file_handler import read_file_lines, CancelledError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class ErrorDetector(Insight):
     def description(self) -> str:
         return "Detects ERROR and FATAL log lines in log files"
     
-    async def analyze(self, file_paths: List[str]) -> InsightResult:
+    async def analyze(self, file_paths: List[str], cancellation_event: Optional[asyncio.Event] = None) -> InsightResult:
         """
         Analyze files for error and fatal log lines.
         
@@ -46,6 +47,11 @@ class ErrorDetector(Insight):
         max_errors_per_file = 1000  # Limit to prevent overwhelming output
         
         for file_idx, file_path in enumerate(file_paths, 1):
+            # Check for cancellation at start of each file
+            if cancellation_event and cancellation_event.is_set():
+                logger.info(f"ErrorDetector: Analysis cancelled")
+                raise CancelledError("Analysis cancelled")
+            
             file_start_time = time.time()
             logger.info(f"ErrorDetector: Processing file {file_idx}/{len(file_paths)}: {file_path}")
             
@@ -55,7 +61,7 @@ class ErrorDetector(Insight):
                 last_log_time = time.time()
                 
                 # Process file line by line to handle large files efficiently
-                for line in read_file_lines(file_path):
+                for line in read_file_lines(file_path, cancellation_event=cancellation_event):
                     line_num += 1
                     
                     # Log progress for large files every 100k lines
@@ -88,6 +94,9 @@ class ErrorDetector(Insight):
                         "count": len(file_errors),
                         "errors": file_errors[:50]  # Limit to first 50 errors per file for output
                     })
+            except CancelledError:
+                logger.info(f"ErrorDetector: Analysis cancelled while processing {file_path}")
+                raise
             except Exception as e:
                 logger.error(f"ErrorDetector: Failed to process {file_path}: {e}", exc_info=True)
                 all_errors.append({

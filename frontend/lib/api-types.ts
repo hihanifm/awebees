@@ -41,3 +41,28 @@ export interface AnalysisResponse {
   results: AnalysisResultItem[];
 }
 
+export type ProgressEventType =
+  | "file_verification"
+  | "insight_start"
+  | "file_open"
+  | "file_chunk"
+  | "insight_progress"
+  | "insight_complete"
+  | "analysis_complete"
+  | "cancelled"
+  | "error"
+  | "result";
+
+export interface ProgressEvent {
+  type: string;
+  message: string;
+  task_id: string;
+  insight_id?: string;
+  file_path?: string;
+  file_index?: number;
+  total_files?: number;
+  chunk_info?: string;
+  timestamp: string;
+  data?: any; // For result event
+}
+

@@ -3,11 +3,17 @@
 import os
 import mmap
 from pathlib import Path
-from typing import List, Iterator
+from typing import List, Iterator, Optional
 import logging
 import re
+import asyncio
 
 logger = logging.getLogger(__name__)
+
+
+class CancelledError(Exception):
+    """Raised when an operation is cancelled."""
+    pass
 
 
 async def read_file(file_path: str) -> str:
@@ -96,7 +102,7 @@ def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]
         raise
 
 
-def read_file_lines(file_path: str, max_lines: int = None) -> Iterator[str]:
+def read_file_lines(file_path: str, max_lines: int = None, cancellation_event: Optional[asyncio.Event] = None) -> Iterator[str]:
     """
     Read file line by line efficiently for large files.
     
@@ -106,6 +112,7 @@ def read_file_lines(file_path: str, max_lines: int = None) -> Iterator[str]:
     Args:
         file_path: Path to the file
         max_lines: Maximum number of lines to read (None for all lines)
+        cancellation_event: Optional asyncio.Event to check for cancellation
         
     Yields:
         Individual lines from the file
@@ -113,6 +120,7 @@ def read_file_lines(file_path: str, max_lines: int = None) -> Iterator[str]:
     Raises:
         FileNotFoundError: If file doesn't exist
         PermissionError: If file is not readable
+        CancelledError: If operation is cancelled
     """
     import os
     if not validate_file_path(file_path):
@@ -127,6 +135,11 @@ def read_file_lines(file_path: str, max_lines: int = None) -> Iterator[str]:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             count = 0
             for line in f:
+                # Check for cancellation every 10,000 lines
+                if cancellation_event and count % 10000 == 0 and cancellation_event.is_set():
+                    logger.info(f"FileHandler: Reading {file_path} cancelled at line {count}")
+                    raise CancelledError(f"File reading cancelled: {file_path}")
+                
                 yield line
                 count += 1
                 if max_lines and count >= max_lines:
@@ -134,6 +147,8 @@ def read_file_lines(file_path: str, max_lines: int = None) -> Iterator[str]:
                     break
         
         logger.debug(f"FileHandler: Finished reading {count:,} lines from {file_path}")
+    except CancelledError:
+        raise
     except Exception as e:
         logger.error(f"FileHandler: Error reading file lines from {file_path}: {e}", exc_info=True)
         raise

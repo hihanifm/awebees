@@ -1,10 +1,11 @@
 """Insight to count lines in log files."""
 
-from typing import List
+from typing import List, Optional
 import logging
+import asyncio
 from app.insights.base import Insight
 from app.core.models import InsightResult
-from app.services.file_handler import read_file_lines
+from app.services.file_handler import read_file_lines, CancelledError
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class LineCount(Insight):
     def description(self) -> str:
         return "Counts total lines, empty lines, and non-empty lines in log files"
     
-    async def analyze(self, file_paths: List[str]) -> InsightResult:
+    async def analyze(self, file_paths: List[str], cancellation_event: Optional[asyncio.Event] = None) -> InsightResult:
         """
         Analyze files and count lines.
         
@@ -46,6 +47,11 @@ class LineCount(Insight):
         total_non_empty = 0
         
         for file_idx, file_path in enumerate(file_paths, 1):
+            # Check for cancellation at start of each file
+            if cancellation_event and cancellation_event.is_set():
+                logger.info(f"LineCount: Analysis cancelled")
+                raise CancelledError("Analysis cancelled")
+            
             file_start_time = time.time()
             logger.info(f"LineCount: Processing file {file_idx}/{len(file_paths)}: {file_path}")
             
@@ -56,7 +62,7 @@ class LineCount(Insight):
                 last_log_time = time.time()
                 
                 # Process file line by line to handle large files efficiently
-                for line in read_file_lines(file_path):
+                for line in read_file_lines(file_path, cancellation_event=cancellation_event):
                     line_count += 1
                     if not line.strip():
                         empty_count += 1
@@ -82,6 +88,9 @@ class LineCount(Insight):
                 total_non_empty += non_empty_count
                 
                 logger.info(f"LineCount: Completed {file_path} - {line_count:,} total lines ({empty_count:,} empty, {non_empty_count:,} non-empty) in {file_elapsed:.2f}s")
+            except CancelledError:
+                logger.info(f"LineCount: Analysis cancelled while processing {file_path}")
+                raise
             except Exception as e:
                 logger.error(f"LineCount: Failed to process {file_path}: {e}", exc_info=True)
                 file_results.append({
