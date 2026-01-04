@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { apiClient } from "@/lib/api-client";
 import { AnalysisResultItem } from "@/lib/api-types";
+
+const LAST_PATH_KEY = "lens_last_file_paths";
 
 export default function Home() {
   const [filePaths, setFilePaths] = useState<string>("");
@@ -13,6 +15,14 @@ export default function Home() {
   const [results, setResults] = useState<AnalysisResultItem[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load last used paths from localStorage on mount
+  useEffect(() => {
+    const lastPaths = localStorage.getItem(LAST_PATH_KEY);
+    if (lastPaths) {
+      setFilePaths(lastPaths);
+    }
+  }, []);
 
   const handleAnalyze = async () => {
     if (selectedInsightIds.length === 0) {
@@ -35,6 +45,9 @@ export default function Home() {
     setResults([]);
 
     try {
+      // Save paths to localStorage for next time
+      localStorage.setItem(LAST_PATH_KEY, filePaths);
+
       // First, select files (expands folders to file list)
       const selectResponse = await apiClient.selectFiles(paths);
       
@@ -67,16 +80,17 @@ export default function Home() {
         <div className="space-y-8">
           {/* File Selection */}
           <section>
-            <h2 className="text-xl font-semibold mb-4">1. Enter File or Folder Paths</h2>
+            <h2 className="text-xl font-semibold mb-4">Enter File or Folder Paths</h2>
             <div className="space-y-2">
               <textarea
                 value={filePaths}
                 onChange={(e) => setFilePaths(e.target.value)}
-                placeholder="Enter file or folder paths (one per line)&#10;Example:&#10;/path/to/logfile.log&#10;/path/to/logs/folder"
+                placeholder="Enter file or folder paths (one per line)&#10;Example:&#10;/Users/username/logs/file.log&#10;/var/log/app.log"
                 className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                Enter absolute paths to log files or folders on the server. Folders will be scanned recursively.
+                Enter absolute paths to log files or folders on the server (e.g., /Users/username/logs/file.log or /var/log/app.log).
+                Folders will be scanned recursively. The last used paths will be prefilled automatically.
               </p>
             </div>
           </section>

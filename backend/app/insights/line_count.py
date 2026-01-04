@@ -1,9 +1,12 @@
 """Insight to count lines in log files."""
 
 from typing import List
+import logging
 from app.insights.base import Insight
 from app.core.models import InsightResult
-from app.services.file_handler import read_file
+from app.services.file_handler import read_file_lines
+
+logger = logging.getLogger(__name__)
 
 
 class LineCount(Insight):
@@ -25,26 +28,48 @@ class LineCount(Insight):
         """
         Analyze files and count lines.
         
+        Uses efficient line-by-line processing to handle large files.
+        
         Args:
             file_paths: List of file paths to analyze
             
         Returns:
             InsightResult with line count summary
         """
+        import time
+        start_time = time.time()
+        logger.info(f"LineCount: Starting analysis of {len(file_paths)} file(s)")
+        
         file_results = []
         total_lines = 0
         total_empty = 0
         total_non_empty = 0
         
-        for file_path in file_paths:
+        for file_idx, file_path in enumerate(file_paths, 1):
+            file_start_time = time.time()
+            logger.info(f"LineCount: Processing file {file_idx}/{len(file_paths)}: {file_path}")
+            
             try:
-                content = await read_file(file_path)
-                lines = content.split("\n")
+                line_count = 0
+                empty_count = 0
+                non_empty_count = 0
+                last_log_time = time.time()
                 
-                line_count = len(lines)
-                empty_count = sum(1 for line in lines if not line.strip())
-                non_empty_count = line_count - empty_count
+                # Process file line by line to handle large files efficiently
+                for line in read_file_lines(file_path):
+                    line_count += 1
+                    if not line.strip():
+                        empty_count += 1
+                    else:
+                        non_empty_count += 1
+                    
+                    # Log progress for large files every 100k lines
+                    if line_count % 100000 == 0:
+                        elapsed = time.time() - last_log_time
+                        logger.debug(f"LineCount: Processed {line_count:,} lines from {file_path} ({line_count/elapsed:.0f} lines/sec)")
+                        last_log_time = time.time()
                 
+                file_elapsed = time.time() - file_start_time
                 file_results.append({
                     "file": file_path,
                     "total": line_count,
@@ -55,11 +80,17 @@ class LineCount(Insight):
                 total_lines += line_count
                 total_empty += empty_count
                 total_non_empty += non_empty_count
+                
+                logger.info(f"LineCount: Completed {file_path} - {line_count:,} total lines ({empty_count:,} empty, {non_empty_count:,} non-empty) in {file_elapsed:.2f}s")
             except Exception as e:
+                logger.error(f"LineCount: Failed to process {file_path}: {e}", exc_info=True)
                 file_results.append({
                     "file": file_path,
                     "error": f"Failed to read file: {str(e)}"
                 })
+        
+        total_elapsed = time.time() - start_time
+        logger.info(f"LineCount: Analysis complete - {total_lines:,} total lines across {len(file_paths)} file(s) in {total_elapsed:.2f}s")
         
         # Format results
         result_text = f"Line Count Summary\n"
@@ -91,4 +122,3 @@ class LineCount(Insight):
                 "files_analyzed": len(file_paths)
             }
         )
-

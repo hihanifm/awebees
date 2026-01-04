@@ -1,8 +1,9 @@
 """Service for handling file operations."""
 
 import os
+import mmap
 from pathlib import Path
-from typing import List
+from typing import List, Iterator
 import logging
 import re
 
@@ -13,11 +14,68 @@ async def read_file(file_path: str) -> str:
     """
     Read file content asynchronously.
     
+    For large files (>10MB), this uses memory-mapped files for efficiency.
+    For smaller files, reads normally for simplicity.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        File content as string
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        PermissionError: If file is not readable
+    """
+    if not validate_file_path(file_path):
+        raise ValueError(f"Invalid or inaccessible file path: {file_path}")
+
+    try:
+        file_size = os.path.getsize(file_path)
+        # Use mmap for files larger than 10MB
+        if file_size > 10 * 1024 * 1024:  # 10MB threshold
+            return await _read_file_mmap(file_path)
+        else:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+    except Exception as e:
+        logger.error(f"Error reading file {file_path}: {e}")
+        raise
+
+
+async def _read_file_mmap(file_path: str) -> str:
+    """
+    Read large file using memory-mapped file for efficiency.
+    
     Args:
         file_path: Path to the file
         
     Returns:
         File content as string
+    """
+    try:
+        with open(file_path, "rb") as f:
+            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                # Decode the memory-mapped bytes
+                return mm.read().decode("utf-8", errors="ignore")
+    except Exception as e:
+        logger.error(f"Error reading file with mmap {file_path}: {e}")
+        raise
+
+
+def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]:
+    """
+    Read file in chunks for efficient memory usage.
+    
+    This is a generator that yields chunks of the file, useful for
+    processing large files without loading everything into memory.
+    
+    Args:
+        file_path: Path to the file
+        chunk_size: Size of each chunk in bytes (default: 1MB)
+        
+    Yields:
+        String chunks of the file
         
     Raises:
         FileNotFoundError: If file doesn't exist
@@ -28,9 +86,56 @@ async def read_file(file_path: str) -> str:
     
     try:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
     except Exception as e:
-        logger.error(f"Error reading file {file_path}: {e}")
+        logger.error(f"Error reading file chunks {file_path}: {e}")
+        raise
+
+
+def read_file_lines(file_path: str, max_lines: int = None) -> Iterator[str]:
+    """
+    Read file line by line efficiently for large files.
+    
+    This is a generator that yields lines one at a time, preventing
+    the entire file from being loaded into memory.
+    
+    Args:
+        file_path: Path to the file
+        max_lines: Maximum number of lines to read (None for all lines)
+        
+    Yields:
+        Individual lines from the file
+        
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        PermissionError: If file is not readable
+    """
+    import os
+    if not validate_file_path(file_path):
+        logger.error(f"FileHandler: Invalid or inaccessible file path: {file_path}")
+        raise ValueError(f"Invalid or inaccessible file path: {file_path}")
+    
+    try:
+        file_size = os.path.getsize(file_path)
+        file_size_mb = file_size / (1024 * 1024)
+        logger.debug(f"FileHandler: Opening file for line-by-line reading: {file_path} ({file_size_mb:.2f} MB)")
+        
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            count = 0
+            for line in f:
+                yield line
+                count += 1
+                if max_lines and count >= max_lines:
+                    logger.debug(f"FileHandler: Reached max_lines limit ({max_lines}) for {file_path}")
+                    break
+        
+        logger.debug(f"FileHandler: Finished reading {count:,} lines from {file_path}")
+    except Exception as e:
+        logger.error(f"FileHandler: Error reading file lines from {file_path}: {e}", exc_info=True)
         raise
 
 
@@ -50,20 +155,24 @@ async def list_files_in_folder(folder_path: str, recursive: bool = True) -> List
         PermissionError: If directory is not accessible
     """
     if not validate_file_path(folder_path):
+        logger.error(f"FileHandler: Invalid or inaccessible folder path: {folder_path}")
         raise ValueError(f"Invalid or inaccessible folder path: {folder_path}")
     
     folder = Path(folder_path)
     if not folder.is_dir():
+        logger.error(f"FileHandler: Path is not a directory: {folder_path}")
         raise NotADirectoryError(f"Path is not a directory: {folder_path}")
     
+    logger.debug(f"FileHandler: Listing files in folder: {folder_path} (recursive={recursive})")
     files = []
     try:
         if recursive:
             files = [str(p) for p in folder.rglob("*") if p.is_file()]
         else:
             files = [str(p) for p in folder.iterdir() if p.is_file()]
+        logger.debug(f"FileHandler: Found {len(files)} file(s) in {folder_path}")
     except Exception as e:
-        logger.error(f"Error listing files in {folder_path}: {e}")
+        logger.error(f"FileHandler: Error listing files in {folder_path}: {e}", exc_info=True)
         raise
     
     return sorted(files)

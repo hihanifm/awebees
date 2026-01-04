@@ -21,8 +21,10 @@ class InsightsResponse(BaseModel):
 @router.get("", response_model=InsightsResponse)
 async def list_insights():
     """Get list of all available insights."""
+    logger.debug("Insights API: Received request to list insights")
     plugin_manager = get_plugin_manager()
     insights = plugin_manager.list_insights()
-    
+    logger.info(f"Insights API: Returning {len(insights)} available insight(s)")
+    if insights:
+        logger.debug(f"Insights API: Insight IDs: {[i.id for i in insights]}")
     return InsightsResponse(insights=insights)
-

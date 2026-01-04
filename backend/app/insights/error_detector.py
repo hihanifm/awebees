@@ -2,9 +2,12 @@
 
 from typing import List
 import re
+import logging
 from app.insights.base import Insight
 from app.core.models import InsightResult
-from app.services.file_handler import read_file
+from app.services.file_handler import read_file_lines
+
+logger = logging.getLogger(__name__)
 
 
 class ErrorDetector(Insight):
@@ -26,41 +29,75 @@ class ErrorDetector(Insight):
         """
         Analyze files for error and fatal log lines.
         
+        Uses efficient line-by-line processing to handle large files.
+        
         Args:
             file_paths: List of file paths to analyze
             
         Returns:
             InsightResult with error summary
         """
-        all_errors = []
+        import time
+        start_time = time.time()
+        logger.info(f"ErrorDetector: Starting analysis of {len(file_paths)} file(s)")
         
-        for file_path in file_paths:
+        all_errors = []
+        error_pattern = re.compile(r".*\b(ERROR|FATAL)\b.*", re.IGNORECASE)
+        max_errors_per_file = 1000  # Limit to prevent overwhelming output
+        
+        for file_idx, file_path in enumerate(file_paths, 1):
+            file_start_time = time.time()
+            logger.info(f"ErrorDetector: Processing file {file_idx}/{len(file_paths)}: {file_path}")
+            
             try:
-                content = await read_file(file_path)
-                lines = content.split("\n")
-                
-                # Look for ERROR/FATAL lines (case-insensitive)
-                error_pattern = re.compile(r".*\b(ERROR|FATAL)\b.*", re.IGNORECASE)
-                
                 file_errors = []
-                for line_num, line in enumerate(lines, start=1):
+                line_num = 0
+                last_log_time = time.time()
+                
+                # Process file line by line to handle large files efficiently
+                for line in read_file_lines(file_path):
+                    line_num += 1
+                    
+                    # Log progress for large files every 100k lines
+                    if line_num % 100000 == 0:
+                        elapsed = time.time() - last_log_time
+                        logger.debug(f"ErrorDetector: Processed {line_num:,} lines from {file_path} (errors found: {len(file_errors)}, {line_num/elapsed:.0f} lines/sec)")
+                        last_log_time = time.time()
+                    
                     if error_pattern.search(line):
                         file_errors.append({
                             "line": line_num,
                             "content": line.strip()[:200]  # Truncate long lines
                         })
+                        
+                        # Limit errors per file to prevent memory issues
+                        if len(file_errors) >= max_errors_per_file:
+                            logger.warning(f"ErrorDetector: Reached error limit ({max_errors_per_file}) for {file_path} at line {line_num}")
+                            file_errors.append({
+                                "line": line_num + 1,
+                                "content": f"... (showing first {max_errors_per_file} errors, file continues)"
+                            })
+                            break
+                
+                file_elapsed = time.time() - file_start_time
+                logger.info(f"ErrorDetector: Completed {file_path} - {line_num:,} lines processed, {len(file_errors)} errors found in {file_elapsed:.2f}s")
                 
                 if file_errors:
                     all_errors.append({
                         "file": file_path,
                         "count": len(file_errors),
-                        "errors": file_errors[:50]  # Limit to first 50 errors per file
+                        "errors": file_errors[:50]  # Limit to first 50 errors per file for output
                     })
             except Exception as e:
+                logger.error(f"ErrorDetector: Failed to process {file_path}: {e}", exc_info=True)
                 all_errors.append({
                     "file": file_path,
                     "error": f"Failed to read file: {str(e)}"
                 })
+        
+        total_elapsed = time.time() - start_time
+        total_errors = sum(err.get("count", 0) for err in all_errors if "count" in err)
+        logger.info(f"ErrorDetector: Analysis complete - {total_errors} total errors found across {len(file_paths)} file(s) in {total_elapsed:.2f}s")
         
         # Format results
         total_errors = sum(err.get("count", 0) for err in all_errors if "count" in err)
@@ -88,4 +125,3 @@ class ErrorDetector(Insight):
             content=result_text,
             metadata={"total_errors": total_errors, "files_analyzed": len(file_paths)}
         )
-

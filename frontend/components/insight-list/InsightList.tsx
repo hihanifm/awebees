@@ -45,7 +45,7 @@ export function InsightList({ selectedInsightIds, onSelectionChange }: InsightLi
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Available Insights</h2>
-      <div className="grid gap-4">
+      <div className="overflow-y-auto max-h-[500px] pr-2 space-y-4 border rounded-md p-4">
         {insights.map((insight) => (
           <Card key={insight.id}>
             <CardHeader className="pb-3">
