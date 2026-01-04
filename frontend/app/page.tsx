@@ -61,7 +61,7 @@ export default function Home() {
           <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
             Lens
           </h1>
-          <p className="text-muted-foreground mt-1">/- A modular engine for extracting insight from data</p>
+          <p className="text-muted-foreground mt-1">A modular engine for extracting insight from data!</p>
         </div>
 
         <div className="space-y-8">
