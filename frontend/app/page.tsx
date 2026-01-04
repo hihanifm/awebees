@@ -18,7 +18,7 @@ export default function Home() {
     setMessage(null);
 
     try {
-      const response = await fetch("http://localhost:8000/api/hello");
+      const response = await fetch("http://localhost:5001/api/hello");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
