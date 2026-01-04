@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
 from dotenv import load_dotenv
+from app.version import get_version
 
 # Load environment variables
 load_dotenv()
@@ -28,6 +29,14 @@ app.add_middleware(
 async def health():
     logger.info("Health check requested")
     return {"status": "ok"}
+
+
+@app.get("/api/version")
+async def version():
+    """Get the application version."""
+    version_str = get_version()
+    logger.info(f"Version endpoint called: {version_str}")
+    return {"version": version_str}
 
 
 @app.get("/api/hello")

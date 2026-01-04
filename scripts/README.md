@@ -66,6 +66,25 @@ Stops both frontend and backend services.
 
 Shows the last 20 lines of frontend or backend logs with the file path. Defaults to frontend logs.
 
+### Version Management
+
+```bash
+./scripts/version.sh get              # Show current version
+./scripts/version.sh set 0.2.0        # Set version to 0.2.0
+./scripts/version.sh bump major       # Bump major version (1.0.0 -> 2.0.0)
+./scripts/version.sh bump minor       # Bump minor version (1.0.0 -> 1.1.0)
+./scripts/version.sh bump patch       # Bump patch version (1.0.0 -> 1.0.1)
+./scripts/version.sh sync             # Sync version to package.json
+```
+
+Manages the application version stored in `VERSION` file at the project root. This is the single source of truth for the application version.
+
+**Version Management:**
+- Version is stored in `VERSION` file at project root
+- The `version.sh` script can sync the version to `frontend/package.json`
+- The backend reads the version from the `VERSION` file and exposes it via `/api/version` endpoint
+- Use semantic versioning (MAJOR.MINOR.PATCH format)
+
 ## Logs
 
 All logs are stored in the `logs/` directory at the project root:

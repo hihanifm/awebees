@@ -95,6 +95,55 @@ tail -f logs/frontend.log  # Frontend logs (follow mode)
 
 - Backend API docs: http://localhost:34001/docs
 - Frontend: http://localhost:34000
+- Version API: http://localhost:34001/api/version
+
+## Version Management
+
+The project uses a unified versioning system with a single source of truth.
+
+### Version File
+
+The version is stored in `VERSION` at the project root. This is the single source of truth for the application version.
+
+### Version Script
+
+Use the version management script to manage versions:
+
+```bash
+./scripts/version.sh get              # Show current version
+./scripts/version.sh set 0.2.0        # Set version to 0.2.0
+./scripts/version.sh bump major       # Bump major version (1.0.0 -> 2.0.0)
+./scripts/version.sh bump minor       # Bump minor version (1.0.0 -> 1.1.0)
+./scripts/version.sh bump patch       # Bump patch version (1.0.0 -> 1.0.1)
+./scripts/version.sh sync             # Sync version to package.json
+```
+
+### Version Endpoint
+
+The backend provides a version endpoint:
+- **GET** `/api/version` - Returns the current application version
+
+### Release Workflow
+
+1. Update the version using the version script:
+   ```bash
+   ./scripts/version.sh bump patch    # or major/minor
+   ```
+
+2. Update `CHANGELOG.md` with the changes for the new version
+
+3. Commit the changes:
+   ```bash
+   git add VERSION CHANGELOG.md frontend/package.json
+   git commit -m "Bump version to X.Y.Z"
+   ```
+
+4. Tag the release:
+   ```bash
+   git tag -a v$(./scripts/version.sh get) -m "Release v$(./scripts/version.sh get)"
+   git push origin master
+   git push origin --tags
+   ```
 
 ## Project Structure
 
@@ -103,6 +152,9 @@ awebees/
 ├── backend/          # FastAPI backend
 ├── frontend/         # Next.js frontend
 ├── scripts/          # Management scripts
+├── logs/             # Application logs
+├── VERSION           # Application version (single source of truth)
+├── CHANGELOG.md      # Version history
 └── .cursor/          # Cursor IDE rules
 ```
 
