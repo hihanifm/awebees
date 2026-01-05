@@ -86,14 +86,14 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
             </div>
           )}
 
-          {/* Event History (last 3 events) */}
+          {/* Event History (last 5 events) */}
           {events.length > 0 && (
             <div className="mt-4 space-y-1">
               <div className="text-xs font-semibold text-muted-foreground mb-2">
                 Recent Activity:
               </div>
-              <div className="space-y-1 max-h-24 overflow-y-auto">
-                {events.slice(-3).map((event, index) => (
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {events.slice(-5).map((event, index) => (
                   <div
                     key={index}
                     className={cn(
