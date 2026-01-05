@@ -75,6 +75,24 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
             {latestEvent?.message || "Starting analysis..."}
           </div>
 
+          {/* File Progress Info */}
+          {latestEvent && (latestEvent.type === "file_open" || latestEvent.type === "insight_progress") && (
+            <div className="text-xs text-muted-foreground space-y-1">
+              {latestEvent.file_path && (
+                <div>File: {latestEvent.file_path.split("/").pop()}</div>
+              )}
+              {latestEvent.file_index && latestEvent.total_files && (
+                <div>Progress: File {latestEvent.file_index} of {latestEvent.total_files}</div>
+              )}
+              {latestEvent.lines_processed !== undefined && (
+                <div>Lines processed: {latestEvent.lines_processed.toLocaleString()}</div>
+              )}
+              {latestEvent.file_size_mb !== undefined && (
+                <div>File size: {latestEvent.file_size_mb.toFixed(2)} MB</div>
+              )}
+            </div>
+          )}
+
           {/* Current Insight */}
           {currentInsightEvent && currentInsightEvent.type === "insight_start" && (
             <div className="text-sm text-muted-foreground">

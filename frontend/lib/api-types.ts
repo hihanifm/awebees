@@ -62,6 +62,8 @@ export interface ProgressEvent {
   file_index?: number;
   total_files?: number;
   chunk_info?: string;
+  lines_processed?: number; // Number of lines processed so far
+  file_size_mb?: number; // File size in MB
   timestamp: string;
   data?: any; // For result event
 }

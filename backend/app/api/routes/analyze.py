@@ -102,8 +102,18 @@ async def _run_analysis_with_progress(
                 insight_id=insight_id
             ))
             
+            # Create progress callback function for this insight
+            async def progress_callback(event: ProgressEvent) -> None:
+                event.insight_id = insight_id  # Ensure insight_id is set
+                event.task_id = task_id  # Ensure task_id is set
+                await progress_queue.put(event)
+            
             try:
-                result = await insight.analyze(request.file_paths, cancellation_event=task.cancellation_event)
+                result = await insight.analyze(
+                    request.file_paths,
+                    cancellation_event=task.cancellation_event,
+                    progress_callback=progress_callback
+                )
                 results.append(AnalysisResultItem(
                     insight_id=insight_id,
                     result=result

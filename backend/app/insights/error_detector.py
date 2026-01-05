@@ -1,11 +1,12 @@
 """Insight to detect errors in log files."""
 
-from typing import List, Optional
+from typing import List, Optional, Callable, Awaitable
 import re
 import logging
 import asyncio
+import os
 from app.insights.base import Insight
-from app.core.models import InsightResult
+from app.core.models import InsightResult, ProgressEvent
 from app.services.file_handler import read_file_lines, CancelledError
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,12 @@ class ErrorDetector(Insight):
     def description(self) -> str:
         return "Detects ERROR and FATAL log lines in log files"
     
-    async def analyze(self, file_paths: List[str], cancellation_event: Optional[asyncio.Event] = None) -> InsightResult:
+    async def analyze(
+        self,
+        file_paths: List[str],
+        cancellation_event: Optional[asyncio.Event] = None,
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
+    ) -> InsightResult:
         """
         Analyze files for error and fatal log lines.
         
@@ -55,14 +61,52 @@ class ErrorDetector(Insight):
             file_start_time = time.time()
             logger.info(f"ErrorDetector: Processing file {file_idx}/{len(file_paths)}: {file_path}")
             
+            # Get file size for progress tracking
+            file_size_mb = 0.0
+            try:
+                file_size_bytes = os.path.getsize(file_path)
+                file_size_mb = file_size_bytes / (1024 * 1024)
+            except Exception:
+                pass
+            
+            # Emit file_open event
+            if progress_callback:
+                await progress_callback(ProgressEvent(
+                    type="file_open",
+                    message=f"Opening file {file_idx}/{len(file_paths)}: {os.path.basename(file_path)}",
+                    task_id="",  # Will be set by callback
+                    insight_id="",  # Will be set by callback
+                    file_path=file_path,
+                    file_index=file_idx,
+                    total_files=len(file_paths),
+                    file_size_mb=file_size_mb
+                ))
+            
             try:
                 file_errors = []
                 line_num = 0
                 last_log_time = time.time()
+                last_progress_event_time = time.time()
                 
                 # Process file line by line to handle large files efficiently
                 for line in read_file_lines(file_path, cancellation_event=cancellation_event):
                     line_num += 1
+                    
+                    # Emit progress event every 50k lines or every 2 seconds
+                    if progress_callback and (line_num % 50000 == 0 or (time.time() - last_progress_event_time) >= 2.0):
+                        elapsed = time.time() - last_log_time
+                        await progress_callback(ProgressEvent(
+                            type="insight_progress",
+                            message=f"Processing {os.path.basename(file_path)}: {line_num:,} lines (errors found: {len(file_errors)})",
+                            task_id="",  # Will be set by callback
+                            insight_id="",  # Will be set by callback
+                            file_path=file_path,
+                            file_index=file_idx,
+                            total_files=len(file_paths),
+                            lines_processed=line_num,
+                            file_size_mb=file_size_mb
+                        ))
+                        last_progress_event_time = time.time()
                     
                     # Log progress for large files every 100k lines
                     if line_num % 100000 == 0:

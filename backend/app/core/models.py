@@ -29,5 +29,7 @@ class ProgressEvent(BaseModel):
     file_index: Optional[int] = None
     total_files: Optional[int] = None
     chunk_info: Optional[str] = None
+    lines_processed: Optional[int] = None  # Number of lines processed so far
+    file_size_mb: Optional[float] = None  # File size in MB
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 

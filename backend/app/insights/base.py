@@ -1,9 +1,9 @@
 """Base interface for insights."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Callable, Awaitable
 import asyncio
-from app.core.models import InsightResult
+from app.core.models import InsightResult, ProgressEvent
 
 
 class Insight(ABC):
@@ -28,19 +28,25 @@ class Insight(ABC):
         pass
     
     @abstractmethod
-    async def analyze(self, file_paths: List[str], cancellation_event: Optional[asyncio.Event] = None) -> InsightResult:
+    async def analyze(
+        self,
+        file_paths: List[str],
+        cancellation_event: Optional[asyncio.Event] = None,
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
+    ) -> InsightResult:
         """
         Analyze the provided log files.
         
         Args:
             file_paths: List of file paths to analyze
             cancellation_event: Optional asyncio.Event to check for cancellation
+            progress_callback: Optional async callback to emit progress events
             
         Returns:
             InsightResult with the analysis results
             
         Raises:
             CancelledError: If the operation is cancelled
+        
         """
         pass
-
