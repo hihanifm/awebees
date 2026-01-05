@@ -8,16 +8,26 @@ Usage:
 
 Examples:
     python scripts/run_insight.py error_detector /path/to/logfile.log
-    python scripts/run_insight.py crash_detector file1.log file2.log
     python scripts/run_insight.py line_count  # Will prompt for file paths
 """
 
 import sys
 import os
-import asyncio
 
-# Add parent directory to path so we can import app modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Get script directory and project root
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+BACKEND_DIR = os.path.join(PROJECT_ROOT, 'backend')
+
+# Add backend directory to path so we can import app modules
+sys.path.insert(0, BACKEND_DIR)
+
+# Try to use venv Python if available
+VENV_PYTHON = os.path.join(BACKEND_DIR, 'venv', 'bin', 'python3')
+if os.path.exists(VENV_PYTHON):
+    # If we're not already using venv Python, re-execute with it
+    if sys.executable != VENV_PYTHON:
+        os.execv(VENV_PYTHON, [VENV_PYTHON] + sys.argv)
 
 from app.core.plugin_manager import get_plugin_manager
 from app.utils.insight_runner import main_standalone
