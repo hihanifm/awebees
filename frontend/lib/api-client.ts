@@ -163,6 +163,14 @@ export const apiClient = {
   },
 
   /**
+   * Get profiling status from the backend.
+   * @returns Promise that resolves with profiling status.
+   */
+  async getProfilingStatus(): Promise<{ enabled: boolean }> {
+    return fetchJSON<{ enabled: boolean }>("/api/profiling");
+  },
+
+  /**
    * Stream backend errors via Server-Sent Events.
    * @param onError Callback function to receive error events.
    * @returns A Promise that resolves when the stream closes.

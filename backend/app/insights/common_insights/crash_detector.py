@@ -137,6 +137,7 @@ class CrashDetector(Insight):
         import time
         start_time = time.time()
         logger.info(f"CrashDetector: Starting analysis of {len(file_paths)} file(s)")
+        logger.debug(f"CrashDetector: progress_callback provided: {progress_callback is not None}, cancellation_event provided: {cancellation_event is not None}")
         
         all_crashes = []
         crash_summary_by_type = defaultdict(int)
@@ -156,33 +157,49 @@ class CrashDetector(Insight):
             try:
                 file_size_bytes = os.path.getsize(file_path)
                 file_size_mb = file_size_bytes / (1024 * 1024)
-            except Exception:
-                pass
+                logger.debug(f"CrashDetector: File size: {file_size_mb:.2f} MB ({file_size_bytes:,} bytes)")
+            except Exception as e:
+                logger.warning(f"CrashDetector: Could not get file size for {file_path}: {e}")
             
             # Emit file_open event
             if progress_callback:
-                await progress_callback(ProgressEvent(
-                    type="file_open",
-                    message=f"Opening file {file_idx}/{len(file_paths)}: {os.path.basename(file_path)}",
-                    task_id="",  # Will be set by callback
-                    insight_id="",  # Will be set by callback
-                    file_path=file_path,
-                    file_index=file_idx,
-                    total_files=len(file_paths),
-                    file_size_mb=file_size_mb
-                ))
+                logger.debug(f"CrashDetector: Emitting file_open event for {file_path}")
+                try:
+                    await progress_callback(ProgressEvent(
+                        type="file_open",
+                        message=f"Opening file {file_idx}/{len(file_paths)}: {os.path.basename(file_path)}",
+                        task_id="",  # Will be set by callback
+                        insight_id="",  # Will be set by callback
+                        file_path=file_path,
+                        file_index=file_idx,
+                        total_files=len(file_paths),
+                        file_size_mb=file_size_mb
+                    ))
+                    logger.debug(f"CrashDetector: file_open event emitted successfully")
+                except Exception as e:
+                    logger.error(f"CrashDetector: Error emitting file_open event: {e}", exc_info=True)
+            else:
+                logger.warning(f"CrashDetector: No progress_callback provided, skipping file_open event")
             
             try:
                 file_crashes = []
                 line_num = 0
                 context_lines = []  # Keep last few lines for context (preserves across chunks)
                 last_log_time = time.time()
-                last_progress_event_time = time.time()
                 chunk_buffer = ""  # Buffer for incomplete lines at chunk boundaries
+                chunk_count = 0
+                chunk_start_time = time.time()
+                
+                logger.debug(f"CrashDetector: Starting chunk processing for {file_path}")
                 
                 # Step 1: Read file in chunks, then Step 2: Process each chunk line by line
                 # This approach handles large files efficiently while maintaining line-by-line processing
                 for chunk in read_file_chunks(file_path, chunk_size=1048576):  # 1MB chunks
+                    chunk_count += 1
+                    chunk_read_time = time.time()
+                    chunk_size_bytes = len(chunk.encode('utf-8')) if chunk else 0
+                    logger.debug(f"CrashDetector: Read chunk {chunk_count} ({chunk_size_bytes:,} bytes, {len(chunk):,} chars) in {(chunk_read_time - chunk_start_time)*1000:.2f}ms")
+                    
                     # Check for cancellation at chunk level
                     if cancellation_event and cancellation_event.is_set():
                         logger.info(f"CrashDetector: Analysis cancelled at line {line_num}")
@@ -204,6 +221,7 @@ class CrashDetector(Insight):
                             # No newline in this chunk, entire chunk is incomplete line
                             chunk_buffer = text_to_process
                             lines = []
+                            logger.debug(f"CrashDetector: Chunk {chunk_count} has no newlines, buffering entire chunk")
                         else:
                             # Split at newlines, keep complete lines (include the newline character)
                             complete_text = text_to_process[:last_newline_idx + 1]
@@ -211,34 +229,50 @@ class CrashDetector(Insight):
                             # Save any incomplete line after last newline as buffer
                             if last_newline_idx + 1 < len(text_to_process):
                                 chunk_buffer = text_to_process[last_newline_idx + 1:]
+                            logger.debug(f"CrashDetector: Chunk {chunk_count} split into {len(lines)} complete lines, buffer size: {len(chunk_buffer)} chars")
                     else:
                         lines = []
+                        logger.debug(f"CrashDetector: Chunk {chunk_count} is empty after processing")
                     
-                    # Process each line from the chunk
+                    # Process each line from the chunk - NO overhead except core regex processing
+                    lines_start_time = time.time()
                     for line in lines:
                         line_num += 1
-                        
-                        # Check for cancellation and yield control frequently (every 100 lines)
-                        # This ensures cancellation can be processed even during heavy CPU work
-                        if cancellation_event and line_num % 100 == 0:
-                            if cancellation_event.is_set():
-                                logger.info(f"CrashDetector: Analysis cancelled at line {line_num}")
-                                raise CancelledError("Analysis cancelled")
-                            # Yield control to event loop to allow cancellation to be processed
-                            await asyncio.sleep(0)
-                            # Check again after yielding (cancellation may have happened during yield)
-                            if cancellation_event.is_set():
-                                logger.info(f"CrashDetector: Analysis cancelled at line {line_num}")
-                                raise CancelledError("Analysis cancelled")
-                        
                         context_lines.append(line)
                         
                         # Keep only last 10 lines for context
                         if len(context_lines) > 10:
                             context_lines.pop(0)
                         
-                        # Emit progress event every 50k lines or every 2 seconds
-                        if progress_callback and (line_num % 50000 == 0 or (time.time() - last_progress_event_time) >= 2.0):
+                        # Detect crashes - core processing only
+                        crash_info = self._detect_crash_type(line, context_lines)
+                        if crash_info:
+                            crash_info["line"] = line_num
+                            file_crashes.append(crash_info)
+                            crash_summary_by_type[crash_info["type"]] += 1
+                            logger.debug(f"CrashDetector: Crash detected at line {line_num}: {crash_info['type']}")
+                    
+                    lines_process_time = time.time() - lines_start_time
+                    logger.debug(f"CrashDetector: Processed {len(lines)} lines from chunk {chunk_count} in {lines_process_time*1000:.2f}ms ({len(lines)/lines_process_time:.0f} lines/sec)")
+                    
+                    # Check crash limit after chunk processing (not during line processing)
+                    if len(file_crashes) >= max_crashes_per_file:
+                        logger.warning(f"CrashDetector: Reached crash limit ({max_crashes_per_file}) for {file_path} at line {line_num}")
+                        file_crashes.append({
+                            "type": "limit_reached",
+                            "line": line_num + 1,
+                            "line_content": f"... (showing first {max_crashes_per_file} crashes, file continues)",
+                            "timestamp": None,
+                            "context": None
+                        })
+                        break
+                    
+                    # Emit progress event at chunk boundaries (after processing each chunk)
+                    # This ensures progress is visible even during long processing
+                    if progress_callback:
+                        progress_start_time = time.time()
+                        logger.debug(f"CrashDetector: Emitting progress event for chunk {chunk_count} (line {line_num:,}, crashes: {len(file_crashes)})")
+                        try:
                             await progress_callback(ProgressEvent(
                                 type="insight_progress",
                                 message=f"Processing {os.path.basename(file_path)}: {line_num:,} lines (crashes found: {len(file_crashes)})",
@@ -250,36 +284,22 @@ class CrashDetector(Insight):
                                 lines_processed=line_num,
                                 file_size_mb=file_size_mb
                             ))
-                            last_progress_event_time = time.time()
-                        
-                        # Log progress for large files every 100k lines
-                        if line_num % 100000 == 0:
-                            elapsed = time.time() - last_log_time
-                            logger.debug(f"CrashDetector: Processed {line_num:,} lines from {file_path} (crashes found: {len(file_crashes)}, {line_num/elapsed:.0f} lines/sec)")
-                            last_log_time = time.time()
-                        
-                        # Detect crashes
-                        crash_info = self._detect_crash_type(line, context_lines)
-                        if crash_info:
-                            crash_info["line"] = line_num
-                            file_crashes.append(crash_info)
-                            crash_summary_by_type[crash_info["type"]] += 1
-                            
-                            # Limit crashes per file to prevent memory issues
-                            if len(file_crashes) >= max_crashes_per_file:
-                                logger.warning(f"CrashDetector: Reached crash limit ({max_crashes_per_file}) for {file_path} at line {line_num}")
-                                file_crashes.append({
-                                    "type": "limit_reached",
-                                    "line": line_num + 1,
-                                    "line_content": f"... (showing first {max_crashes_per_file} crashes, file continues)",
-                                    "timestamp": None,
-                                    "context": None
-                                })
-                                break
+                            progress_time = time.time() - progress_start_time
+                            logger.debug(f"CrashDetector: Progress event emitted successfully in {progress_time*1000:.2f}ms")
+                            # Yield control to event loop to ensure progress events are processed
+                            await asyncio.sleep(0)
+                        except Exception as e:
+                            logger.error(f"CrashDetector: Error emitting progress event: {e}", exc_info=True)
+                    else:
+                        logger.debug(f"CrashDetector: No progress_callback, skipping progress event for chunk {chunk_count}")
                     
-                    # Break outer chunk loop if we hit the crash limit
-                    if len(file_crashes) >= max_crashes_per_file:
-                        break
+                    # Log progress for large files every 10 chunks
+                    if chunk_count % 10 == 0:
+                        elapsed = time.time() - last_log_time
+                        logger.info(f"CrashDetector: Processed {chunk_count} chunks ({line_num:,} lines) from {file_path} (crashes found: {len(file_crashes)}, {line_num/elapsed:.0f} lines/sec)")
+                        last_log_time = time.time()
+                    
+                    chunk_start_time = time.time()
                 
                 # Process any remaining buffer content (last incomplete line if file doesn't end with newline)
                 if chunk_buffer.strip():

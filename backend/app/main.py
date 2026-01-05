@@ -61,6 +61,13 @@ async def version():
     return {"version": version_str}
 
 
+@app.get("/api/profiling")
+async def profiling_status():
+    """Get profiling status (whether profiling is enabled)."""
+    profiling_enabled = os.getenv("ENABLE_PROFILING", "false").lower() in ("true", "1", "yes")
+    return {"enabled": profiling_enabled}
+
+
 @app.get("/api/hello")
 async def hello():
     logger.info("Hello endpoint called")

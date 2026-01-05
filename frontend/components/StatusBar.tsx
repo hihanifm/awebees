@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Code, Server, Info, CheckCircle2, AlertCircle } from "lucide-react";
+import { Code, Server, Info, CheckCircle2, AlertCircle, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api-client";
 
 interface VersionResponse {
   version: string;
@@ -18,8 +19,9 @@ export function StatusBar() {
   const [version, setVersion] = useState<string>("...");
   const [versionLoading, setVersionLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
+  const [profilingEnabled, setProfilingEnabled] = useState<boolean>(false);
 
-  // Fetch version from API
+  // Fetch version and profiling status from API
   useEffect(() => {
     const fetchVersion = async () => {
       try {
@@ -40,13 +42,28 @@ export function StatusBar() {
       }
     };
 
+    const fetchProfilingStatus = async () => {
+      try {
+        const status = await apiClient.getProfilingStatus();
+        setProfilingEnabled(status.enabled);
+      } catch (error) {
+        // Silently fail - profiling status is not critical
+        setProfilingEnabled(false);
+      }
+    };
+
     fetchVersion();
+    fetchProfilingStatus();
     
     // Check API status periodically (every 2 minutes)
     const interval = setInterval(() => {
       fetch(`${API_URL}/api/health`)
         .then((res) => {
           setApiStatus(res.ok ? "online" : "offline");
+          // Also refresh profiling status periodically
+          if (res.ok) {
+            fetchProfilingStatus();
+          }
         })
         .catch(() => {
           setApiStatus("offline");
@@ -100,6 +117,14 @@ export function StatusBar() {
               </>
             )}
           </div>
+
+          {/* Profiling Status */}
+          {profilingEnabled && (
+            <div className="flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+              <span className="text-purple-600 dark:text-purple-400 font-medium">Profiling</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-4">

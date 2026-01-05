@@ -7,6 +7,7 @@ from typing import List, Iterator, Optional
 import logging
 import re
 import asyncio
+from app.utils.profiling import profile
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ async def _read_file_mmap(file_path: str) -> str:
         raise
 
 
+@profile(log_interval=100, top_n=20)
 def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]:
     """
     Read file in chunks for efficient memory usage.
@@ -76,12 +78,15 @@ def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]
     This is a generator that yields chunks of the file, useful for
     processing large files without loading everything into memory.
     
+    Uses binary mode for accurate byte-level chunking, then decodes to text.
+    This ensures true 1MB (or specified) byte chunks for better performance.
+    
     Args:
         file_path: Path to the file
         chunk_size: Size of each chunk in bytes (default: 1MB)
         
     Yields:
-        String chunks of the file
+        String chunks of the file (decoded from bytes)
         
     Raises:
         FileNotFoundError: If file doesn't exist
@@ -90,16 +95,16 @@ def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]
     if not validate_file_path(file_path):
         raise ValueError(f"Invalid or inaccessible file path: {file_path}")
     
-    try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    break
-                yield chunk
-    except Exception as e:
-        logger.error(f"Error reading file chunks {file_path}: {e}")
-        raise
+    # Read in binary mode for accurate byte-level chunking, then decode
+    # This is more efficient for large files than text mode
+    with open(file_path, "rb") as f:
+        while True:
+            chunk_bytes = f.read(chunk_size)
+            if not chunk_bytes:
+                break
+            # Decode the bytes to string (handles UTF-8 with error recovery)
+            chunk = chunk_bytes.decode("utf-8", errors="ignore")
+            yield chunk
 
 
 def read_file_lines(file_path: str, max_lines: int = None, cancellation_event: Optional[asyncio.Event] = None) -> Iterator[str]:

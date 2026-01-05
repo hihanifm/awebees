@@ -84,10 +84,10 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
               {latestEvent.file_index && latestEvent.total_files && (
                 <div>Progress: File {latestEvent.file_index} of {latestEvent.total_files}</div>
               )}
-              {latestEvent.lines_processed !== undefined && (
+              {latestEvent.lines_processed != null && (
                 <div>Lines processed: {latestEvent.lines_processed.toLocaleString()}</div>
               )}
-              {latestEvent.file_size_mb !== undefined && (
+              {latestEvent.file_size_mb != null && (
                 <div>File size: {latestEvent.file_size_mb.toFixed(2)} MB</div>
               )}
             </div>
