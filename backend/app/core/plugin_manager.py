@@ -8,7 +8,7 @@ from typing import Dict, List
 import logging
 
 from app.insights.base import Insight
-from app.core.models import InsightMetadata
+from app.core.models import InsightMetadata, ErrorEvent
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ class PluginManager:
     def __init__(self):
         self._insights: Dict[str, Insight] = {}
         self._insight_folders: Dict[str, str] = {}  # Maps insight_id to folder name
+        self._errors: List[ErrorEvent] = []  # Track errors during discovery
     
     def discover_insights(self, insights_dir: str = None) -> None:
         """
@@ -86,9 +87,28 @@ class PluginManager:
                             self.register_insight(instance, folder_name)
                             logger.info(f"Registered insight: {instance.id} ({instance.name}) in folder: {folder_name or 'root'}")
                         except Exception as e:
-                            logger.error(f"Failed to instantiate insight {name}: {e}")
+                            error_msg = f"Failed to instantiate insight {name}: {e}"
+                            logger.error(error_msg)
+                            self._errors.append(ErrorEvent(
+                                type="instantiation_failure",
+                                message=f"Failed to instantiate insight: {name}",
+                                severity="error",
+                                details=str(e),
+                                folder=folder_name,
+                                file=file_path.name,
+                                insight_id=getattr(instance, 'id', None) if 'instance' in locals() else None
+                            ))
             except Exception as e:
-                logger.error(f"Failed to import module {file_path.stem}: {e}")
+                error_msg = f"Failed to import module {file_path.stem}: {e}"
+                logger.error(error_msg)
+                self._errors.append(ErrorEvent(
+                    type="import_failure",
+                    message=f"Failed to import module: {file_path.stem}",
+                    severity="error",
+                    details=str(e),
+                    folder=folder_name,
+                    file=file_path.name
+                ))
         
         # Recursively process subdirectories
         subdirs = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('__')]
@@ -104,7 +124,16 @@ class PluginManager:
             folder: Folder name where the insight is located (None for root-level)
         """
         if insight.id in self._insights:
-            logger.warning(f"Insight {insight.id} is already registered, overwriting")
+            warning_msg = f"Insight {insight.id} is already registered, overwriting"
+            logger.warning(warning_msg)
+            self._errors.append(ErrorEvent(
+                type="duplicate_id",
+                message=f"Duplicate insight ID: {insight.id}",
+                severity="warning",
+                details=f"Insight with ID '{insight.id}' was already registered and is being overwritten",
+                folder=folder,
+                insight_id=insight.id
+            ))
         self._insights[insight.id] = insight
         self._insight_folders[insight.id] = folder
     
@@ -145,6 +174,19 @@ class PluginManager:
     def get_all_insights(self) -> Dict[str, Insight]:
         """Get all registered insights as a dictionary."""
         return self._insights.copy()
+    
+    def get_errors(self) -> List[ErrorEvent]:
+        """
+        Get all errors collected during insight discovery.
+        
+        Returns:
+            List of error events
+        """
+        return self._errors.copy()
+    
+    def clear_errors(self) -> None:
+        """Clear all tracked errors."""
+        self._errors.clear()
 
 
 # Global plugin manager instance

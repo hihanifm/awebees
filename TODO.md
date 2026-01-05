@@ -11,6 +11,7 @@
 - [ui] [storage] Let users store sessions in the frontend and show past sessions as tabs on the left side
 - [frontend] [storage] Add a small database at frontend to temporarily store the collection list to avoid repetitive fetches
 - [backend] [storage] [frontend] Store insight results in files for each session with structure: session-id/insight-name/filename/output, send output path to user for offline access, and add a button in frontend to open the output folder
+- [ui] [frontend] Give option to the user to select recently given inputs for files/folders (e.g., the last 10 inputs)
 
 ## Low Priority
 - 

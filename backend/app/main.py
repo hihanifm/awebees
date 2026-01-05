@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from app.version import get_version
 from app.core.plugin_manager import get_plugin_manager
-from app.api.routes import files, insights, analyze
+from app.api.routes import files, insights, analyze, errors
 
 # Load environment variables
 load_dotenv()
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(files.router)
 app.include_router(insights.router)
 app.include_router(analyze.router)
+app.include_router(errors.router)
 
 
 @app.on_event("startup")

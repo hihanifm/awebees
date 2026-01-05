@@ -69,3 +69,14 @@ export interface ProgressEvent {
   data?: any; // For result event
 }
 
+export interface ErrorEvent {
+  type: string; // duplicate_id, import_failure, instantiation_failure
+  message: string;
+  severity: string; // warning, error, critical
+  details?: string; // Additional error details
+  folder?: string; // Folder where error occurred
+  file?: string; // File where error occurred
+  insight_id?: string; // Insight ID if applicable
+  timestamp: string; // ISO format string
+}
+

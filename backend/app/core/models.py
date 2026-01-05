@@ -34,3 +34,15 @@ class ProgressEvent(BaseModel):
     file_size_mb: Optional[float] = None  # File size in MB
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+
+class ErrorEvent(BaseModel):
+    """Error event for backend errors (discovery, import, instantiation failures)."""
+    type: str  # duplicate_id, import_failure, instantiation_failure
+    message: str
+    severity: str  # warning, error, critical
+    details: Optional[str] = None  # Additional error details
+    folder: Optional[str] = None  # Folder where error occurred
+    file: Optional[str] = None  # File where error occurred
+    insight_id: Optional[str] = None  # Insight ID if applicable
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+

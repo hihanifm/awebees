@@ -1,14 +1,15 @@
 /** Typed API client for backend communication. */
 
 import {
-  InsightMetadata,
-  FileSelectRequest,
-  FileSelectResponse,
-  InsightsResponse,
-  AnalysisRequest,
-  AnalysisResponse,
-  ProgressEvent,
-} from "./api-types";
+      InsightMetadata,
+      FileSelectRequest,
+      FileSelectResponse,
+      InsightsResponse,
+      AnalysisRequest,
+      AnalysisResponse,
+      ProgressEvent,
+      ErrorEvent,
+    } from "./api-types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:34001";
 

@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { apiClient } from "@/lib/api-client";
-import { AnalysisResultItem, ProgressEvent } from "@/lib/api-types";
+import { AnalysisResultItem, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 
 const LAST_PATH_KEY = "lens_last_file_paths";
 
@@ -119,6 +120,13 @@ export default function Home() {
           </h1>
           <p className="text-muted-foreground mt-1">A modular engine for extracting insight from data!</p>
         </div>
+
+        {/* Backend Errors Banner */}
+        {backendErrors.length > 0 && (
+          <section>
+            <ErrorBanner errors={backendErrors} onDismiss={handleDismissError} />
+          </section>
+        )}
 
         <div className="space-y-8">
               {/* File Selection */}
