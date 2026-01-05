@@ -178,3 +178,43 @@ class ErrorDetector(Insight):
             content=result_text,
             metadata={"total_errors": total_errors, "files_analyzed": len(file_paths)}
         )
+
+
+if __name__ == "__main__":
+    # Hardcoded default file paths for quick testing
+    # Override by providing CLI arguments
+    DEFAULT_FILE_PATHS = [
+        # Add your default test file paths here, e.g.:
+        # "/path/to/test/logfile.log",
+    ]
+    
+    import sys
+    from app.utils.insight_runner import main_standalone
+    
+    # Get file paths from CLI args, hardcoded defaults, or interactive input
+    if len(sys.argv) > 1:
+        file_paths = [arg for arg in sys.argv[1:] if arg not in ["--verbose", "-v"]]
+    elif DEFAULT_FILE_PATHS:
+        file_paths = DEFAULT_FILE_PATHS
+    else:
+        # Interactive mode
+        print("Enter file paths (one per line, empty line to finish):", file=sys.stderr)
+        file_paths = []
+        while True:
+            try:
+                line = input().strip()
+                if not line:
+                    break
+                file_paths.append(line)
+            except (EOFError, KeyboardInterrupt):
+                break
+        
+        if not file_paths:
+            print("No file paths provided. Exiting.", file=sys.stderr)
+            sys.exit(1)
+    
+    # Check for verbose flag
+    verbose = "--verbose" in sys.argv or "-v" in sys.argv
+    
+    # Run the insight
+    main_standalone(ErrorDetector(), file_paths, verbose=verbose)
