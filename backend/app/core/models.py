@@ -17,6 +17,7 @@ class InsightMetadata(BaseModel):
     id: str
     name: str
     description: str
+    folder: Optional[str] = None  # Folder name where insight is located (None for root-level)
 
 
 class ProgressEvent(BaseModel):
