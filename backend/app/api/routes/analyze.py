@@ -181,6 +181,8 @@ async def _stream_analysis_events(
             task_id=task_id,
             total_files=len(request.file_paths)
         ).model_dump())
+        # Yield control to event loop to ensure immediate flushing
+        await asyncio.sleep(0)
         
         # Start analysis in background
         analysis_task = asyncio.create_task(
@@ -194,6 +196,8 @@ async def _stream_analysis_events(
                 # Wait for event with timeout to check if analysis is done
                 event = await asyncio.wait_for(progress_queue.get(), timeout=0.1)
                 yield _format_sse_event(event.model_dump())
+                # Yield control to event loop to ensure immediate flushing of SSE event
+                await asyncio.sleep(0)
                 
                 # Check if this is a terminal event
                 if event.type in ("analysis_complete", "cancelled", "error"):
@@ -226,6 +230,7 @@ async def _stream_analysis_events(
                 "task_id": task_id,
                 "data": final_result.model_dump()
             })
+            await asyncio.sleep(0)  # Yield control to ensure final event is flushed
         
     except Exception as e:
         logger.error(f"Error in event stream: {e}", exc_info=True)
