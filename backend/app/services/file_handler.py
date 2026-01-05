@@ -135,8 +135,8 @@ def read_file_lines(file_path: str, max_lines: int = None, cancellation_event: O
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             count = 0
             for line in f:
-                # Check for cancellation every 10,000 lines
-                if cancellation_event and count % 10000 == 0 and cancellation_event.is_set():
+                # Check for cancellation more frequently (every 1000 lines) for better responsiveness
+                if cancellation_event and count % 1000 == 0 and cancellation_event.is_set():
                     logger.info(f"FileHandler: Reading {file_path} cancelled at line {count}")
                     raise CancelledError(f"File reading cancelled: {file_path}")
                 
