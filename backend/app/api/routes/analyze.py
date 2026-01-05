@@ -164,6 +164,14 @@ async def _stream_analysis_events(
 ) -> AsyncGenerator[str, None]:
     """Stream analysis progress events as SSE."""
     try:
+        # Emit immediate event to signal analysis has started
+        yield _format_sse_event(ProgressEvent(
+            type="analysis_started",
+            message=f"Starting analysis of {len(request.file_paths)} file(s) with {len(request.insight_ids)} insight(s)...",
+            task_id=task_id,
+            total_files=len(request.file_paths)
+        ).model_dump())
+        
         # Start analysis in background
         analysis_task = asyncio.create_task(
             _run_analysis_with_progress(task_id, request, progress_queue)

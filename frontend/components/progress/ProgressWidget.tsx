@@ -13,10 +13,6 @@ interface ProgressWidgetProps {
 }
 
 export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidgetProps) {
-  if (!currentTaskId && events.length === 0) {
-    return null;
-  }
-
   const latestEvent = events[events.length - 1];
   const isComplete = latestEvent?.type === "analysis_complete" || latestEvent?.type === "result";
   const isCancelled = latestEvent?.type === "cancelled";

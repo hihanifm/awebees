@@ -64,6 +64,14 @@ export default function Home() {
       // Save paths to localStorage for next time
       localStorage.setItem(LAST_PATH_KEY, filePaths);
 
+      // Add initial progress event to show widget immediately
+      setProgressEvents([{
+        type: "file_selection",
+        message: "Selecting files...",
+        task_id: "pending",
+        timestamp: new Date().toISOString(),
+      }]);
+
       // First, select files (expands folders to file list)
       const selectResponse = await apiClient.selectFiles(paths);
 
