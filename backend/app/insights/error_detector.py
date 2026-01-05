@@ -42,7 +42,7 @@ class ErrorDetector(FilterBasedInsight):
     @property
     def line_filter_pattern(self) -> str:
         """Regex pattern for ERROR and FATAL log lines."""
-        return r".*\b(ERROR|FATAL)\b.*"
+        return r"\b(ERROR|FATAL)\b"
     
     @property
     def regex_flags(self) -> int:
