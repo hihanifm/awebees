@@ -76,32 +76,23 @@ if [ -d "$PROJECT_ROOT/backend/venv" ]; then
   source "$PROJECT_ROOT/backend/venv/bin/activate"
 fi
 
+# Set PYTHONPATH to include backend directory for module imports
+export PYTHONPATH="$PROJECT_ROOT/backend:$PYTHONPATH"
+
 # Run with or without profiling
 if [ "$PROFILE" = true ]; then
   echo "Running with cProfile profiling (top $TOP_N consumers, sorted by $SORT_BY)..."
   echo ""
   
-  # Create temporary profile file
-  PROFILE_FILE=$(mktemp /tmp/python_profile_XXXXXX.prof)
+  # Create temporary profile file (mktemp needs exactly 6 X's, creates absolute path)
+  # Use a unique filename with process ID to avoid conflicts
+  PROFILE_FILE="/tmp/python_profile_$$_$(date +%s).prof"
   
-  # Run with cProfile
-  python3 -m cProfile -s "$SORT_BY" -o "$PROFILE_FILE" "${PYTHON_ARGS[@]}"
+  # Use Python wrapper to avoid cProfile argument parsing issues
+  python3 "$SCRIPT_DIR/_run_with_profile.py" "$PROFILE_FILE" "$SORT_BY" "$TOP_N" "${PYTHON_ARGS[@]}"
   EXIT_CODE=$?
   
-  if [ $EXIT_CODE -eq 0 ]; then
-    echo ""
-    echo "Profile results (top $TOP_N consumers, sorted by $SORT_BY):"
-    echo "============================================================"
-    python3 -c "
-import pstats
-stats = pstats.Stats('$PROFILE_FILE')
-stats.sort_stats('$SORT_BY')
-stats.print_stats($TOP_N)
-"
-    echo ""
-    echo "Full profile saved to: $PROFILE_FILE"
-    echo "To view full profile: python3 -m pstats $PROFILE_FILE"
-  else
+  if [ $EXIT_CODE -ne 0 ]; then
     echo "Error: Python script exited with code $EXIT_CODE"
     rm -f "$PROFILE_FILE"
     exit $EXIT_CODE
