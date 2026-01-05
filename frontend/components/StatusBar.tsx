@@ -42,7 +42,7 @@ export function StatusBar() {
 
     fetchVersion();
     
-    // Check API status periodically (every 30 seconds)
+    // Check API status periodically (every 2 minutes)
     const interval = setInterval(() => {
       fetch(`${API_URL}/api/health`)
         .then((res) => {
@@ -51,7 +51,7 @@ export function StatusBar() {
         .catch(() => {
           setApiStatus("offline");
         });
-    }, 30000);
+    }, 120000); // 2 minutes (120000 ms)
 
     return () => clearInterval(interval);
   }, []);
