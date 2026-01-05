@@ -121,9 +121,9 @@ export default function Home() {
         </div>
 
         <div className="space-y-8">
-          {/* File Selection */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Enter File or Folder Paths</h2>
+              {/* File Selection */}
+              <section>
+                <h2 className="text-lg font-semibold mb-4">Enter File or Folder Paths</h2>
             <div className="space-y-2">
               <textarea
                 value={filePaths}
