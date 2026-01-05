@@ -168,30 +168,43 @@ export const apiClient = {
    * @returns A Promise that resolves when the stream closes.
    */
   async streamErrors(onError: (event: ErrorEvent) => void): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       // Use EventSource for SSE
       const eventSource = new EventSource(`${API_URL}/api/errors/stream`);
+      let hasReceivedData = false;
+      let isResolved = false;
 
       eventSource.onmessage = (event) => {
         try {
           const data: ErrorEvent = JSON.parse(event.data);
+          hasReceivedData = true;
           onError(data);
         } catch (e) {
           console.error("Error parsing error event:", e);
         }
       };
 
-      eventSource.onerror = (error) => {
-        console.error("Error stream error:", error);
-        eventSource.close();
-        resolve(); // Resolve on error to clean up
+      eventSource.onerror = () => {
+        // EventSource onerror fires on normal closure too, not just actual errors
+        // Only log if we haven't received data and connection was refused
+        if (!hasReceivedData && eventSource.readyState === EventSource.CLOSED) {
+          // This is expected if backend isn't running - silently ignore
+        }
+        if (!isResolved) {
+          eventSource.close();
+          resolve(); // Resolve to clean up
+          isResolved = true;
+        }
       };
 
       // Close after a short timeout (errors are sent immediately, stream closes after)
       // In a real-time system, you'd keep this open, but for now we close after receiving
       setTimeout(() => {
-        eventSource.close();
-        resolve();
+        if (!isResolved) {
+          eventSource.close();
+          resolve();
+          isResolved = true;
+        }
       }, 1000);
     });
   },
