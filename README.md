@@ -93,6 +93,46 @@ tail -f logs/backend.log   # Backend logs (follow mode)
 tail -f logs/frontend.log  # Frontend logs (follow mode)
 ```
 
+## Features
+
+Lens provides a modular plugin-based system for analyzing log files:
+
+![Lens Main Interface](lens-screenshot.png)
+
+### Available Insights
+
+- **Line Count**: Counts total lines, empty lines, and non-empty lines in log files
+- **Error Detector**: Detects ERROR and FATAL log lines in log files
+
+### Usage
+
+1. **Enter File or Folder Paths**: 
+   - Enter absolute paths to log files or folders on the server
+   - Folders will be scanned recursively
+   - The last used paths will be prefilled automatically
+   - Example: `/Users/username/logs/file.log` or `/var/log/app.log`
+
+2. **Select Insights**: 
+   - Choose one or more insights to run on your files
+   - Insights are organized by category (e.g., "General")
+
+3. **Analyze**: 
+   - Click "Analyze Files" to start the analysis
+   - View real-time progress and results
+   - Cancel analysis mid-flight if needed
+
+![Analysis Progress](lens-analysis-progress.png)
+
+![Analysis Results](lens-result.png)
+
+### Status Indicators
+
+The footer displays:
+- **Version**: Current application version (e.g., v2.5.0)
+- **Environment**: DEV or PROD
+- **API Status**: Online/Offline
+- **Profiling**: Indicates if backend profiling is enabled
+
 ## Development
 
 - Backend API docs: http://localhost:34001/docs
