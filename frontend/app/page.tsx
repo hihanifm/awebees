@@ -19,6 +19,26 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
+
+  // Stream backend errors on mount
+  useEffect(() => {
+    const streamErrors = async () => {
+      try {
+        await apiClient.streamErrors((error: ErrorEvent) => {
+          setBackendErrors((prev) => [...prev, error]);
+        });
+      } catch (err) {
+        console.error("Failed to stream errors:", err);
+      }
+    };
+
+    streamErrors();
+  }, []);
+
+  const handleDismissError = (index: number) => {
+    setBackendErrors((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Load last used paths from localStorage on mount
   useEffect(() => {
