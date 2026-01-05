@@ -161,4 +161,38 @@ export const apiClient = {
       }
     );
   },
+
+  /**
+   * Stream backend errors via Server-Sent Events.
+   * @param onError Callback function to receive error events.
+   * @returns A Promise that resolves when the stream closes.
+   */
+  async streamErrors(onError: (event: ErrorEvent) => void): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Use EventSource for SSE
+      const eventSource = new EventSource(`${API_URL}/api/errors/stream`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data: ErrorEvent = JSON.parse(event.data);
+          onError(data);
+        } catch (e) {
+          console.error("Error parsing error event:", e);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("Error stream error:", error);
+        eventSource.close();
+        resolve(); // Resolve on error to clean up
+      };
+
+      // Close after a short timeout (errors are sent immediately, stream closes after)
+      // In a real-time system, you'd keep this open, but for now we close after receiving
+      setTimeout(() => {
+        eventSource.close();
+        resolve();
+      }, 1000);
+    });
+  },
 };
