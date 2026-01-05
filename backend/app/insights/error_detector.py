@@ -2,14 +2,25 @@
 
 from typing import List, Optional, Callable, Awaitable
 import logging
+import asyncio
 from app.core.filter_base import FilterBasedInsight, FilterResult, ReadingMode
-from app.core.models import InsightResult
+from app.core.models import InsightResult, ProgressEvent
 
 logger = logging.getLogger(__name__)
 
 
 class ErrorDetector(FilterBasedInsight):
-    """Detects ERROR and FATAL log lines."""
+    """
+    Detects ERROR and FATAL log lines.
+    
+    This insight inherits cancellation and progress support from FilterBasedInsight.
+    The analyze() method accepts:
+    - cancellation_event: Optional[asyncio.Event] - for cancellation support
+    - progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] - for progress updates
+    
+    Progress events are emitted for each file processed, including file_open and insight_progress events.
+    Cancellation checks occur at file boundaries during filtering.
+    """
     
     @property
     def id(self) -> str:
@@ -43,6 +54,36 @@ class ErrorDetector(FilterBasedInsight):
     def reading_mode(self) -> ReadingMode:
         """Use line-by-line reading mode."""
         return ReadingMode.LINES
+    
+    async def analyze(
+        self,
+        file_paths: List[str],
+        cancellation_event: Optional[asyncio.Event] = None,
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
+    ) -> InsightResult:
+        """
+        Analyze files to detect ERROR and FATAL log lines.
+        
+        This method supports cancellation and progress reporting:
+        - cancellation_event: Optional asyncio.Event to check for cancellation
+        - progress_callback: Optional async callback to emit progress events
+        
+        Progress events are emitted for each file processed (file_open and insight_progress).
+        Cancellation checks occur at file boundaries during filtering.
+        
+        Args:
+            file_paths: List of file or folder paths to analyze
+            cancellation_event: Optional asyncio.Event to check for cancellation
+            progress_callback: Optional async callback to emit progress events
+            
+        Returns:
+            InsightResult with error detection summary
+            
+        Raises:
+            CancelledError: If operation is cancelled
+        """
+        # Delegate to parent implementation which handles filtering, cancellation, and progress
+        return await super().analyze(file_paths, cancellation_event, progress_callback)
     
     async def _process_filtered_lines(
         self,
