@@ -3,11 +3,43 @@
 import asyncio
 import logging
 import sys
+import os
+from pathlib import Path
 from typing import List
 from app.insights.base import Insight
 from app.core.models import InsightResult
 
 logger = logging.getLogger(__name__)
+
+
+def check_venv_and_reexecute():
+    """
+    Check if we're in a venv, and if not, try to re-execute with venv Python.
+    
+    This allows insights to be run without manually activating the venv.
+    """
+    # Check if we're already in a venv
+    if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+        return  # Already in a venv
+    
+    # Try to find venv Python relative to this file
+    # This file is in backend/app/utils/, so venv should be in backend/venv/
+    current_file = Path(__file__).resolve()
+    backend_dir = current_file.parent.parent.parent  # backend/app/utils -> backend
+    venv_python = backend_dir / "venv" / "bin" / "python"
+    
+    if venv_python.exists():
+        # Re-execute with venv Python
+        import subprocess
+        os.execv(str(venv_python), [str(venv_python)] + sys.argv)
+    else:
+        # Provide helpful error message
+        print("Error: Virtual environment not found or not activated.", file=sys.stderr)
+        print(f"Expected venv at: {venv_python}", file=sys.stderr)
+        print("\nPlease either:", file=sys.stderr)
+        print("  1. Activate the venv: source backend/venv/bin/activate", file=sys.stderr)
+        print(f"  2. Use venv Python directly: {venv_python} -m app.insights.<insight_name>", file=sys.stderr)
+        sys.exit(1)
 
 
 def print_progress(message: str, verbose: bool = False):
@@ -104,7 +136,7 @@ def format_result(result: InsightResult) -> str:
     return "\n".join(output)
 
 
-def main_standalone(insight: Insight, file_paths: List[str], verbose: bool = False):
+def main_standalone(insight: Insight, file_paths: List[str], verbose: bool = False, check_venv: bool = True):
     """
     Main entry point for standalone insight execution.
     
@@ -114,8 +146,17 @@ def main_standalone(insight: Insight, file_paths: List[str], verbose: bool = Fal
         insight: Insight instance to run
         file_paths: List of file paths to analyze
         verbose: Enable verbose output
+        check_venv: If True, check for venv and re-execute if needed
     """
     import sys
+    
+    # Check venv and re-execute if needed (only once, at the start)
+    if check_venv:
+        try:
+            # Try importing a dependency to see if we're in the right environment
+            import pydantic
+        except ImportError:
+            check_venv_and_reexecute()
     
     # Run the insight
     try:
