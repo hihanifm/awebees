@@ -112,7 +112,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-5xl flex-col gap-8 py-8 px-4 mx-auto bg-white dark:bg-black">
+      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 py-8 px-4 mx-auto bg-white dark:bg-black">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
             Lens
