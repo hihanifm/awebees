@@ -12,6 +12,7 @@
 - [frontend] [storage] Add a small database at frontend to temporarily store the collection list to avoid repetitive fetches
 - [backend] [storage] [frontend] Store insight results in files for each session with structure: session-id/insight-name/filename/output, send output path to user for offline access, and add a button in frontend to open the output folder
 - [ui] [frontend] Give option to the user to select recently given inputs for files/folders (e.g., the last 10 inputs)
+- [ui] [frontend] Add a card that shows the output of the whole analyze process: # of insights called and the time that each insight took
 
 ## Low Priority
 - 

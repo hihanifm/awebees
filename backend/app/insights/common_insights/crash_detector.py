@@ -1,37 +1,5 @@
 """Insight to detect and summarize application crashes in log files."""
 
-# Check for venv before imports if running as main
-if __name__ == "__main__":
-    import sys
-    import os
-    from pathlib import Path
-    
-    # Always ensure backend directory is in Python path
-    current_file = Path(__file__).resolve()
-    backend_dir = current_file.parent.parent.parent.parent  # backend/app/insights/common_insights -> backend
-    if str(backend_dir) not in sys.path:
-        sys.path.insert(0, str(backend_dir))
-    
-    # Check if we're in a venv
-    in_venv = hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)
-    
-    if not in_venv:
-        # Try to find venv Python relative to this file
-        venv_python = backend_dir / "venv" / "bin" / "python"
-        
-        if venv_python.exists():
-            # Set PYTHONPATH to include backend directory and re-execute with venv Python
-            env = os.environ.copy()
-            pythonpath = env.get('PYTHONPATH', '')
-            if pythonpath:
-                env['PYTHONPATH'] = f"{backend_dir}:{pythonpath}"
-            else:
-                env['PYTHONPATH'] = str(backend_dir)
-            
-            # Change to backend directory and re-execute
-            os.chdir(str(backend_dir))
-            os.execve(str(venv_python), [str(venv_python)] + sys.argv, env)
-
 from typing import List, Optional, Callable, Awaitable, Dict, Any
 import logging
 import asyncio
@@ -392,6 +360,7 @@ class CrashDetector(Insight):
 
 
 if __name__ == "__main__":
+    import sys
     # Hardcoded default file paths for quick testing
     # Override by providing CLI arguments
     DEFAULT_FILE_PATHS = [
