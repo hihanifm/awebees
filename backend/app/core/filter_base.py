@@ -322,9 +322,6 @@ class LineFilter:
             total_lines_checked += 1
             if self._compiled_pattern.search(line):
                 matching_lines.append(line)
-                if len(matching_lines) <= 5:  # Log first few matches
-                    logger.debug(f"LineFilter: Match #{len(matching_lines)} found at line {total_lines_checked}: {line[:100].strip()}")
-        
         logger.debug(f"LineFilter: Line-by-line filtering complete - {len(matching_lines)} matches from {total_lines_checked:,} lines checked")
         return matching_lines
     
@@ -356,7 +353,6 @@ class LineFilter:
                 if last_newline_idx == -1:
                     # No newline in this chunk, entire chunk is incomplete line
                     chunk_buffer = text_to_process
-                    logger.debug(f"LineFilter: Chunk {chunk_count} has no newlines, buffering entire chunk")
                 else:
                     # Split at newlines, keep complete lines
                     complete_text = text_to_process[:last_newline_idx + 1]
@@ -370,17 +366,12 @@ class LineFilter:
                         total_lines_checked += 1
                         if self._compiled_pattern.search(line):
                             matching_lines.append(line)
-                            if len(matching_lines) <= 5:  # Log first few matches
-                                logger.debug(f"LineFilter: Match #{len(matching_lines)} found in chunk {chunk_count}: {line[:100].strip()}")
-                    
-                    logger.debug(f"LineFilter: Chunk {chunk_count} processed - {len(lines)} lines, buffer size: {len(chunk_buffer)} chars")
         
         # Process any remaining buffer content (last incomplete line if file doesn't end with newline)
         if chunk_buffer.strip():
             total_lines_checked += 1
             if self._compiled_pattern.search(chunk_buffer):
                 matching_lines.append(chunk_buffer)
-                logger.debug(f"LineFilter: Match in final buffer: {chunk_buffer[:100].strip()}")
         
         logger.debug(f"LineFilter: Chunk-based filtering complete - {len(matching_lines)} matches from {total_lines_checked:,} lines checked across {chunk_count} chunk(s)")
         return matching_lines
