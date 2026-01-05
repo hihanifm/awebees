@@ -70,8 +70,8 @@ async def _read_file_mmap(file_path: str) -> str:
         raise
 
 
-@profile(log_interval=100, top_n=20)
-def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]:
+@profile(log_interval=1, top_n=20)
+def read_file_chunks(file_path: str, chunk_size: int = 1048576, cancellation_event: Optional[asyncio.Event] = None) -> Iterator[str]:
     """
     Read file in chunks for efficient memory usage.
     
@@ -84,6 +84,7 @@ def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]
     Args:
         file_path: Path to the file
         chunk_size: Size of each chunk in bytes (default: 1MB)
+        cancellation_event: Optional asyncio.Event to check for cancellation
         
     Yields:
         String chunks of the file (decoded from bytes)
@@ -91,6 +92,7 @@ def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]
     Raises:
         FileNotFoundError: If file doesn't exist
         PermissionError: If file is not readable
+        CancelledError: If operation is cancelled
     """
     if not validate_file_path(file_path):
         raise ValueError(f"Invalid or inaccessible file path: {file_path}")
@@ -99,9 +101,20 @@ def read_file_chunks(file_path: str, chunk_size: int = 1048576) -> Iterator[str]
     # This is more efficient for large files than text mode
     with open(file_path, "rb") as f:
         while True:
+            # Check for cancellation before reading next chunk
+            if cancellation_event and cancellation_event.is_set():
+                logger.info(f"FileHandler: Reading {file_path} cancelled")
+                raise CancelledError(f"File reading cancelled: {file_path}")
+            
             chunk_bytes = f.read(chunk_size)
             if not chunk_bytes:
                 break
+            
+            # Check for cancellation after reading chunk (before yielding)
+            if cancellation_event and cancellation_event.is_set():
+                logger.info(f"FileHandler: Reading {file_path} cancelled")
+                raise CancelledError(f"File reading cancelled: {file_path}")
+            
             # Decode the bytes to string (handles UTF-8 with error recovery)
             chunk = chunk_bytes.decode("utf-8", errors="ignore")
             yield chunk

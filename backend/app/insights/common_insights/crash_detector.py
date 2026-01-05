@@ -1,7 +1,6 @@
 """Insight to detect and summarize application crashes in log files."""
 
 from typing import List, Optional, Callable, Awaitable, Dict, Any
-import re
 import logging
 import asyncio
 import os
@@ -29,91 +28,28 @@ class CrashDetector(Insight):
         return "Detects and summarizes actual application crashes including segmentation faults, fatal exceptions, stack traces, and process termination errors"
     
     def __init__(self):
-        """Initialize crash detection patterns."""
-        # Compile crash detection patterns
-        self.crash_patterns = {
-            # "segmentation_fault": [
-            #     re.compile(r".*\b(segmentation fault|segfault|SIGSEGV|signal 11)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(segmentation violation|invalid memory reference)\b.*", re.IGNORECASE),
-            # ],
-            "fatal_exception": [
-                re.compile(r".*\b(FATAL EXCEPTION|FatalError|Fatal Exception)\b.*", re.IGNORECASE),
-                re.compile(r".*java\.lang\..*Exception.*\bat.*\n.*\bat.*", re.IGNORECASE | re.MULTILINE),
-                re.compile(r".*\b(SystemError|Fatal Python error|SystemExit)\b.*", re.IGNORECASE),
-            ],
-            # "stack_overflow": [
-            #     re.compile(r".*\b(stack overflow|stackoverflow|StackOverflowError)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(maximum recursion depth exceeded)\b.*", re.IGNORECASE),
-            # ],
-            # "null_pointer": [
-            #     re.compile(r".*\b(null pointer|NullPointerException|NULL pointer dereference)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(dereference.*null|attempted.*null)\b.*", re.IGNORECASE),
-            # ],
-            # "out_of_memory": [
-            #     re.compile(r".*\b(out of memory|OutOfMemoryError|OOM|memory limit exceeded)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(malloc.*failed|memory allocation failed)\b.*", re.IGNORECASE),
-            # ],
-            # "process_killed": [
-            #     re.compile(r".*\b(SIGKILL|signal 9|killed|terminated by signal)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(process.*killed|OOM killer|out of memory killer)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(terminated abnormally|exited with code [^0])\b.*", re.IGNORECASE),
-            # ],
-            # "assertion_failure": [
-            #     re.compile(r".*\b(assertion failed|AssertionError|ASSERT.*failed)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(assert.*failed|ASSERTION FAILURE)\b.*", re.IGNORECASE),
-            # ],
-            # "stack_trace": [
-            #     re.compile(r"^\s+at\s+\S+\.\S+\(.*\)", re.MULTILINE),  # Java/Python stack traces
-            #     re.compile(r"^\s*File\s+\".*\",\s+line\s+\d+", re.MULTILINE),  # Python traceback
-            #     re.compile(r"^\s+#\d+\s+0x[0-9a-f]+\s+in\s+\S+", re.MULTILINE),  # C/C++ stack traces
-            #     re.compile(r"backtrace|stack trace|traceback", re.IGNORECASE),
-            # ],
-            # "abort": [
-            #     re.compile(r".*\b(aborted|abort\(\)|SIGABRT|signal 6)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(application terminated|app crashed)\b.*", re.IGNORECASE),
-            # ],
-            # "panic": [
-            #     re.compile(r".*\b(kernel panic|panic:|PANIC)\b.*", re.IGNORECASE),
-            #     re.compile(r".*\b(unrecoverable error|critical failure)\b.*", re.IGNORECASE),
-            # ],
-        }
+        """Initialize crash detection - simple string search for 'FATAL EXCEPTION'."""
+        pass
     
     def _detect_crash_type(self, line: str, context_lines: List[str]) -> Optional[Dict[str, Any]]:
         """
-        Detect crash type from a line and surrounding context.
+        Detect crash by searching for 'FATAL EXCEPTION' string.
         
         Args:
             line: Current line being analyzed
-            context_lines: Previous lines for context (to detect multi-line crashes)
+            context_lines: Previous lines for context (unused, kept for compatibility)
             
         Returns:
             Dictionary with crash type and details, or None if no crash detected
         """
-        combined_context = "\n".join(context_lines[-5:] + [line])  # Last 5 lines + current
-        
-        # Check each crash category
-        for crash_type, patterns in self.crash_patterns.items():
-            for pattern in patterns:
-                if pattern.search(combined_context):
-                    # Extract timestamp if available (common log formats)
-                    timestamp = None
-                    timestamp_patterns = [
-                        re.compile(r"(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2})"),  # ISO format
-                        re.compile(r"(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2})"),  # US format
-                        re.compile(r"(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})"),  # syslog format
-                    ]
-                    for ts_pattern in timestamp_patterns:
-                        match = ts_pattern.search(line)
-                        if match:
-                            timestamp = match.group(1)
-                            break
-                    
-                    return {
-                        "type": crash_type,
-                        "line_content": line.strip()[:500],  # Truncate long lines
-                        "timestamp": timestamp,
-                        "context": "\n".join(context_lines[-3:] + [line])[:1000]  # Last 3 lines + current, max 1000 chars
-                    }
+        # Simple string search for "FATAL EXCEPTION"
+        if "FATAL EXCEPTION" in line:
+            return {
+                "type": "fatal_exception",
+                "line_content": line.strip()[:500],  # Truncate long lines
+                "timestamp": None,
+                "context": "\n".join(context_lines[-3:] + [line])[:1000]  # Last 3 lines + current, max 1000 chars
+            }
         
         return None
     
@@ -194,7 +130,7 @@ class CrashDetector(Insight):
                 
                 # Step 1: Read file in chunks, then Step 2: Process each chunk line by line
                 # This approach handles large files efficiently while maintaining line-by-line processing
-                for chunk in read_file_chunks(file_path, chunk_size=1048576):  # 1MB chunks
+                for chunk in read_file_chunks(file_path, chunk_size=1048576, cancellation_event=cancellation_event):  # 1MB chunks
                     chunk_count += 1
                     chunk_read_time = time.time()
                     chunk_size_bytes = len(chunk.encode('utf-8')) if chunk else 0
@@ -385,10 +321,7 @@ class CrashDetector(Insight):
                     type_display = crash_type.replace("_", " ").title()
                     result_text += f"  {type_display} ({len(crashes)} occurrence(s)):\n"
                     for crash in crashes[:5]:  # Show first 5 of each type
-                        result_text += f"    Line {crash['line']}"
-                        if crash.get('timestamp'):
-                            result_text += f" [{crash['timestamp']}]"
-                        result_text += ":\n"
+                        result_text += f"    Line {crash['line']}:\n"
                         # Show truncated crash content
                         crash_content = crash.get('line_content', '')
                         if len(crash_content) > 200:
@@ -412,7 +345,6 @@ class CrashDetector(Insight):
             result_text += f"{'-' * 60}\n"
             result_text += f"  • Review the crash details above to identify patterns\n"
             result_text += f"  • Check for recurring crash types that may indicate systemic issues\n"
-            result_text += f"  • Look for timestamps to correlate crashes with specific events\n"
             result_text += f"  • Consider crash context (surrounding log lines) for root cause analysis\n"
         
         return InsightResult(
