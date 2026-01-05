@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List
 import logging
 
-from app.insights.base import Insight
+from app.core.insight_base import Insight
 from app.core.models import InsightMetadata, ErrorEvent
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class PluginManager:
             root_path: Root insights directory path
             current_path: Current directory being scanned
         """
-        # Get all Python files in current directory (except __init__.py and base.py)
+        # Get all Python files in current directory (except __init__.py, base.py, and filter_base.py)
         python_files = [
             f for f in current_path.iterdir()
             if f.is_file() and f.suffix == ".py" 
@@ -81,7 +81,8 @@ class PluginManager:
                 for name, obj in inspect.getmembers(module, inspect.isclass):
                     if (issubclass(obj, Insight) and 
                         obj is not Insight and 
-                        obj.__module__ == module_name):
+                        obj.__module__ == module_name and
+                        not inspect.isabstract(obj)):  # Skip abstract base classes
                         try:
                             instance = obj()
                             self.register_insight(instance, folder_name)

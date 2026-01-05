@@ -6,7 +6,7 @@ import sys
 import os
 from pathlib import Path
 from typing import List
-from app.insights.base import Insight
+from app.core.insight_base import Insight
 from app.core.models import InsightResult
 
 logger = logging.getLogger(__name__)
@@ -149,6 +149,14 @@ def main_standalone(insight: Insight, file_paths: List[str], verbose: bool = Fal
         check_venv: If True, check for venv and re-execute if needed
     """
     import sys
+    
+    # Configure logging for standalone execution
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(levelname)s:%(name)s:%(message)s',
+        stream=sys.stderr
+    )
     
     # Check venv and re-execute if needed (only once, at the start)
     if check_venv:

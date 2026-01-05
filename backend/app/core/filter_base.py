@@ -7,7 +7,7 @@ import logging
 import asyncio
 import os
 from pathlib import Path
-from app.insights.base import Insight
+from app.core.insight_base import Insight
 from app.core.models import InsightResult, ProgressEvent
 from app.services.file_handler import read_file_lines, read_file_chunks, CancelledError
 

@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Callable, Awaitable
 import logging
-from app.insights.filter_base import FilterBasedInsight, FilterResult, ReadingMode
+from app.core.filter_base import FilterBasedInsight, FilterResult, ReadingMode
 from app.core.models import InsightResult
 
 logger = logging.getLogger(__name__)
