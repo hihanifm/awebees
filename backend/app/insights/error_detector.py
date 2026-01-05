@@ -55,36 +55,6 @@ class ErrorDetector(FilterBasedInsight):
         """Use line-by-line reading mode."""
         return ReadingMode.LINES
     
-    async def analyze(
-        self,
-        file_paths: List[str],
-        cancellation_event: Optional[asyncio.Event] = None,
-        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
-    ) -> InsightResult:
-        """
-        Analyze files to detect ERROR and FATAL log lines.
-        
-        This method supports cancellation and progress reporting:
-        - cancellation_event: Optional asyncio.Event to check for cancellation
-        - progress_callback: Optional async callback to emit progress events
-        
-        Progress events are emitted for each file processed (file_open and insight_progress).
-        Cancellation checks occur at file boundaries during filtering.
-        
-        Args:
-            file_paths: List of file or folder paths to analyze
-            cancellation_event: Optional asyncio.Event to check for cancellation
-            progress_callback: Optional async callback to emit progress events
-            
-        Returns:
-            InsightResult with error detection summary
-            
-        Raises:
-            CancelledError: If operation is cancelled
-        """
-        # Delegate to parent implementation which handles filtering, cancellation, and progress
-        return await super().analyze(file_paths, cancellation_event, progress_callback)
-    
     async def _process_filtered_lines(
         self,
         filter_result: FilterResult
