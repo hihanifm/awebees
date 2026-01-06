@@ -75,7 +75,7 @@ export function StatusBar() {
   }, []);
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-orange-200/30 dark:border-orange-900/20 bg-gradient-to-r from-orange-50/95 via-background/95 to-amber-50/95 dark:from-orange-950/30 dark:via-background/95 dark:to-amber-950/30 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-10 max-w-screen-2xl items-center justify-between px-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
           {/* Version */}

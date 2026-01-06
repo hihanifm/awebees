@@ -183,10 +183,10 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 py-8 px-4 mx-auto bg-white dark:bg-black">
+    <div className="flex min-h-screen bg-gradient-to-br from-orange-50/30 via-background to-amber-50/20 font-sans dark:from-orange-950/10 dark:via-background dark:to-amber-950/5">
+      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 py-8 px-4 mx-auto bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm border-x border-orange-100/50 dark:border-orange-900/20">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
+          <h1 className="text-3xl font-semibold tracking-tight bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 bg-clip-text text-transparent dark:from-orange-400 dark:via-amber-400 dark:to-orange-300">
             Lens
           </h1>
           <p className="text-muted-foreground mt-1">A modular engine for extracting insights from messy data!</p>
@@ -222,7 +222,7 @@ export default function Home() {
                   disabled={analyzing || loadingSample}
                   variant="secondary"
                   size="sm"
-                  className="ml-4 whitespace-nowrap bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                  className="ml-4 whitespace-nowrap bg-gradient-to-r from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 text-orange-900 border border-orange-300/50 dark:from-orange-950 dark:to-amber-950 dark:hover:from-orange-900 dark:hover:to-amber-900 dark:text-orange-200 dark:border-orange-800/50"
                 >
                   {loadingSample ? "Loading..." : "Load Sample File"}
                 </Button>
