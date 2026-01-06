@@ -22,11 +22,12 @@ if "!SCRIPT_DIR:~-1!"=="\" (
 echo [DEBUG] Final SCRIPT_DIR: !SCRIPT_DIR!
 
 REM Check if Python directory exists (self-contained variant)
-echo [DEBUG] Checking for embedded Python at: !SCRIPT_DIR!\python\python.exe
-if exist "!SCRIPT_DIR!\python\python.exe" (
+set "PYTHON_PATH=!SCRIPT_DIR!\python\python.exe"
+echo [DEBUG] Checking for embedded Python at: !PYTHON_PATH!
+if exist "!PYTHON_PATH!" (
     echo [DEBUG] Found embedded Python
     echo Starting Lens (Self-contained with Python)...
-    set "PYTHON_EXE=!SCRIPT_DIR!\python\python.exe"
+    set "PYTHON_EXE=!PYTHON_PATH!"
     set "VARIANT=with-python"
     echo [DEBUG] PYTHON_EXE set to: !PYTHON_EXE!
 ) else (
