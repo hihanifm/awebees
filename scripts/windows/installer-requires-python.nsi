@@ -60,11 +60,7 @@ Function CheckPython
     ClearErrors
     ExecWait 'python --version' $0
     IfErrors 0 PythonFound
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION \
-        "Python is not installed or not in PATH.$\n$\n" \
-        "Lens requires Python 3.x to be installed.$\n" \
-        "Would you like to open the Python download page?" \
-        IDNO NoPython
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Python is not installed or not in PATH.$\n$\nLens requires Python 3.x to be installed.$\nWould you like to open the Python download page?" IDNO NoPython
     ExecShell "open" "https://www.python.org/downloads/"
     Abort
     NoPython:
