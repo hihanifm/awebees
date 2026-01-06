@@ -3,10 +3,11 @@
 # Version management script for Lens
 # Usage: ./scripts/version.sh [command] [version]
 # Commands:
-#   get     - Show current version (default)
-#   set     - Set version (requires version argument, e.g., 0.1.0)
-#   bump    - Bump version (major|minor|patch)
-#   sync    - Sync version to package.json
+#   get        - Show current version (default)
+#   set        - Set version (requires version argument, e.g., 0.1.0)
+#   bump       - Bump version (major|minor|patch)
+#   sync       - Sync version to package.json
+#   sync-docs  - Detect version from installer files and update docs/index.html
 
 set -e
 
@@ -101,6 +102,56 @@ sync_to_package_json() {
     fi
 }
 
+sync_to_docs() {
+    local DIST_DIR="$PROJECT_ROOT/dist/windows"
+    local DOCS_HTML="$PROJECT_ROOT/docs/index.html"
+    
+    if [ ! -d "$DIST_DIR" ]; then
+        echo "Error: dist/windows directory not found"
+        exit 1
+    fi
+    
+    if [ ! -f "$DOCS_HTML" ]; then
+        echo "Error: docs/index.html not found"
+        exit 1
+    fi
+    
+    # Find installer files
+    local WITH_PYTHON_FILE=$(ls "$DIST_DIR"/lens-package-with-python-*.zip 2>/dev/null | head -n1)
+    local REQUIRES_PYTHON_FILE=$(ls "$DIST_DIR"/lens-package-requires-python-*.zip 2>/dev/null | head -n1)
+    
+    if [ -z "$WITH_PYTHON_FILE" ] || [ -z "$REQUIRES_PYTHON_FILE" ]; then
+        echo "Error: Installer files not found in dist/windows/"
+        echo "Expected: lens-package-with-python-*.zip and lens-package-requires-python-*.zip"
+        exit 1
+    fi
+    
+    # Extract version from filename (e.g., lens-package-with-python-2.6.0.zip -> 2.6.0)
+    local VERSION1=$(basename "$WITH_PYTHON_FILE" | sed -E 's/lens-package-with-python-(.+)\.zip/\1/')
+    local VERSION2=$(basename "$REQUIRES_PYTHON_FILE" | sed -E 's/lens-package-requires-python-(.+)\.zip/\1/')
+    
+    # Validate versions match
+    if [ "$VERSION1" != "$VERSION2" ]; then
+        echo "Error: Version mismatch in installer files"
+        echo "  with-python version: $VERSION1"
+        echo "  requires-python version: $VERSION2"
+        exit 1
+    fi
+    
+    local DETECTED_VERSION="$VERSION1"
+    
+    # Replace {VERSION} placeholder in HTML file
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS uses BSD sed
+        sed -i '' "s/{VERSION}/$DETECTED_VERSION/g" "$DOCS_HTML"
+    else
+        # Linux uses GNU sed
+        sed -i "s/{VERSION}/$DETECTED_VERSION/g" "$DOCS_HTML"
+    fi
+    
+    echo "Synced version $DETECTED_VERSION to docs/index.html"
+}
+
 # Main command handling
 COMMAND=${1:-get}
 
@@ -118,14 +169,18 @@ case "$COMMAND" in
         sync_to_package_json
         echo "Version synced to package.json"
         ;;
+    sync-docs)
+        sync_to_docs
+        ;;
     *)
-        echo "Usage: $0 [get|set|bump|sync] [version|bump_type]"
+        echo "Usage: $0 [get|set|bump|sync|sync-docs] [version|bump_type]"
         echo ""
         echo "Commands:"
         echo "  get              Show current version (default)"
         echo "  set <version>    Set version (e.g., 0.1.0)"
         echo "  bump <type>      Bump version (major|minor|patch)"
         echo "  sync             Sync version to package.json"
+        echo "  sync-docs        Detect version from installer files and update docs/index.html"
         exit 1
         ;;
 esac
