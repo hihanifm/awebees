@@ -28,7 +28,7 @@ class ConfigBasedInsight(Insight):
                 "folder": "general"
             },
             "filters": {
-                "file_patterns": [r"\.log$"],  # Optional
+                "file_patterns": [r"\\.log$"],  # Optional
                 "line_pattern": r"ERROR",       # Required
                 "regex_flags": "IGNORECASE",    # Optional
                 "reading_mode": "lines",        # Optional: "lines" or "chunks"

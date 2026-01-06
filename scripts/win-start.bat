@@ -128,32 +128,55 @@ REM Start backend (will be restarted in prod mode after frontend build)
 if not "%MODE%"=="prod" (
     start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host %BACKEND_HOST% --port %BACKEND_PORT% > "%BACKEND_LOG%" 2>&1"
     
-    REM Wait for backend to start
-    timeout /t 3 /nobreak >nul
+    REM Wait for backend to start (uvicorn with reload needs more time)
+    timeout /t 5 /nobreak >nul
     
     REM Get PID of the backend process (find python.exe listening on backend port)
     set "BACKEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING"') do set "BACKEND_PID=%%a"
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
     
-    REM Verify backend is running by checking if PID exists and port is listening
+    REM Verify backend is running by checking if port is listening
     if "!BACKEND_PID!"=="" (
-        echo Error: Backend failed to start - no process listening on port %BACKEND_PORT%
-        echo Check backend logs: %BACKEND_LOG%
-        type "%BACKEND_LOG%" | more
-        pause
-        exit /b 1
+        echo Warning: Could not detect backend PID immediately, checking if port is accessible...
+        timeout /t 2 /nobreak >nul
+        
+        REM Try again after additional wait
+        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
+        
+        if "!BACKEND_PID!"=="" (
+            echo Error: Backend failed to start - no process listening on port %BACKEND_PORT%
+            echo Check backend logs: %BACKEND_LOG%
+            type "%BACKEND_LOG%" 2>nul | more
+            pause
+            exit /b 1
+        )
     )
     
+    REM Verify the process exists (note: PID might be cmd.exe wrapper, not python.exe directly)
     tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
     if errorlevel 1 (
-        echo Error: Backend process not found
-        echo Check backend logs: %BACKEND_LOG%
-        type "%BACKEND_LOG%" | more
-        pause
-        exit /b 1
+        echo Warning: Backend PID verification failed, but checking if server is responding...
+        
+        REM Check if we can find any python process on the port
+        netstat -ano | findstr ":%BACKEND_PORT% " | findstr "LISTENING" >nul
+        if errorlevel 1 (
+            echo Error: Backend process not found and port not listening
+            echo Check backend logs: %BACKEND_LOG%
+            type "%BACKEND_LOG%" 2>nul | more
+            pause
+            exit /b 1
+        ) else (
+            echo Backend appears to be running on port %BACKEND_PORT% ^(PID detection uncertain^)
+            REM Try to find actual python.exe process
+            for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" ^| findstr "python.exe"') do (
+                set "BACKEND_PID=%%a"
+                goto :pid_found
+            )
+            :pid_found
+        )
+    ) else (
+        echo Backend started ^(PID: !BACKEND_PID!, Port: %BACKEND_PORT%^)
     )
-    
-    echo Backend started ^(PID: !BACKEND_PID!, Port: %BACKEND_PORT%^)
 )
 
 REM ===================================
@@ -194,28 +217,51 @@ if "%MODE%"=="prod" (
     start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% > "%BACKEND_LOG%" 2>&1"
     
     REM Wait for backend to start
-    timeout /t 3 /nobreak >nul
+    timeout /t 5 /nobreak >nul
     
     REM Get PID of the backend process (find python.exe listening on backend port)
     set "BACKEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING"') do set "BACKEND_PID=%%a"
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
     
-    REM Verify backend is running by checking if PID exists and port is listening
+    REM Verify backend is running by checking if port is listening
     if "!BACKEND_PID!"=="" (
-        echo Error: Backend failed to restart with frontend serving - no process listening on port %BACKEND_PORT%
-        echo Check backend logs: %BACKEND_LOG%
-        type "%BACKEND_LOG%" | more
-        pause
-        exit /b 1
+        echo Warning: Could not detect backend PID immediately, checking if port is accessible...
+        timeout /t 2 /nobreak >nul
+        
+        REM Try again after additional wait
+        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
+        
+        if "!BACKEND_PID!"=="" (
+            echo Error: Backend failed to restart with frontend serving - no process listening on port %BACKEND_PORT%
+            echo Check backend logs: %BACKEND_LOG%
+            type "%BACKEND_LOG%" 2>nul | more
+            pause
+            exit /b 1
+        )
     )
     
+    REM Verify the process exists
     tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
     if errorlevel 1 (
-        echo Error: Backend process not found
-        echo Check backend logs: %BACKEND_LOG%
-        type "%BACKEND_LOG%" | more
-        pause
-        exit /b 1
+        echo Warning: Backend PID verification failed, but checking if server is responding...
+        
+        REM Check if we can find any python process on the port
+        netstat -ano | findstr ":%BACKEND_PORT% " | findstr "LISTENING" >nul
+        if errorlevel 1 (
+            echo Error: Backend process not found and port not listening
+            echo Check backend logs: %BACKEND_LOG%
+            type "%BACKEND_LOG%" 2>nul | more
+            pause
+            exit /b 1
+        ) else (
+            echo Backend appears to be running on port %BACKEND_PORT% ^(PID detection uncertain^)
+            REM Try to find actual python.exe process
+            for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" ^| findstr "python.exe"') do (
+                set "BACKEND_PID=%%a"
+                goto :pid_found_prod
+            )
+            :pid_found_prod
+        )
     )
     
     REM Save PID (only backend in production)
