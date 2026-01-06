@@ -1,6 +1,6 @@
 # Lens Features
 
-**Version:** 3.4.0  
+**Version:** 3.5.0  
 **Last Updated:** January 6, 2026
 
 A comprehensive overview of Lens capabilities, both implemented and planned.
@@ -762,7 +762,14 @@ Have ideas for new features? We'd love to hear them!
 
 ## Version History
 
-### v3.4.0 (Current)
+### v3.5.0 (Current)
+- ✅ Warm pastel color scheme (peach, coral, amber)
+- ✅ OKLCH color space with warm hues
+- ✅ Gradient backgrounds and enhanced UI
+- ✅ WCAG AA accessibility maintained
+- ✅ Pleasant visual experience in both modes
+
+### v3.4.0
 - ✅ Config-based insights system
 - ✅ Android bugreport sample file (54.6MB)
 - ✅ "Load Sample File" button
