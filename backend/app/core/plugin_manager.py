@@ -8,6 +8,7 @@ from typing import Dict, List
 import logging
 
 from app.core.insight_base import Insight
+from app.core.config_insight import ConfigBasedInsight
 from app.core.models import InsightMetadata, ErrorEvent
 
 logger = logging.getLogger(__name__)
@@ -77,28 +78,63 @@ class PluginManager:
                 
                 module = importlib.import_module(module_name)
                 
-                # Find all Insight subclasses in the module
-                for name, obj in inspect.getmembers(module, inspect.isclass):
-                    if (issubclass(obj, Insight) and 
-                        obj is not Insight and 
-                        obj.__module__ == module_name and
-                        not inspect.isabstract(obj)):  # Skip abstract base classes
-                        try:
-                            instance = obj()
-                            self.register_insight(instance, folder_name)
-                            logger.info(f"Registered insight: {instance.id} ({instance.name}) in folder: {folder_name or 'root'}")
-                        except Exception as e:
-                            error_msg = f"Failed to instantiate insight {name}: {e}"
-                            logger.error(error_msg)
-                            self._errors.append(ErrorEvent(
-                                type="instantiation_failure",
-                                message=f"Failed to instantiate insight: {name}",
-                                severity="error",
-                                details=str(e),
-                                folder=folder_name,
-                                file=file_path.name,
-                                insight_id=getattr(instance, 'id', None) if 'instance' in locals() else None
-                            ))
+                # Check for config-based insight (INSIGHT_CONFIG dictionary)
+                config_found = False
+                if hasattr(module, 'INSIGHT_CONFIG'):
+                    config_found = True
+                    try:
+                        insight_config = getattr(module, 'INSIGHT_CONFIG')
+                        process_results_fn = getattr(module, 'process_results', None)
+                        
+                        # Create ConfigBasedInsight instance
+                        instance = ConfigBasedInsight(
+                            config=insight_config,
+                            process_results_fn=process_results_fn,
+                            module_name=module_name
+                        )
+                        
+                        # Override folder from config if specified
+                        config_folder = insight_config.get("metadata", {}).get("folder")
+                        if config_folder:
+                            folder_name = config_folder
+                        
+                        self.register_insight(instance, folder_name)
+                        logger.info(f"Registered config-based insight: {instance.id} ({instance.name}) in folder: {folder_name or 'root'}")
+                    except Exception as e:
+                        error_msg = f"Failed to create config-based insight from {file_path.stem}: {e}"
+                        logger.error(error_msg)
+                        self._errors.append(ErrorEvent(
+                            type="instantiation_failure",
+                            message=f"Failed to instantiate config-based insight: {file_path.stem}",
+                            severity="error",
+                            details=str(e),
+                            folder=folder_name,
+                            file=file_path.name
+                        ))
+                
+                # Find all Insight subclasses in the module (skip if config-based insight found)
+                if not config_found:
+                    for name, obj in inspect.getmembers(module, inspect.isclass):
+                        if (issubclass(obj, Insight) and 
+                            obj is not Insight and 
+                            obj.__module__ == module_name and
+                            not inspect.isabstract(obj)):  # Skip abstract base classes
+                            try:
+                                instance = obj()
+                                self.register_insight(instance, folder_name)
+                                logger.info(f"Registered class-based insight: {instance.id} ({instance.name}) in folder: {folder_name or 'root'}")
+                            except Exception as e:
+                                error_msg = f"Failed to instantiate insight {name}: {e}"
+                                logger.error(error_msg)
+                                self._errors.append(ErrorEvent(
+                                    type="instantiation_failure",
+                                    message=f"Failed to instantiate insight: {name}",
+                                    severity="error",
+                                    details=str(e),
+                                    folder=folder_name,
+                                    file=file_path.name,
+                                    insight_id=getattr(instance, 'id', None) if 'instance' in locals() else None
+                                ))
             except Exception as e:
                 error_msg = f"Failed to import module {file_path.stem}: {e}"
                 logger.error(error_msg)

@@ -213,6 +213,68 @@ The footer displays:
 - Backend API docs: http://localhost:34001/docs
 - Frontend: http://localhost:34001
 
+## Creating Custom Insights
+
+Lens supports two approaches for creating insights:
+
+### Config-Based Insights (Recommended)
+
+For most filtering use cases, use the simple declarative approach:
+
+```python
+"""My insight."""
+
+INSIGHT_CONFIG = {
+    "metadata": {
+        "id": "my_insight",
+        "name": "My Insight",
+        "description": "Finds patterns"
+    },
+    "filters": {
+        "line_pattern": r"\b(ERROR|WARNING)\b",
+        "regex_flags": "IGNORECASE"
+    }
+}
+
+# Optional: Custom post-processing
+def process_results(filter_result):
+    lines = filter_result.get_lines()
+    return {
+        "content": f"Found {len(lines)} matches",
+        "metadata": {"total": len(lines)}
+    }
+
+if __name__ == "__main__":
+    from app.utils.config_insight_runner import main_config_standalone
+    main_config_standalone(__file__)
+```
+
+**Benefits:**
+- 70% less code than class-based approach
+- Declarative configuration
+- Automatic progress tracking and cancellation
+- Standalone execution support
+
+### Class-Based Insights (Advanced)
+
+For complex logic beyond filtering, use Python classes:
+
+```python
+from app.core.insight_base import Insight
+
+class CustomInsight(Insight):
+    # Full control over analysis logic
+    async def analyze(self, file_paths, ...):
+        # Your custom logic
+        pass
+```
+
+**Complete Guide:** See [`backend/app/insights/README.md`](backend/app/insights/README.md) for detailed documentation, examples, and best practices.
+
+**Examples:**
+- [`error_detector.py`](backend/app/insights/error_detector.py) - Config-based with custom formatting
+- [`line_count.py`](backend/app/insights/line_count.py) - Class-based with custom logic
+
 ## Version Management
 
 The project uses a unified versioning system with a single source of truth.
