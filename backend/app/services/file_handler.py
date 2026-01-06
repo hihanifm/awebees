@@ -7,7 +7,6 @@ from typing import List, Iterator, Optional
 import logging
 import re
 import asyncio
-from app.utils.profiling import profile
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,6 @@ async def _read_file_mmap(file_path: str) -> str:
         raise
 
 
-@profile(log_interval=1, top_n=20)
 def read_file_chunks(file_path: str, chunk_size: int = 1048576, cancellation_event: Optional[asyncio.Event] = None) -> Iterator[str]:
     """
     Read file in chunks for efficient memory usage.
