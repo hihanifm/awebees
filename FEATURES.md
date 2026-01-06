@@ -1,6 +1,6 @@
 # Lens Features
 
-**Version:** 3.5.0  
+**Version:** 3.6.0  
 **Last Updated:** January 6, 2026
 
 A comprehensive overview of Lens capabilities, both implemented and planned.
@@ -762,7 +762,15 @@ Have ideas for new features? We'd love to hear them!
 
 ## Version History
 
-### v3.5.0 (Current)
+### v3.6.0 (Current)
+- ✅ Compact grid layout for insights
+- ✅ Auto-responsive columns (1-5 based on screen width)
+- ✅ Warm peachy hover effects on insight cards
+- ✅ Enhanced tooltips with warm styling
+- ✅ Bold title bar with gradient background
+- ✅ Title bar connects to top edge
+
+### v3.5.0
 - ✅ Warm pastel color scheme (peach, coral, amber)
 - ✅ OKLCH color space with warm hues
 - ✅ Gradient backgrounds and enhanced UI
