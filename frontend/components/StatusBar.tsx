@@ -9,8 +9,8 @@ interface VersionResponse {
   version: string;
 }
 
-// Get API URL from environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:34001";
+// Get API URL from environment variable (use relative path if empty)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 // Get mode from environment (Next.js exposes this at build time)
 const MODE = process.env.NODE_ENV === "production" ? "PROD" : "DEV";
@@ -25,7 +25,8 @@ export function StatusBar() {
   useEffect(() => {
     const fetchVersion = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/version`);
+        const url = API_URL ? `${API_URL}/api/version` : "/api/version";
+        const response = await fetch(url);
         if (response.ok) {
           const data: VersionResponse = await response.json();
           setVersion(data.version);

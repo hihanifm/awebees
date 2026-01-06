@@ -11,10 +11,14 @@ import {
       ErrorEvent,
     } from "./api-types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:34001";
+// Use relative path in production (when served from same origin) or configured URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  // Use relative path if API_URL is empty (production mode, same origin)
+  const baseUrl = API_URL || "";
+  const url = baseUrl ? `${baseUrl}${endpoint}` : endpoint;
+  const response = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -83,7 +87,8 @@ export const apiClient = {
 
     return new Promise((resolve, reject) => {
       // Use fetch with ReadableStream for SSE
-      fetch(`${API_URL}/api/analyze/stream`, {
+      const streamUrl = API_URL ? `${API_URL}/api/analyze/stream` : "/api/analyze/stream";
+      fetch(streamUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -178,7 +183,8 @@ export const apiClient = {
   async streamErrors(onError: (event: ErrorEvent) => void): Promise<void> {
     return new Promise((resolve) => {
       // Use EventSource for SSE
-      const eventSource = new EventSource(`${API_URL}/api/errors/stream`);
+      const errorsUrl = API_URL ? `${API_URL}/api/errors/stream` : "/api/errors/stream";
+      const eventSource = new EventSource(errorsUrl);
       let hasReceivedData = false;
       let isResolved = false;
 

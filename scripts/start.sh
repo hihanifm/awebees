@@ -103,24 +103,34 @@ source venv/bin/activate 2>/dev/null || {
   exit 1
 }
 
-uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT" > "$BACKEND_LOG" 2>&1 &
-BACKEND_PID=$!
-
-# Wait a moment and check if backend started successfully
-sleep 2
-if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
-  echo "Error: Backend failed to start (PID: $BACKEND_PID)"
-  echo "Check backend logs: $BACKEND_LOG"
-  tail -20 "$BACKEND_LOG" 2>/dev/null || echo "No logs available"
-  exit 1
+# In production, we'll restart backend after building frontend
+# In development, start backend normally
+if [ "$MODE" != "prod" ]; then
+  uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT" > "$BACKEND_LOG" 2>&1 &
+  BACKEND_PID=$!
+else
+  # In production, backend will be started after frontend build
+  # Just set a placeholder for now
+  BACKEND_PID=""
 fi
 
-# Check for common errors in backend logs (only check recent lines to avoid false positives)
-if tail -50 "$BACKEND_LOG" 2>/dev/null | grep -qi "error\|failed\|exception" >/dev/null 2>&1; then
-  echo "Warning: Backend logs contain errors. Check: $BACKEND_LOG"
+# Wait a moment and check if backend started successfully (only in dev mode)
+if [ "$MODE" != "prod" ]; then
+  sleep 2
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "Error: Backend failed to start (PID: $BACKEND_PID)"
+    echo "Check backend logs: $BACKEND_LOG"
+    tail -20 "$BACKEND_LOG" 2>/dev/null || echo "No logs available"
+    exit 1
+  fi
+  
+  # Check for common errors in backend logs (only check recent lines to avoid false positives)
+  if tail -50 "$BACKEND_LOG" 2>/dev/null | grep -qi "error\|failed\|exception" >/dev/null 2>&1; then
+    echo "Warning: Backend logs contain errors. Check: $BACKEND_LOG"
+  fi
+  
+  echo "Backend started (PID: $BACKEND_PID, Port: $BACKEND_PORT)"
 fi
-
-echo "Backend started (PID: $BACKEND_PID, Port: $BACKEND_PORT)"
 
 # Start frontend
 cd "$PROJECT_ROOT/frontend"
@@ -151,59 +161,114 @@ fi
 NODE_DIR=$(dirname "$NPM_CMD")
 export PATH="$NODE_DIR:$PATH"
 
-# Check for production build if in production mode
+# Handle frontend based on mode
 if [ "$MODE" = "prod" ]; then
-  if [ ! -d ".next" ]; then
-    echo "Error: Production build not found. Please run 'npm run build' first"
-    echo "Or run in development mode: ./scripts/start.sh"
-    exit 1
-  fi
-  echo "Starting frontend in PRODUCTION mode on port $FRONTEND_PORT..."
-  FRONTEND_CMD="start"
-else
-  echo "Starting frontend in DEVELOPMENT mode on port $FRONTEND_PORT..."
-  FRONTEND_CMD="dev"
-fi
-
-PORT=$FRONTEND_PORT "$NPM_CMD" run $FRONTEND_CMD > "$FRONTEND_LOG" 2>&1 &
-FRONTEND_PID=$!
-
-# Wait a moment and check if frontend started successfully
-sleep 3
-if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
-  echo "Error: Frontend failed to start (PID: $FRONTEND_PID)"
-  echo "Check frontend logs: $FRONTEND_LOG"
-  tail -20 "$FRONTEND_LOG" 2>/dev/null || echo "No logs available"
-  # Clean up backend if frontend failed
-  kill "$BACKEND_PID" 2>/dev/null
-  exit 1
-fi
-
-# Check for common errors in frontend logs (only check recent lines to avoid false positives)
-if tail -50 "$FRONTEND_LOG" 2>/dev/null | grep -qi "error\|failed\|EADDRINUSE" >/dev/null 2>&1; then
-  # Check specifically for port in use (critical error)
-  if tail -50 "$FRONTEND_LOG" 2>/dev/null | grep -qi "EADDRINUSE" >/dev/null 2>&1; then
-    echo "Error: Port $FRONTEND_PORT is already in use"
-    echo "Try changing PORT in frontend/.env.local or stop the process using that port"
-    kill "$FRONTEND_PID" 2>/dev/null
+  # Production mode: Build frontend and serve from backend
+  echo "Building frontend for production..."
+  if [ ! -d "node_modules" ]; then
+    echo "Error: Node.js dependencies not found in frontend/node_modules"
+    echo "Please run ./scripts/setup.sh first to install dependencies"
     kill "$BACKEND_PID" 2>/dev/null
     exit 1
   fi
-  echo "Warning: Frontend logs contain errors. Check: $FRONTEND_LOG"
+  
+  # Build frontend (creates frontend/out directory)
+  "$NPM_CMD" run build
+  BUILD_EXIT_CODE=$?
+  
+  if [ $BUILD_EXIT_CODE -ne 0 ]; then
+    echo "Error: Frontend build failed"
+    kill "$BACKEND_PID" 2>/dev/null
+    exit 1
+  fi
+  
+  if [ ! -d "out" ]; then
+    echo "Error: Frontend build output not found. Expected 'out' directory."
+    kill "$BACKEND_PID" 2>/dev/null
+    exit 1
+  fi
+  
+  echo "Frontend built successfully"
+  
+  # Set environment variable to enable frontend serving in backend
+  export SERVE_FRONTEND=true
+  
+  # Start backend with SERVE_FRONTEND enabled (no need to kill, it wasn't started yet)
+  cd "$PROJECT_ROOT/backend"
+  source venv/bin/activate 2>/dev/null || {
+    echo "Error: Failed to activate Python virtual environment"
+    exit 1
+  }
+  
+  SERVE_FRONTEND=true uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" > "$BACKEND_LOG" 2>&1 &
+  BACKEND_PID=$!
+  
+  # Wait and verify backend restarted
+  sleep 2
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "Error: Backend failed to restart with frontend serving (PID: $BACKEND_PID)"
+    echo "Check backend logs: $BACKEND_LOG"
+    tail -20 "$BACKEND_LOG" 2>/dev/null || echo "No logs available"
+    exit 1
+  fi
+  
+  # Save PIDs (only backend in production)
+  echo "backend $BACKEND_PID" > "$PID_FILE"
+  
+  echo ""
+  echo "Services started successfully in PRODUCTION mode!"
+  echo "Backend (serving API + Frontend): http://localhost:$BACKEND_PORT (PID: $BACKEND_PID)"
+  echo ""
+  echo "Logs:"
+  echo "  Backend: $BACKEND_LOG"
+  echo ""
+  echo "Use './scripts/status.sh' to check status"
+  echo "Use './scripts/stop.sh' to stop services"
+else
+  # Development mode: Start separate frontend server
+  echo "Starting frontend in DEVELOPMENT mode on port $FRONTEND_PORT..."
+  FRONTEND_CMD="dev"
+  
+  PORT=$FRONTEND_PORT "$NPM_CMD" run $FRONTEND_CMD > "$FRONTEND_LOG" 2>&1 &
+  FRONTEND_PID=$!
+  
+  # Wait a moment and check if frontend started successfully
+  sleep 3
+  if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    echo "Error: Frontend failed to start (PID: $FRONTEND_PID)"
+    echo "Check frontend logs: $FRONTEND_LOG"
+    tail -20 "$FRONTEND_LOG" 2>/dev/null || echo "No logs available"
+    # Clean up backend if frontend failed
+    kill "$BACKEND_PID" 2>/dev/null
+    exit 1
+  fi
+  
+  # Check for common errors in frontend logs (only check recent lines to avoid false positives)
+  if tail -50 "$FRONTEND_LOG" 2>/dev/null | grep -qi "error\|failed\|EADDRINUSE" >/dev/null 2>&1; then
+    # Check specifically for port in use (critical error)
+    if tail -50 "$FRONTEND_LOG" 2>/dev/null | grep -qi "EADDRINUSE" >/dev/null 2>&1; then
+      echo "Error: Port $FRONTEND_PORT is already in use"
+      echo "Try changing PORT in frontend/.env.local or stop the process using that port"
+      kill "$FRONTEND_PID" 2>/dev/null
+      kill "$BACKEND_PID" 2>/dev/null
+      exit 1
+    fi
+    echo "Warning: Frontend logs contain errors. Check: $FRONTEND_LOG"
+  fi
+  
+  # Save PIDs
+  echo "backend $BACKEND_PID" > "$PID_FILE"
+  echo "frontend $FRONTEND_PID" >> "$PID_FILE"
+  
+  echo ""
+  echo "Services started successfully in DEVELOPMENT mode!"
+  echo "Backend: http://localhost:$BACKEND_PORT (PID: $BACKEND_PID)"
+  echo "Frontend: http://localhost:$FRONTEND_PORT (PID: $FRONTEND_PID)"
+  echo ""
+  echo "Logs:"
+  echo "  Backend: $BACKEND_LOG"
+  echo "  Frontend: $FRONTEND_LOG"
+  echo ""
+  echo "Use './scripts/status.sh' to check status"
+  echo "Use './scripts/stop.sh' to stop services"
 fi
-
-# Save PIDs
-echo "backend $BACKEND_PID" > "$PID_FILE"
-echo "frontend $FRONTEND_PID" >> "$PID_FILE"
-
-echo ""
-echo "Services started successfully in $MODE_UPPER mode!"
-echo "Backend: http://localhost:$BACKEND_PORT (PID: $BACKEND_PID)"
-echo "Frontend: http://localhost:$FRONTEND_PORT (PID: $FRONTEND_PID)"
-echo ""
-echo "Logs:"
-echo "  Backend: $BACKEND_LOG"
-echo "  Frontend: $FRONTEND_LOG"
-echo ""
-echo "Use './scripts/status.sh' to check status"
-echo "Use './scripts/stop.sh' to stop services"

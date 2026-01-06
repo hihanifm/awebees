@@ -38,16 +38,17 @@ A local web application for analyzing log files with a plugin-based insight syst
 3. Start Services:
    ```bash
    ./scripts/start.sh        # Development mode (default)
-   ./scripts/start.sh -p     # Production mode (requires build first)
+   ./scripts/start.sh -p     # Production mode (builds frontend automatically)
    ```
    
-   **Note for Production:** Build the frontend first:
-   ```bash
-   cd frontend
-   npm run build
-   cd ..
-   ./scripts/start.sh -p
-   ```
+   **Production Mode:**
+   - Automatically builds the frontend and serves it from the backend
+   - Single server on port 34001 (API + Frontend)
+   - No separate frontend server needed
+   
+   **Development Mode:**
+   - Separate servers: Frontend (34000) and Backend (34001)
+   - Hot reload enabled for better development experience
 
 5. Check Status:
    ```bash
@@ -135,9 +136,15 @@ The footer displays:
 
 ## Development
 
+**Development Mode:**
 - Backend API docs: http://localhost:34001/docs
 - Frontend: http://localhost:34000
 - Version API: http://localhost:34001/api/version
+
+**Production Mode:**
+- Single server: http://localhost:34001 (serves both API and frontend)
+- Backend API docs: http://localhost:34001/docs
+- Frontend: http://localhost:34001
 
 ## Version Management
 
