@@ -11,6 +11,27 @@ import { AnalysisResultItem, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 
 const LAST_PATH_KEY = "lens_last_file_paths";
 
+/**
+ * Strip surrounding quotes from a string if they match at both ends.
+ * Handles both single quotes (') and double quotes (").
+ * Only strips if quotes are matched (same type at start and end).
+ */
+function stripQuotes(path: string): string {
+  if (!path || path.length < 2) {
+    return path;
+  }
+
+  const first = path[0];
+  const last = path[path.length - 1];
+
+  // Only strip if both ends have the same quote type
+  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+    return path.slice(1, -1);
+  }
+
+  return path;
+}
+
 export default function Home() {
   const [filePaths, setFilePaths] = useState<string>("");
   const [selectedInsightIds, setSelectedInsightIds] = useState<string[]>([]);
@@ -68,6 +89,7 @@ export default function Home() {
     const paths = filePaths
       .split("\n")
       .map((p) => p.trim())
+      .map((p) => stripQuotes(p))
       .filter((p) => p.length > 0);
 
     if (paths.length === 0) {

@@ -13,6 +13,38 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/files", tags=["files"])
 
 
+def normalize_path(path: str) -> str:
+    """
+    Normalize a file path by trimming whitespace and stripping surrounding quotes.
+    
+    Processing order:
+    1. Trim whitespace from both ends
+    2. Strip surrounding quotes (single or double) if matched
+    
+    Args:
+        path: Raw path string that may have whitespace or quotes
+        
+    Returns:
+        Normalized path string
+    """
+    if not path:
+        return path
+    
+    # First trim whitespace
+    normalized = path.strip()
+    
+    # Then strip surrounding quotes if matched
+    if len(normalized) >= 2:
+        first = normalized[0]
+        last = normalized[-1]
+        
+        # Only strip if both ends have the same quote type
+        if (first == '"' and last == '"') or (first == "'" and last == "'"):
+            normalized = normalized[1:-1]
+    
+    return normalized
+
+
 class FileSelectRequest(BaseModel):
     """Request to select files/folders."""
     paths: List[str]
@@ -40,6 +72,9 @@ async def select_files(request: FileSelectRequest):
     
     for path_idx, path in enumerate(request.paths, 1):
         logger.debug(f"Files API: Processing path {path_idx}/{len(request.paths)}: {path}")
+        
+        # Normalize path: trim whitespace and strip surrounding quotes
+        path = normalize_path(path)
         
         if not validate_file_path(path):
             logger.warning(f"Files API: Invalid or inaccessible path: {path}")
