@@ -92,11 +92,16 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                     <Card 
                       key={insight.id} 
                       className="group relative isolate flex flex-col items-center justify-center p-4 
-                        hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30
+                        bg-gradient-to-br from-orange-50/80 via-white to-amber-50/80 
+                        dark:from-orange-950/30 dark:via-zinc-900 dark:to-amber-950/30
+                        border-2 border-orange-200/60 dark:border-orange-800/40
+                        shadow-md shadow-orange-100/50 dark:shadow-orange-950/50
+                        hover:shadow-xl hover:shadow-orange-200/60 dark:hover:shadow-orange-900/40
                         hover:z-10 
-                        hover:border-orange-400/60 
-                        hover:bg-gradient-to-br hover:from-orange-50 hover:to-amber-50 
-                        dark:hover:from-orange-950/50 dark:hover:to-amber-950/50 
+                        hover:border-orange-400/80 
+                        hover:from-orange-100 hover:to-amber-100 
+                        dark:hover:from-orange-950/60 dark:hover:to-amber-950/60 
+                        hover:-translate-y-1
                         transition-all duration-200 
                         cursor-pointer min-h-[100px]"
                       title={insight.description}
@@ -111,8 +116,9 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                       />
                       <label 
                         htmlFor={insight.id} 
-                        className="text-sm font-medium text-center mt-2 cursor-pointer select-none leading-tight px-6
-                          group-hover:text-orange-700 dark:group-hover:text-orange-300
+                        className="text-sm font-semibold text-center mt-2 cursor-pointer select-none leading-tight px-6
+                          text-orange-800 dark:text-orange-200
+                          group-hover:text-orange-900 dark:group-hover:text-orange-100
                           transition-colors duration-200"
                       >
                         {insight.name}
