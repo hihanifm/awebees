@@ -1,9 +1,17 @@
+C:\Users\m.hanifa\Desktop\work\lens\awebees\scripts>win-start.bat
+Starting Lens services in DEVELOPMENT mode...
+Starting backend on port 34001...
+Error: Backend failed to start
+Check backend logs: C:\Users\m.hanifa\Desktop\work\lens\awebees\scripts\..\logs\backend.log
+INFO:     Will watch for changes in these directories: ['C:\\Users\\m.hanifa\\Desktop\\work\\lens\\awebees\\backend']
+INFO:     Uvicorn running on http://0.0.0.0:34001 (Press CTRL+C to quit)
+INFO:     Started reloader process [99004] using WatchFiles
+INFO:     Started server process [101060]
+INFO:     Waiting for application startup.
+INFO:app.main:Initializing plugin manager...
+INFO:app.core.plugin_manager:Registered insight: error_detector (Error Detector) in folder: root
+INFO:app.core.plugin_manager:Registered insight: line_count (Line Count) in folder: root
+INFO:app.main:Discovered 2 insights
+INFO:     Application startup complete.
 
-
-=== Frontend Setup ===
-Installing Node.js dependencies...
-'npm' is not recognized as an internal or external command,
-operable program or batch file.
-Error: Failed to install Node.js dependencies
-Please ensure Node.js and npm are installed and in PATH
-Press any key to continue . . 
+Press any key to continue . . .
