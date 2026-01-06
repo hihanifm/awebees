@@ -236,12 +236,47 @@ cd /d "%PROJECT_ROOT%\frontend"
 REM Install npm dependencies
 if not exist "node_modules" (
     echo Installing Node.js dependencies...
+    
+    REM Clear npm cache to avoid corruption issues
+    echo Clearing npm cache...
+    call npm cache clean --force >nul 2>&1
+    
+    REM Try npm install
     call npm install
     if errorlevel 1 (
-        echo Error: Failed to install Node.js dependencies
-        echo Please ensure Node.js and npm are installed and in PATH
-        pause
-        exit /b 1
+        echo.
+        echo Error: npm install failed with error code !errorlevel!
+        echo.
+        echo Troubleshooting steps:
+        echo 1. Trying to clear npm cache and retry...
+        
+        REM Remove package-lock.json if it exists (might be corrupted)
+        if exist "package-lock.json" (
+            echo 2. Removing potentially corrupted package-lock.json...
+            del package-lock.json
+        )
+        
+        REM Clear cache again
+        call npm cache clean --force
+        
+        REM Retry installation
+        echo 3. Retrying npm install...
+        call npm install
+        if errorlevel 1 (
+            echo.
+            echo Error: npm install still failing after troubleshooting attempts
+            echo.
+            echo Additional troubleshooting:
+            echo - Try running as Administrator
+            echo - Disable antivirus temporarily
+            echo - Check npm logs at: %%APPDATA%%\npm-cache\_logs\
+            echo - Try: npm cache verify
+            echo - Update npm: npm install -g npm@latest
+            echo - Reinstall Node.js from https://nodejs.org/
+            echo.
+            pause
+            exit /b 1
+        )
     )
     echo Node.js dependencies installed
 ) else (
