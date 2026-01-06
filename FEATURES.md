@@ -389,6 +389,109 @@ Files: 3
 Lines: 650,402
 ```
 
+#### ⚙️ Settings Page
+**Status:** Planned  
+**Description:** Centralized settings page for controlling application behavior
+
+**Features:**
+- **Backend Configuration**: API endpoints, timeouts, retry settings
+- **AI Configuration**: Model selection, API keys, temperature settings
+- **Path Settings**: Default file paths, recent paths limit, path validation rules
+- **Theme Settings**: Dark/light mode, custom color schemes, font sizes
+- **Language Settings**: Multi-language support, locale preferences
+- **Upgrade Options**: Auto-update checks, version notifications, upgrade paths
+- **Performance Settings**: Chunk size, memory limits, thread count
+- **Privacy Settings**: Telemetry, usage analytics, error reporting
+
+**UI Components:**
+- Tabbed interface for different setting categories
+- Real-time preview of changes
+- Import/export settings as JSON
+- Reset to defaults option
+- Save confirmation with validation
+
+#### 🎮 Playground Mode
+**Status:** Planned  
+**Description:** Interactive environment for testing filters and insights
+
+**Features:**
+- **Dynamic Filter Creation**: Build regex patterns with live preview
+- **File Upload**: Upload sample files directly to server
+- **Live Testing**: Test filters against uploaded files in real-time
+- **Pattern Library**: Save and reuse common patterns
+- **Regex Helper**: Visual regex builder with syntax highlighting
+- **Match Preview**: See matching lines instantly
+- **Performance Metrics**: Show processing time and resource usage
+- **Export to Insight**: Convert playground filter to full insight
+
+**Use Cases:**
+- Test regex patterns before creating insights
+- Prototype new insights quickly
+- Share filter patterns with team
+- Learn regex and pattern matching
+- Debug existing filters
+
+**UI:**
+```
+┌─────────────────────────────────────────┐
+│ Playground                               │
+├─────────────────────────────────────────┤
+│ Upload File: [Browse...] sample.log     │
+│                                          │
+│ Filter Pattern: \b(ERROR|FATAL)\b       │
+│ Flags: ☑ IGNORECASE  ☐ MULTILINE       │
+│                                          │
+│ [Test Filter]  [Save]  [Export]         │
+│                                          │
+│ Results: 125 matches in 0.3s            │
+│ ┌─────────────────────────────────────┐ │
+│ │ 2024-01-06 ERROR: Connection failed │ │
+│ │ 2024-01-06 FATAL: System crash     │ │
+│ │ ...                                  │ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+#### 📦 Insight Marketplace
+**Status:** Planned  
+**Description:** Download and share insights from community repository
+
+**Features:**
+- **Browse Insights**: Searchable catalog of community insights
+- **Categories**: Organized by domain (Android, iOS, Web, Security, etc.)
+- **Ratings & Reviews**: User feedback and ratings
+- **Version Management**: Track insight versions and updates
+- **Auto-Updates**: Notify when insights have updates
+- **One-Click Install**: Download and install with single click
+- **Contribution**: Upload your own insights to share
+- **Security Scanning**: Validate insights before installation
+
+**Marketplace Structure:**
+```
+Insight Repository
+├── Featured (Staff picks)
+├── Most Popular (By downloads)
+├── Recently Added (New insights)
+├── Categories
+│   ├── Android
+│   ├── iOS
+│   ├── Web Server Logs
+│   ├── Security & Compliance
+│   ├── Performance Analysis
+│   └── Custom/Other
+└── My Insights (Downloaded)
+```
+
+**Metadata:**
+- Author information
+- Download count
+- Last updated date
+- Compatibility version
+- Dependencies
+- License
+- Documentation link
+- Example outputs
+
 ---
 
 ### Low Priority
