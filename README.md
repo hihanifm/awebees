@@ -1,6 +1,6 @@
 # Lens
 
-A modular engine for extracting insight from data!
+A modular engine for extracting insights from messy data!
 
 A local web application for analyzing log files with a plugin-based insight system.
 

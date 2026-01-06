@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Lens API",
-    description="A modular engine for extracting insight from data! - API for analyzing log files with plugin-based insights",
+    description="A modular engine for extracting insights from messy data! - API for analyzing log files with plugin-based insights",
     version=get_version()
 )
 
