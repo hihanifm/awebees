@@ -220,9 +220,9 @@ export default function Home() {
                 <Button
                   onClick={handleLoadSample}
                   disabled={analyzing || loadingSample}
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
-                  className="ml-4 whitespace-nowrap"
+                  className="ml-4 whitespace-nowrap bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700"
                 >
                   {loadingSample ? "Loading..." : "Load Sample File"}
                 </Button>
