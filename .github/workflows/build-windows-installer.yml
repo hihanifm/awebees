@@ -49,9 +49,27 @@ jobs:
           echo "Packages verified successfully"
       
       - name: Install NSIS
-        uses: martinrotter/install-nsis@v1.0.0
-        with:
-          version: '3.09'
+        run: |
+          # Install NSIS using Chocolatey (if available) or download directly
+          if (Get-Command choco -ErrorAction SilentlyContinue) {
+            choco install nsis -y
+          } else {
+            # Download and install NSIS manually
+            $nsisUrl = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.09/nsis-3.09-setup.exe/download"
+            $nsisInstaller = "$env:TEMP\nsis-installer.exe"
+            Write-Host "Downloading NSIS..."
+            Invoke-WebRequest -Uri $nsisUrl -OutFile $nsisInstaller -UseBasicParsing
+            Write-Host "Installing NSIS (silent mode)..."
+            Start-Process -FilePath $nsisInstaller -ArgumentList "/S" -Wait -NoNewWindow
+            # Add NSIS to PATH
+            $nsisPath = "C:\Program Files (x86)\NSIS"
+            if (Test-Path $nsisPath) {
+              $env:PATH = "$nsisPath;$env:PATH"
+              echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
+            }
+          }
+          # Verify NSIS installation
+          makensis /VERSION
       
       - name: Extract packages
         run: |
