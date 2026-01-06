@@ -87,13 +87,13 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                 </span>
               </AccordionTrigger>
               <AccordionContent className="pb-4">
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
                   {groupedInsights[folder].map((insight) => (
                     <Card 
                       key={insight.id} 
-                      className="group relative flex flex-col items-center justify-center p-4 
+                      className="group relative isolate flex flex-col items-center justify-center p-4 
                         hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-orange-900/30
-                        hover:scale-105 
+                        hover:z-10 
                         hover:border-orange-400/60 
                         hover:bg-gradient-to-br hover:from-orange-50 hover:to-amber-50 
                         dark:hover:from-orange-950/50 dark:hover:to-amber-950/50 
