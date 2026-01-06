@@ -1,17 +1,9 @@
-(venv) C:\Program Files (x86)\Lens\backend>
-(venv) C:\Program Files (x86)\Lens\backend>python -m uvicorn app.main:app --host localhost --port 34001
-WARNING:app.main:Frontend output directory not found: C:\Program Files (x86)\Lens\frontend\out
-WARNING:app.main:Frontend will not be served. Run 'npm run build' in frontend directory first.
-INFO:     Started server process [88984]
-INFO:     Waiting for application startup.
-INFO:app.main:Initializing plugin manager...
-INFO:app.core.plugin_manager:Registered insight: error_detector (Error Detector) in folder: root
-INFO:app.core.plugin_manager:Registered insight: line_count (Line Count) in folder: root
-INFO:app.main:Discovered 2 insights
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://localhost:34001 (Press CTRL+C to quit)
-INFO:     ::1:56775 - "GET / HTTP/1.1" 404 Not Found
-INFO:     ::1:56775 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     ::1:62168 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
-INFO:     ::1:62168 - "GET / HTTP/1.1" 404 Not Found
-INFO:     ::1:62168 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+
+
+=== Frontend Setup ===
+Installing Node.js dependencies...
+'npm' is not recognized as an internal or external command,
+operable program or batch file.
+Error: Failed to install Node.js dependencies
+Please ensure Node.js and npm are installed and in PATH
+Press any key to continue . . 
