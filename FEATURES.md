@@ -39,6 +39,7 @@ A comprehensive overview of Lens capabilities, both implemented and planned.
 
 </details>
 
+
 <details><summary><b>📊 Insight System</b></summary>
 
 - **Pluggable architecture**: Dynamic discovery and registration of insights
@@ -55,6 +56,7 @@ A comprehensive overview of Lens capabilities, both implemented and planned.
 
 </details>
 
+
 <details><summary><b>🎯 Sample Files</b></summary>
 
 - **Pre-loaded Android bugreport**: 54.6MB real-world sample
@@ -66,9 +68,10 @@ A comprehensive overview of Lens capabilities, both implemented and planned.
 
 </details>
 
+
 ### Insights System
 
-<details><summary><b>Config-Based Insights (v3.3.0+)</b></summary>
+#### Config-Based Insights (v3.3.0+)
 ```python
 # Simple declarative approach
 INSIGHT_CONFIG = {
@@ -93,18 +96,14 @@ def process_results(filter_result):
 - Built-in cancellation support
 - Standalone execution ready
 
-</details>
-
-<details><summary><b>Class-Based Insights</b></summary>
+#### Class-Based Insights
 - Full control over analysis logic
 - Custom state management
 - Multi-pass analysis support
 - Complex transformations and aggregations
 - Perfect for non-filtering operations
 
-</details>
-
-<details><summary><b>Insight Features</b></summary>
+#### Insight Features
 - **File filtering**: Regex-based file filtering for folders
 - **Line filtering**: Powerful regex pattern matching
 - **Multiple reading modes**:
@@ -115,11 +114,9 @@ def process_results(filter_result):
 - **Error handling**: Graceful error handling with detailed logging
 - **Result formatting**: Flexible text, JSON, or custom formats
 
-</details>
-
 ### User Interface
 
-<details><summary><b>🖥️ Web Interface (Next.js + TypeScript)</b></summary>
+#### 🖥️ Web Interface (Next.js + TypeScript)
 - **Modern, responsive design**: Tailwind CSS + shadcn/ui components
 - **Dark mode support**: Full dark/light theme support
 - **File path input**: Multi-line textarea with auto-save
@@ -140,21 +137,14 @@ def process_results(filter_result):
   - API status (Online/Offline)
   - Profiling indicator
 
-<details><summary><b>#### 📱 Responsive Design
-</b></summary>
-
+#### 📱 Responsive Design
 - **90% screen width**: Makes optimal use of screen space
 - **Adaptive layouts**: Works on desktop and tablet
 - **Accessible**: Keyboard navigation and screen reader support
 
-
-</details>
-
 ### Performance & Optimization
 
-<details><summary><b>#### ⚡ File Processing
-</b></summary>
-
+#### ⚡ File Processing
 - **Chunked reading**: 1MB chunks for large files
 - **Line-by-line mode**: Memory-efficient for smaller files
 - **Generator-based**: Lazy evaluation for memory efficiency
@@ -162,12 +152,7 @@ def process_results(filter_result):
 - **Memory-mapped files**: For extremely large files
 - **Binary mode reading**: True byte-level chunking
 
-
-</details>
-
-<details><summary><b>#### 🚀 Progress & Responsiveness
-</b></summary>
-
+#### 🚀 Progress & Responsiveness
 - **Server-Sent Events (SSE)**: Real-time progress streaming
 - **Async/await**: Non-blocking I/O operations
 - **Thread-based analysis**: CPU-bound work in separate threads
@@ -175,12 +160,7 @@ def process_results(filter_result):
 - **Event loop yielding**: `asyncio.sleep(0)` for immediate SSE flushing
 - **CORS preflight caching**: 1-hour cache to reduce OPTIONS requests
 
-
-</details>
-
-<details><summary><b>#### 🔧 Profiling & Debugging
-</b></summary>
-
+#### 🔧 Profiling & Debugging
 - **cProfile integration**: Built-in performance profiling
 - **Environment variable control**: `ENABLE_PROFILING=true`
 - **Profiling decorator**: Reusable `@profile` for functions/generators
@@ -188,25 +168,15 @@ def process_results(filter_result):
 - **Top consumers**: Shows top 10 CPU-intensive operations
 - **Regex search stats**: Filters `re.Pattern.search` profiling data
 
-
-</details>
-
 ### Cross-Platform Support
 
-<details><summary><b>#### 🐧 Linux/Mac
-</b></summary>
-
+#### 🐧 Linux/Mac
 - **Bash scripts**: Full automation (setup, start, stop, logs, version)
 - **Virtual environment management**: Automatic venv creation and activation
 - **Development & production modes**: Separate configurations
 - **Log management**: Rotating logs with tail support
 
-
-</details>
-
-<details><summary><b>#### 🪟 Windows
-</b></summary>
-
+#### 🪟 Windows
 - **Batch scripts**: CMD-based (no PowerShell policy issues)
 - **Automatic installation**: `winget` integration for Python/Node.js
 - **Installer packages**:
@@ -217,12 +187,7 @@ def process_results(filter_result):
 - **Log viewing**: `lens-logs.bat` for easy log access
 - **Path handling**: Robust handling of paths with spaces/parentheses
 
-
-</details>
-
-<details><summary><b>#### 🌐 Web API (FastAPI)
-</b></summary>
-
+#### 🌐 Web API (FastAPI)
 - **RESTful API**: Clean, documented endpoints
 - **OpenAPI/Swagger**: Auto-generated API docs at `/docs`
 - **SSE streaming**: Real-time progress and error streaming
@@ -231,14 +196,9 @@ def process_results(filter_result):
 - **Version endpoint**: `/api/version` for version info
 - **Profiling status**: `/api/profiling` to check profiling state
 
-
-</details>
-
 ### Developer Experience
 
-<details><summary><b>#### 🛠️ Development Tools
-</b></summary>
-
+#### 🛠️ Development Tools
 - **Hot reload**: Frontend auto-reloads on changes
 - **Separate dev servers**: Frontend (34000) + Backend (34001)
 - **Environment variables**: `.env` files for configuration
@@ -246,12 +206,7 @@ def process_results(filter_result):
 - **Linting**: Zero linter errors policy
 - **Type safety**: TypeScript for frontend
 
-
-</details>
-
-<details><summary><b>#### 📚 Documentation
-</b></summary>
-
+#### 📚 Documentation
 - **Main README**: Comprehensive setup and usage guide
 - **Insights README**: Detailed insight creation guide (`backend/app/insights/README.md`)
 - **Sample README**: Sample file documentation (`backend/samples/README.md`)
@@ -259,12 +214,7 @@ def process_results(filter_result):
 - **Code examples**: Real-world examples (error_detector, line_count)
 - **Inline documentation**: Docstrings and comments throughout
 
-
-</details>
-
-<details><summary><b>#### 🧪 Testing & Debugging
-</b></summary>
-
+#### 🧪 Testing & Debugging
 - **Standalone insight execution**: Run insights directly via CLI
 - **Test runner script**: `scripts/run_insight.py` for easy testing
 - **Interactive mode**: Prompts for file paths if not provided
@@ -273,23 +223,13 @@ def process_results(filter_result):
 - **Error streaming**: Real-time error notifications
 - **Progress tracking**: Visual feedback during analysis
 
-
-</details>
-
-<details><summary><b>#### 🔄 Version Management
-</b></summary>
-
+#### 🔄 Version Management
 - **Unified versioning**: Single `VERSION` file as source of truth
 - **Auto-sync**: Syncs to `package.json` automatically
 - **Version scripts**: Easy bump commands (major/minor/patch)
 - **Git workflow**: Integrated with tagging and releases
 
-
-</details>
-
-<details><summary><b>#### 📦 Package Management
-</b></summary>
-
+#### 📦 Package Management
 - **Requirements.txt**: Python dependencies with versions
 - **Package.json**: Node.js dependencies
 - **Virtual environment**: Isolated Python dependencies
@@ -298,9 +238,6 @@ def process_results(filter_result):
 ---
 
 ## Upcoming Features
-
-
-</details>
 
 ### High Priority
 
@@ -327,7 +264,7 @@ def process_results(filter_result):
 
 </details>
 
-####### Medium Priority
+### Medium Priority
 
 <details><summary><b>⭐ Favorites System</b></summary>
 
@@ -343,7 +280,7 @@ def process_results(filter_result):
 
 </details>
 
-####<details><summary><b>🔍 Insight Search</b></summary>
+<details><summary><b>🔍 Insight Search</b></summary>
 
 **Status:** Planned  
 **Description:** Search functionality to quickly find insights
@@ -358,7 +295,7 @@ def process_results(filter_result):
 
 </details>
 
-####<details><summary><b>🤖 AI/ML Insight Prediction</b></summary>
+<details><summary><b>🤖 AI/ML Insight Prediction</b></summary>
 
 **Status:** Planned (Research phase)  
 **Description:** Use vector database and ML to predict relevant insights
@@ -379,8 +316,7 @@ def process_results(filter_result):
 
 </details>
 
-####<details><summary><b>📂 Session Management</b></summary>
-
+#### 📂 Session Management
 **Status:** Planned  
 **Description:** Store and manage analysis sessions
 
@@ -404,11 +340,7 @@ sessions/
         file1.log.txt
 ```
 
-
-</details>
-
-####<details><summary><b>💾 Frontend Caching</b></summary>
-
+#### 💾 Frontend Caching
 **Status:** Planned  
 **Description:** Local database for frontend to cache data
 
@@ -425,11 +357,7 @@ sessions/
 - Reduced server load
 - Better UX
 
-
-</details>
-
-####<details><summary><b>📊 Offline Result Storage</b></summary>
-
+#### 📊 Offline Result Storage
 **Status:** Planned  
 **Description:** Store analysis results in files for offline access
 
@@ -450,11 +378,7 @@ output/
         metadata.json
 ```
 
-
-</details>
-
-####<details><summary><b>🕐 Recent Inputs</b></summary>
-
+#### 🕐 Recent Inputs
 **Status:** Planned  
 **Description:** Quick access to recently-used file paths
 
@@ -465,11 +389,7 @@ output/
 - Persistent across sessions
 - Smart deduplication
 
-
-</details>
-
-####<details><summary><b>📈 Analysis Summary Card</b></summary>
-
+#### 📈 Analysis Summary Card
 **Status:** Planned  
 **Description:** Overview card showing analysis statistics
 
@@ -497,11 +417,7 @@ Files: 3
 Lines: 650,402
 ```
 
-
-</details>
-
-####<details><summary><b>⚙️ Settings Page</b></summary>
-
+#### ⚙️ Settings Page
 **Status:** Planned  
 **Description:** Centralized settings page for controlling application behavior
 
@@ -522,11 +438,7 @@ Lines: 650,402
 - Reset to defaults option
 - Save confirmation with validation
 
-
-</details>
-
-####<details><summary><b>🎮 Playground Mode</b></summary>
-
+#### 🎮 Playground Mode
 **Status:** Planned  
 **Description:** Interactive environment for testing filters and insights
 
@@ -568,11 +480,7 @@ Lines: 650,402
 └─────────────────────────────────────────┘
 ```
 
-
-</details>
-
-####<details><summary><b>📦 Insight Marketplace</b></summary>
-
+#### 📦 Insight Marketplace
 **Status:** Planned  
 **Description:** Download and share insights from community repository
 
@@ -612,11 +520,7 @@ Insight Repository
 - Documentation link
 - Example outputs
 
-
-</details>
-
-####<details><summary><b>🎨 Rich Output Support</b></summary>
-
+#### 🎨 Rich Output Support
 **Status:** Planned  
 **Description:** Enhanced visualization options for insight results
 
@@ -729,10 +633,7 @@ class InsightResult:
 
 ---
 
-
-</details>
-
-####### Low Priority
+### Low Priority
 
 *No items currently planned*
 
