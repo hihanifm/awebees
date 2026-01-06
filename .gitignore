@@ -9,6 +9,20 @@ env/
 ENV/
 .venv
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json.bak
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts.bak
+
 # IDEs
 .vscode/
 .idea/
@@ -19,6 +33,7 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
 
 # Environment variables
 .env
@@ -29,9 +44,6 @@ Thumbs.db
 
 # Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 logs/
 scripts/.pids
 
@@ -42,4 +54,11 @@ dist/
 !dist/windows/
 dist/windows/*
 !dist/windows/*.zip
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~.nib
 
