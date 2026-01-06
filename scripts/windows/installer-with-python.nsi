@@ -55,9 +55,32 @@ VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
 
+; Function to uninstall previous version if it exists
+Function uninstallPrevious
+    ; Check if Lens is already installed by looking for the registry key
+    ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "UninstallString"
+    StrCmp $0 "" done
+    
+    ; Found existing installation, uninstall it
+    DetailPrint "Uninstalling previous version of Lens..."
+    ExecWait '"$0" /S _?=$INSTDIR'
+    
+    ; Wait a bit for uninstaller to complete
+    Sleep 1000
+    
+    ; Remove the installation directory if it still exists
+    IfFileExists "$INSTDIR" 0 done
+    RMDir /r "$INSTDIR"
+    
+    done:
+FunctionEnd
+
 ; Installer Sections
 Section "Lens Application" SecApp
     SectionIn RO
+    
+    ; Uninstall previous version if it exists
+    Call uninstallPrevious
     
     SetOutPath "$INSTDIR"
     
