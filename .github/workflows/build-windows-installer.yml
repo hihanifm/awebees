@@ -128,15 +128,11 @@ jobs:
             Expand-Archive -Path "lens-package-requires-python-$version.zip" -DestinationPath "build/windows" -Force
           }
       
-      - name: Update NSIS scripts with version
+      - name: Prepare NSIS build
         run: |
           $version = "${{ steps.version.outputs.version }}"
-          $nsiWithPython = "scripts/windows/installer-with-python.nsi"
-          $nsiRequiresPython = "scripts/windows/installer-requires-python.nsi"
-          
-          # Update version in NSIS scripts
-          (Get-Content $nsiWithPython) -replace '!define VERSION ".*"', "!define VERSION `"$version`"" | Set-Content $nsiWithPython
-          (Get-Content $nsiRequiresPython) -replace '!define VERSION ".*"', "!define VERSION `"$version`"" | Set-Content $nsiRequiresPython
+          Write-Host "Building installers with version: $version"
+          # Version is passed via command line, no need to modify NSIS files
       
       - name: Compile installer (with Python)
         run: |

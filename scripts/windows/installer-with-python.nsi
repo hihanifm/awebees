@@ -18,8 +18,10 @@ RequestExecutionLevel admin
 !define BUILD_DIR "build\windows"
 !endif
 
-; Version information (will be replaced by build script)
+; Version information (can be overridden by command line)
+!ifndef VERSION
 !define VERSION "2.6.0"
+!endif
 !define APP_NAME "Lens"
 !define PUBLISHER "Lens Development Team"
 !define APP_URL "https://github.com/hihanifm/awebees"
