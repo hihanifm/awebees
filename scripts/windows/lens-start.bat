@@ -22,12 +22,20 @@ if "!SCRIPT_DIR:~-1!"=="\" (
 echo [DEBUG] Final SCRIPT_DIR: !SCRIPT_DIR!
 
 REM Check if Python directory exists (self-contained variant)
-set "PYTHON_PATH=!SCRIPT_DIR!\python\python.exe"
-echo [DEBUG] Checking for embedded Python at: !PYTHON_PATH!
-if exist "!PYTHON_PATH!" (
+REM Use cd to navigate to script directory first, then check with relative path
+echo [DEBUG] Changing to script directory to check for Python
+cd /d "!SCRIPT_DIR!"
+if errorlevel 1 (
+    echo [DEBUG] ERROR: Failed to change to script directory
+    pause
+    exit /b 1
+)
+
+echo [DEBUG] Checking for embedded Python at: python\python.exe
+if exist "python\python.exe" (
     echo [DEBUG] Found embedded Python
     echo Starting Lens (Self-contained with Python)...
-    set "PYTHON_EXE=!PYTHON_PATH!"
+    set "PYTHON_EXE=python\python.exe"
     set "VARIANT=with-python"
     echo [DEBUG] PYTHON_EXE set to: !PYTHON_EXE!
 ) else (
@@ -48,14 +56,7 @@ if exist "!PYTHON_PATH!" (
     echo [DEBUG] PYTHON_EXE set to: !PYTHON_EXE!
 )
 
-REM Change to script directory
-echo [DEBUG] Changing to directory: !SCRIPT_DIR!
-cd /d "!SCRIPT_DIR!"
-if errorlevel 1 (
-    echo [DEBUG] ERROR: Failed to change directory
-    pause
-    exit /b 1
-)
+REM We're already in script directory from Python check above
 echo [DEBUG] Current directory: %CD%
 
 REM Activate virtual environment or create it
@@ -112,8 +113,8 @@ set SERVE_FRONTEND=true
 REM Start backend
 echo [DEBUG] Starting backend...
 echo Starting Lens backend on http://localhost:34001...
-echo [DEBUG] Changing to backend directory: !SCRIPT_DIR!\backend
-cd /d "!SCRIPT_DIR!\backend"
+echo [DEBUG] Changing to backend directory
+cd /d backend
 if errorlevel 1 (
     echo [DEBUG] ERROR: Failed to change to backend directory
     pause
