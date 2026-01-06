@@ -13,7 +13,7 @@ if errorlevel 1 (
     echo Status: RUNNING
     echo Port 34001 is active
     echo.
-    echo Backend URL: http://localhost:34001
+    echo Backend URL: http://127.0.0.1:34001
 )
 
 echo.
