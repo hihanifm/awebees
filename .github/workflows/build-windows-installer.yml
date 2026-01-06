@@ -32,18 +32,39 @@ jobs:
           # Try to download from release assets
           gh release download ${{ github.event.release.tag_name }} --pattern "$packageWithPython" --pattern "$packageRequiresPython" || echo "Packages not found in release, will use packages from repository"
       
-      - name: Verify packages exist
+      - name: Verify or build packages
         run: |
           $version = "${{ steps.version.outputs.version }}"
           $packageWithPython = "dist/windows/lens-package-with-python-$version.zip"
           $packageRequiresPython = "dist/windows/lens-package-requires-python-$version.zip"
           
+          $packagesFound = $true
+          
           # Check if packages exist in repository
           if (-not (Test-Path $packageWithPython) -and -not (Test-Path "lens-package-with-python-$version.zip")) {
-            Write-Error "Package not found: $packageWithPython. Please run build-windows.sh locally first and commit the packages."
+            Write-Warning "Package not found: $packageWithPython"
+            $packagesFound = $false
           }
           if (-not (Test-Path $packageRequiresPython) -and -not (Test-Path "lens-package-requires-python-$version.zip")) {
-            Write-Error "Package not found: $packageRequiresPython. Please run build-windows.sh locally first and commit the packages."
+            Write-Warning "Package not found: $packageRequiresPython"
+            $packagesFound = $false
+          }
+          
+          if (-not $packagesFound) {
+            Write-Host ""
+            Write-Host "================================================" -ForegroundColor Yellow
+            Write-Host "PACKAGES NOT FOUND" -ForegroundColor Yellow
+            Write-Host "================================================" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "To fix this, run the following locally:" -ForegroundColor Cyan
+            Write-Host "  1. ./scripts/build-windows.sh" -ForegroundColor White
+            Write-Host "  2. git add dist/windows/*.zip" -ForegroundColor White
+            Write-Host "  3. git commit -m 'Add Windows packages for v$version'" -ForegroundColor White
+            Write-Host "  4. git push" -ForegroundColor White
+            Write-Host ""
+            Write-Host "Then re-run this workflow." -ForegroundColor Cyan
+            Write-Host ""
+            exit 1
           }
           
           echo "Packages verified successfully"
