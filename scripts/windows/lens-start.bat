@@ -18,11 +18,15 @@ set "LOG_FILE=%CD%\logs\backend.log"
 echo [DEBUG] Log file will be: %LOG_FILE%
 REM Test if we can write to the log file
 echo [DEBUG] Testing log file write access... > "%LOG_FILE%"
-if errorlevel 1 (
-    echo [DEBUG] WARNING: Cannot write to log file: %LOG_FILE%
-) else (
-    echo [DEBUG] Log file write test successful
-)
+if errorlevel 1 goto logfile_write_warning
+echo [DEBUG] Log file write test successful
+goto logfile_check_done
+
+:logfile_write_warning
+echo [DEBUG] WARNING: Cannot write to log file: %LOG_FILE%
+goto logfile_check_done
+
+:logfile_check_done
 
 REM Check if Python directory exists (self-contained variant)
 echo [DEBUG] Checking for embedded Python at: python\python.exe
@@ -92,24 +96,29 @@ echo [DEBUG] Starting backend server
 echo Starting Lens backend on http://127.0.0.1:34001...
 echo [DEBUG] Logs will be written to: %LOG_FILE%
 REM Ensure log file exists and is writable
-if not exist "%LOG_FILE%" (
-    echo. > "%LOG_FILE%"
-    if errorlevel 1 (
-        echo [DEBUG] ERROR: Cannot create log file: %LOG_FILE%
-        goto error_start_backend
-    )
-)
+if not exist "%LOG_FILE%" echo. > "%LOG_FILE%"
+if errorlevel 1 goto error_create_logfile
 REM Use Python unbuffered mode (-u) and ensure proper redirection
 REM The -u flag makes Python output unbuffered, so logs appear immediately
-REM Write a startup marker to the log file
-echo ======================================== >> "%LOG_FILE%"
-echo Lens Backend Started: %DATE% %TIME% >> "%LOG_FILE%"
-echo ======================================== >> "%LOG_FILE%"
+REM Create a temporary file to write the startup marker, avoiding path issues
+set "TEMP_MARKER=%TEMP%\lens-marker-%RANDOM%.txt"
+echo ======================================== > "%TEMP_MARKER%"
+echo Lens Backend Started: %DATE% %TIME% >> "%TEMP_MARKER%"
+echo ======================================== >> "%TEMP_MARKER%"
+type "%TEMP_MARKER%" >> "%LOG_FILE%"
+del "%TEMP_MARKER%" >nul 2>&1
 start "Lens Backend" /min cmd /c "cd /d %CD% && python -u -m uvicorn app.main:app --host 0.0.0.0 --port 34001 >> \"%LOG_FILE%\" 2>&1"
 if errorlevel 1 goto error_start_backend
 echo [DEBUG] Backend started
 echo [DEBUG] Log file location: %LOG_FILE%
 echo [DEBUG] You can view logs with: lens-logs.bat
+goto backend_started
+
+:error_create_logfile
+echo [DEBUG] ERROR: Cannot create log file: %LOG_FILE%
+goto error_start_backend
+
+:backend_started
 echo [DEBUG] Waiting 3 seconds for backend to start...
 timeout /t 3 /nobreak >nul
 echo [DEBUG] Wait complete
