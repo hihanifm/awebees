@@ -30,7 +30,7 @@ export function ResultsPanel({ results, loading }: ResultsPanelProps) {
             </CardHeader>
             <CardContent>
               {resultItem.result.result_type === "text" && (
-                <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted p-4 font-mono text-sm overflow-x-auto">
+                <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted p-4 font-mono text-sm overflow-x-auto overflow-y-auto max-h-[600px]">
                   {resultItem.result.content}
                 </pre>
               )}
