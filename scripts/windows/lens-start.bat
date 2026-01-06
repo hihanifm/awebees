@@ -73,18 +73,18 @@ cd /d backend
 if errorlevel 1 goto error_backend_dir
 echo [DEBUG] Current directory: %CD%
 echo [DEBUG] Starting backend server
-echo Starting Lens backend on http://localhost:34001...
+echo Starting Lens backend on http://127.0.0.1:34001...
 start "Lens Backend" /min python -m uvicorn app.main:app --host 0.0.0.0 --port 34001
 if errorlevel 1 goto error_start_backend
 echo [DEBUG] Backend started
 echo [DEBUG] Waiting 3 seconds for backend to start...
 timeout /t 3 /nobreak >nul
 echo [DEBUG] Wait complete
-echo [DEBUG] Opening browser to http://localhost:34001
-start http://localhost:34001
+echo [DEBUG] Opening browser to http://127.0.0.1:34001
+start http://127.0.0.1:34001
 echo.
 echo Lens is starting...
-echo Backend: http://localhost:34001
+echo Backend: http://127.0.0.1:34001
 echo.
 echo Press any key to close this window (Lens will continue running in background)
 pause >nul
