@@ -16,6 +16,7 @@
 - [ui] [frontend] [backend] Add a settings page to control system behavior (backend config, AI config, path-related settings, themes, language, upgrade options)
 - [ui] [frontend] [backend] Add playground support to let users dynamically add filters for files and upload them to the server
 - [insights] [backend] [frontend] Support downloading insights from the server (insight marketplace/repository)
+- [ui] [frontend] [backend] Add rich output support for insights (colored lines, tables, graphs, charts, timelines, and interactive visualizations)
 
 ## Low Priority
 - 
