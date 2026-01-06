@@ -92,6 +92,21 @@ echo [DEBUG] Changing to backend directory
 cd /d backend
 if errorlevel 1 goto error_backend_dir
 echo [DEBUG] Current directory: %CD%
+echo [DEBUG] Checking backend directory structure...
+if exist "app" (
+    echo [DEBUG] Found app directory
+    if exist "app\main.py" (
+        echo [DEBUG] Found app\main.py
+    ) else (
+        echo [DEBUG] ERROR: app\main.py not found!
+    )
+) else (
+    echo [DEBUG] ERROR: app directory not found!
+)
+echo [DEBUG] Python location: 
+where python
+echo [DEBUG] Testing Python import...
+python -c "import sys; print('Python executable:', sys.executable); print('Python path:', sys.path)"
 echo [DEBUG] Starting backend server
 echo Starting Lens backend on http://127.0.0.1:34001...
 echo [DEBUG] Logs will be written to: %LOG_FILE%
@@ -107,7 +122,11 @@ echo Lens Backend Started: %DATE% %TIME% >> "%TEMP_MARKER%"
 echo ======================================== >> "%TEMP_MARKER%"
 type "%TEMP_MARKER%" >> "%LOG_FILE%"
 del "%TEMP_MARKER%" >nul 2>&1
-start "Lens Backend" /min cmd /c "cd /d %CD% && python -u -m uvicorn app.main:app --host 0.0.0.0 --port 34001 >> \"%LOG_FILE%\" 2>&1"
+REM Get the full path to the Python executable in the venv
+set "VENV_PYTHON=%INSTALL_ROOT%\venv\Scripts\python.exe"
+echo [DEBUG] Using Python from venv: %VENV_PYTHON%
+REM Use the venv Python directly instead of relying on PATH
+start "Lens Backend" /min cmd /c "cd /d %CD% && \"%VENV_PYTHON%\" -u -m uvicorn app.main:app --host 0.0.0.0 --port 34001 >> \"%LOG_FILE%\" 2>&1"
 if errorlevel 1 goto error_start_backend
 echo [DEBUG] Backend started
 echo [DEBUG] Log file location: %LOG_FILE%
