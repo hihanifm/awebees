@@ -61,6 +61,7 @@ The GitHub Actions workflow will:
 - `lens-start.bat` - Application launcher (Windows)
 - `lens-stop.bat` - Stop application script (Windows)
 - `lens-status.bat` - Status check script (Windows)
+- `lens-logs.bat` - View backend logs (Windows)
 - `installer-with-python.nsi` - NSIS script for self-contained installer
 - `installer-requires-python.nsi` - NSIS script for Python-required installer
 - `build-config.json` - Build configuration
@@ -94,6 +95,26 @@ Edit `build-config.json` to customize:
 5. Verify application starts correctly
 6. Test uninstaller
 
+## Logs
+
+Backend logs are written to:
+```
+{Installation Directory}\logs\backend.log
+```
+
+For example, if installed to `C:\Program Files (x86)\Lens`:
+```
+C:\Program Files (x86)\Lens\logs\backend.log
+```
+
+**View logs:**
+- Run `lens-logs.bat` to view the last 20 lines
+- Or open the log file directly in a text editor
+- For real-time logs, use PowerShell:
+  ```powershell
+  Get-Content "C:\Program Files (x86)\Lens\logs\backend.log" -Wait -Tail 20
+  ```
+
 ## Troubleshooting
 
 **Build fails:**
@@ -110,4 +131,10 @@ Edit `build-config.json` to customize:
 - Test on clean Windows VM
 - Check Windows Event Viewer for errors
 - Verify Python installation (for requires-python variant)
+
+**Application won't start:**
+- Check logs: `lens-logs.bat` or `logs\backend.log`
+- Verify Python is installed (for requires-python variant)
+- Check if port 34001 is already in use
+- Run `lens-status.bat` to check if backend is running
 

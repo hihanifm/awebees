@@ -45,6 +45,7 @@ echo "  Copying Windows launcher scripts..."
 cp "$SCRIPT_DIR/lens-start.bat" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/lens-stop.bat" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/lens-status.bat" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/lens-logs.bat" "$PACKAGE_DIR/"
 
 # Read build config
 CONFIG_FILE="$SCRIPT_DIR/build-config.json"

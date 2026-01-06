@@ -11,6 +11,12 @@ cd /d "%~dp0"
 if errorlevel 1 goto error_no_directory
 echo [DEBUG] Changed to directory: %CD%
 
+REM Create logs directory in installation root
+echo [DEBUG] Creating logs directory
+if not exist "logs" mkdir logs
+set "LOG_FILE=%CD%\logs\backend.log"
+echo [DEBUG] Log file will be: %LOG_FILE%
+
 REM Check if Python directory exists (self-contained variant)
 echo [DEBUG] Checking for embedded Python at: python\python.exe
 if exist "python\python.exe" goto found_embedded_python
@@ -74,7 +80,8 @@ if errorlevel 1 goto error_backend_dir
 echo [DEBUG] Current directory: %CD%
 echo [DEBUG] Starting backend server
 echo Starting Lens backend on http://127.0.0.1:34001...
-start "Lens Backend" /min python -m uvicorn app.main:app --host 0.0.0.0 --port 34001
+echo [DEBUG] Logs will be written to: %LOG_FILE%
+start "Lens Backend" /min cmd /c "cd /d %CD% && python -m uvicorn app.main:app --host 0.0.0.0 --port 34001 >> \"%LOG_FILE%\" 2>&1"
 if errorlevel 1 goto error_start_backend
 echo [DEBUG] Backend started
 echo [DEBUG] Waiting 3 seconds for backend to start...
