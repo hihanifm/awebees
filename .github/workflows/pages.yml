@@ -1,16 +1,13 @@
 name: Deploy GitHub Pages
 
 on:
-  # Only build on releases or manual trigger
-  release:
-    types: [published]
+  # Build on pushes to master or manual trigger
   workflow_dispatch:
-  # Uncomment the line below if you want to build on pushes to master
-  # push:
-  #   branches:
-  #     - master
-  #   paths:
-  #     - 'docs/**'
+  push:
+    branches:
+      - master
+    paths:
+      - 'docs/**'
 
 permissions:
   contents: read
