@@ -19,10 +19,14 @@ scripts\win-setup.bat
 ```
 
 Sets up the project for the first time:
+- **Automatically detects and offers to install Python and Node.js if not found** (Windows only)
+- Uses `winget` (Windows Package Manager) for automatic installation
 - Creates Python virtual environment in `backend/venv`
 - Installs Python dependencies
 - Installs Node.js dependencies
 - Creates `.env` files from `.env.example` templates
+
+**Note for Windows:** If Python or Node.js are installed during setup, you'll need to restart your command prompt and run the setup script again.
 
 ### Start Services
 

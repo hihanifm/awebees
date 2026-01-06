@@ -13,6 +13,161 @@ set "SCRIPT_DIR=%~dp0"
 set "PROJECT_ROOT=%SCRIPT_DIR%.."
 
 REM ===================================
+REM Check and Install Node.js
+REM ===================================
+echo === Checking Node.js Installation ===
+
+REM Check if npm is available
+where npm >nul 2>&1
+if errorlevel 1 (
+    echo Node.js/npm is not installed or not in PATH
+    echo.
+    echo Would you like to install Node.js automatically? [Y/N]
+    set /p INSTALL_NODE="Enter choice: "
+    
+    if /i "!INSTALL_NODE!"=="Y" (
+        echo.
+        echo Installing Node.js using winget...
+        echo This may take a few minutes...
+        
+        REM Check if winget is available
+        where winget >nul 2>&1
+        if errorlevel 1 (
+            echo Error: winget is not available on this system
+            echo.
+            echo Please install Node.js manually:
+            echo 1. Download from: https://nodejs.org/
+            echo 2. Install the LTS version
+            echo 3. Restart your command prompt
+            echo 4. Run this setup script again
+            pause
+            exit /b 1
+        )
+        
+        REM Install Node.js LTS using winget
+        winget install OpenJS.NodeJS.LTS --silent --accept-source-agreements --accept-package-agreements
+        
+        if errorlevel 1 (
+            echo Error: Failed to install Node.js
+            echo.
+            echo Please install Node.js manually:
+            echo 1. Download from: https://nodejs.org/
+            echo 2. Install the LTS version
+            echo 3. Restart your command prompt
+            echo 4. Run this setup script again
+            pause
+            exit /b 1
+        )
+        
+        echo.
+        echo Node.js has been installed successfully!
+        echo.
+        echo IMPORTANT: You need to restart your command prompt for the changes to take effect.
+        echo After restarting, run this setup script again: scripts\win-setup.bat
+        echo.
+        pause
+        exit /b 0
+    ) else (
+        echo.
+        echo Node.js installation skipped.
+        echo.
+        echo Please install Node.js manually:
+        echo 1. Download from: https://nodejs.org/
+        echo 2. Install the LTS version
+        echo 3. Restart your command prompt
+        echo 4. Run this setup script again
+        echo.
+        pause
+        exit /b 1
+    )
+) else (
+    REM Get Node.js version
+    for /f "tokens=*" %%i in ('node --version 2^>nul') do set NODE_VERSION=%%i
+    for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
+    echo Node.js !NODE_VERSION! detected
+    echo npm !NPM_VERSION! detected
+    echo.
+)
+
+REM ===================================
+REM Check and Setup Python
+REM ===================================
+echo === Checking Python Installation ===
+
+REM Check if python is available
+where python >nul 2>&1
+if errorlevel 1 (
+    echo Python is not installed or not in PATH
+    echo.
+    echo Would you like to install Python automatically? [Y/N]
+    set /p INSTALL_PYTHON="Enter choice: "
+    
+    if /i "!INSTALL_PYTHON!"=="Y" (
+        echo.
+        echo Installing Python using winget...
+        echo This may take a few minutes...
+        
+        REM Check if winget is available
+        where winget >nul 2>&1
+        if errorlevel 1 (
+            echo Error: winget is not available on this system
+            echo.
+            echo Please install Python manually:
+            echo 1. Download from: https://www.python.org/downloads/
+            echo 2. Install Python 3.9 or later
+            echo 3. Make sure to check "Add Python to PATH" during installation
+            echo 4. Restart your command prompt
+            echo 5. Run this setup script again
+            pause
+            exit /b 1
+        )
+        
+        REM Install Python using winget
+        winget install Python.Python.3.12 --silent --accept-source-agreements --accept-package-agreements
+        
+        if errorlevel 1 (
+            echo Error: Failed to install Python
+            echo.
+            echo Please install Python manually:
+            echo 1. Download from: https://www.python.org/downloads/
+            echo 2. Install Python 3.9 or later
+            echo 3. Make sure to check "Add Python to PATH" during installation
+            echo 4. Restart your command prompt
+            echo 5. Run this setup script again
+            pause
+            exit /b 1
+        )
+        
+        echo.
+        echo Python has been installed successfully!
+        echo.
+        echo IMPORTANT: You need to restart your command prompt for the changes to take effect.
+        echo After restarting, run this setup script again: scripts\win-setup.bat
+        echo.
+        pause
+        exit /b 0
+    ) else (
+        echo.
+        echo Python installation skipped.
+        echo.
+        echo Please install Python manually:
+        echo 1. Download from: https://www.python.org/downloads/
+        echo 2. Install Python 3.9 or later
+        echo 3. Make sure to check "Add Python to PATH" during installation
+        echo 4. Restart your command prompt
+        echo 5. Run this setup script again
+        echo.
+        pause
+        exit /b 1
+    )
+) else (
+    REM Get Python version
+    for /f "tokens=*" %%i in ('python --version 2^>nul') do set PYTHON_VERSION=%%i
+    echo !PYTHON_VERSION! detected
+    echo.
+)
+
+REM ===================================
 REM Backend Setup
 REM ===================================
 echo === Backend Setup ===
@@ -24,7 +179,6 @@ if not exist "venv" (
     python -m venv venv
     if errorlevel 1 (
         echo Error: Failed to create Python virtual environment
-        echo Please ensure Python 3.x is installed and in PATH
         pause
         exit /b 1
     )

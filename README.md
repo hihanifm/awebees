@@ -17,6 +17,8 @@ A local web application for analyzing log files with a plugin-based insight syst
 - Node.js and npm
 - Git
 
+**Note for Windows users:** The `win-setup.bat` script can automatically install Python and Node.js using `winget` if they're not already installed. Just run the setup script and follow the prompts. See the [Windows Setup Guide](WINDOWS-SETUP-GUIDE.md) for detailed instructions and troubleshooting.
+
 ### Setup (Linux/Mac)
 
 1. Clone the repository:
@@ -68,6 +70,8 @@ A local web application for analyzing log files with a plugin-based insight syst
 
 ### Setup (Windows)
 
+> 📖 **Detailed Guide:** See [WINDOWS-SETUP-GUIDE.md](WINDOWS-SETUP-GUIDE.md) for comprehensive setup instructions and troubleshooting.
+
 1. Clone the repository:
    ```cmd
    git clone <repository-url>
@@ -80,9 +84,13 @@ A local web application for analyzing log files with a plugin-based insight syst
    ```
    
    This will:
+   - **Automatically detect and offer to install Python and Node.js if not found**
+   - Uses `winget` (Windows Package Manager) for automatic installation
    - Create Python virtual environment
    - Install all dependencies (Python and Node.js)
    - Create `.env` files from examples
+   
+   **Note:** If Python or Node.js are installed during setup, you'll need to restart your command prompt and run the setup script again.
 
 3. Start Services:
    ```cmd
