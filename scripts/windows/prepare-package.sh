@@ -33,6 +33,7 @@ mkdir -p "$PACKAGE_DIR"
 
 # Copy backend code
 echo "  Copying backend code..."
+mkdir -p "$PACKAGE_DIR/backend"
 cp -r "$PROJECT_ROOT/backend/app" "$PACKAGE_DIR/backend/"
 cp "$PROJECT_ROOT/backend/requirements.txt" "$PACKAGE_DIR/backend/"
 
