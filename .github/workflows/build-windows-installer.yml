@@ -1,175 +1,145 @@
 name: Build Windows Installers
 
 on:
-  workflow_dispatch:
-  release:
-    types: [created]
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 3.4.0)'
+        required: true
+        type: string
 
 jobs:
-  build-installers:
+  build:
     runs-on: windows-latest
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Read version
-        id: version
+      - name: Determine version
+        id: get_version
+        shell: bash
         run: |
-          $version = Get-Content VERSION -Raw | ForEach-Object { $_.Trim() }
-          echo "version=$version" >> $env:GITHUB_OUTPUT
-          echo "Version: $version"
-      
-      - name: Download packages (if from release)
-        if: github.event_name == 'release'
-        run: |
-          $packageWithPython = "lens-package-with-python-${{ steps.version.outputs.version }}.zip"
-          $packageRequiresPython = "lens-package-requires-python-${{ steps.version.outputs.version }}.zip"
-          
-          # Try to download from release assets
-          gh release download ${{ github.event.release.tag_name }} --pattern "$packageWithPython" --pattern "$packageRequiresPython" || echo "Packages not found in release, will use packages from repository"
-      
-      - name: Verify or build packages
-        run: |
-          $version = "${{ steps.version.outputs.version }}"
-          $packageWithPython = "dist/windows/lens-package-with-python-$version.zip"
-          $packageRequiresPython = "dist/windows/lens-package-requires-python-$version.zip"
-          
-          $packagesFound = $true
-          
-          # Check if packages exist in repository
-          if (-not (Test-Path $packageWithPython) -and -not (Test-Path "lens-package-with-python-$version.zip")) {
-            Write-Warning "Package not found: $packageWithPython"
-            $packagesFound = $false
-          }
-          if (-not (Test-Path $packageRequiresPython) -and -not (Test-Path "lens-package-requires-python-$version.zip")) {
-            Write-Warning "Package not found: $packageRequiresPython"
-            $packagesFound = $false
-          }
-          
-          if (-not $packagesFound) {
-            Write-Host ""
-            Write-Host "================================================" -ForegroundColor Yellow
-            Write-Host "PACKAGES NOT FOUND" -ForegroundColor Yellow
-            Write-Host "================================================" -ForegroundColor Yellow
-            Write-Host ""
-            Write-Host "To fix this, run the following locally:" -ForegroundColor Cyan
-            Write-Host "  1. ./scripts/build-windows.sh" -ForegroundColor White
-            Write-Host "  2. git add dist/windows/*.zip" -ForegroundColor White
-            Write-Host "  3. git commit -m 'Add Windows packages for v$version'" -ForegroundColor White
-            Write-Host "  4. git push" -ForegroundColor White
-            Write-Host ""
-            Write-Host "Then re-run this workflow." -ForegroundColor Cyan
-            Write-Host ""
-            exit 1
-          }
-          
-          echo "Packages verified successfully"
-      
-      - name: Install NSIS
-        run: |
-          # Install NSIS using Chocolatey (if available) or download directly
-          $nsisPath = $null
-          
-          if (Get-Command choco -ErrorAction SilentlyContinue) {
-            Write-Host "Installing NSIS via Chocolatey..."
-            choco install nsis -y
-            # Chocolatey installs to Program Files (x86)
-            $nsisPath = "C:\Program Files (x86)\NSIS"
-          } else {
-            # Download and install NSIS manually
-            $nsisUrl = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.09/nsis-3.09-setup.exe/download"
-            $nsisInstaller = "$env:TEMP\nsis-installer.exe"
-            Write-Host "Downloading NSIS..."
-            Invoke-WebRequest -Uri $nsisUrl -OutFile $nsisInstaller -UseBasicParsing
-            Write-Host "Installing NSIS (silent mode)..."
-            Start-Process -FilePath $nsisInstaller -ArgumentList "/S" -Wait -NoNewWindow
-            $nsisPath = "C:\Program Files (x86)\NSIS"
-          }
-          
-          # Add NSIS to PATH for current session and future steps
-          if (Test-Path $nsisPath) {
-            $env:PATH = "$nsisPath;$env:PATH"
-            echo "$nsisPath" >> $env:GITHUB_PATH
-            Write-Host "NSIS installed at: $nsisPath"
-            Write-Host "Added to PATH: $nsisPath"
-          } else {
-            Write-Error "NSIS installation path not found: $nsisPath"
-            exit 1
-          }
-          
-          # Verify NSIS installation
-          Write-Host "Verifying NSIS installation..."
-          & "$nsisPath\makensis.exe" /VERSION
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "NSIS verification failed"
-            exit 1
-          }
-          Write-Host "NSIS verified successfully"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
       
       - name: Extract packages
+        shell: bash
         run: |
-          $version = "${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          mkdir -p build/windows
           
           # Extract with-python package
-          if (Test-Path "dist/windows/lens-package-with-python-$version.zip") {
-            Expand-Archive -Path "dist/windows/lens-package-with-python-$version.zip" -DestinationPath "build/windows" -Force
-          } elseif (Test-Path "lens-package-with-python-$version.zip") {
-            Expand-Archive -Path "lens-package-with-python-$version.zip" -DestinationPath "build/windows" -Force
-          }
+          unzip "dist/windows/lens-package-with-python-${VERSION}.zip" -d build/windows/
+          mv "build/windows/lens-app-with-python" "build/windows/lens-app-with-python"
           
           # Extract requires-python package
-          if (Test-Path "dist/windows/lens-package-requires-python-$version.zip") {
-            Expand-Archive -Path "dist/windows/lens-package-requires-python-$version.zip" -DestinationPath "build/windows" -Force
-          } elseif (Test-Path "lens-package-requires-python-$version.zip") {
-            Expand-Archive -Path "lens-package-requires-python-$version.zip" -DestinationPath "build/windows" -Force
-          }
+          unzip "dist/windows/lens-package-requires-python-${VERSION}.zip" -d build/windows/
+          mv "build/windows/lens-app-requires-python" "build/windows/lens-app-requires-python"
+          
+          echo "Package extraction complete"
+          ls -la build/windows/
       
-      - name: Prepare NSIS build
+      - name: Install NSIS
+        shell: pwsh
         run: |
-          $version = "${{ steps.version.outputs.version }}"
-          Write-Host "Building installers with version: $version"
-          # Version is passed via command line, no need to modify NSIS files
+          choco install nsis -y
+          $env:PATH = "C:\Program Files (x86)\NSIS;$env:PATH"
+          [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::Process)
+          makensis /VERSION
       
-      - name: Compile installer (with Python)
+      - name: Build installers
+        shell: pwsh
         run: |
-          $version = "${{ steps.version.outputs.version }}"
-          $buildDir = "${{ github.workspace }}\build\windows"
-          $outDir = "${{ github.workspace }}\dist\windows"
-          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-          makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer-with-python.nsi"
-          if (Test-Path "$outDir\lens-setup-with-python.exe") {
-            Move-Item "$outDir\lens-setup-with-python.exe" "$outDir\lens-setup-with-python-$version.exe" -Force
+          $VERSION = "${{ steps.get_version.outputs.VERSION }}"
+          $env:PATH = "C:\Program Files (x86)\NSIS;$env:PATH"
+          
+          # Create output directory
+          New-Item -ItemType Directory -Force -Path "dist/installers"
+          
+          # Build with-python installer
+          Write-Host "Building self-contained installer..."
+          makensis /DVERSION=$VERSION `
+                   /DBUILD_DIR="build\windows" `
+                   /DOUTDIR="dist\installers" `
+                   scripts\windows\installer-with-python.nsi
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to build with-python installer"
+            exit 1
           }
+          
+          # Build requires-python installer
+          Write-Host "Building requires-python installer..."
+          makensis /DVERSION=$VERSION `
+                   /DBUILD_DIR="build\windows" `
+                   /DOUTDIR="dist\installers" `
+                   scripts\windows\installer-requires-python.nsi
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to build requires-python installer"
+            exit 1
+          }
+          
+          Write-Host "Installer build complete"
+          Get-ChildItem dist\installers
       
-      - name: Compile installer (requires Python)
+      - name: Rename installers with version
+        shell: bash
         run: |
-          $version = "${{ steps.version.outputs.version }}"
-          $buildDir = "${{ github.workspace }}\build\windows"
-          $outDir = "${{ github.workspace }}\dist\windows"
-          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-          makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer-requires-python.nsi"
-          if (Test-Path "$outDir\lens-setup-requires-python.exe") {
-            Move-Item "$outDir\lens-setup-requires-python.exe" "$outDir\lens-setup-requires-python-$version.exe" -Force
-          }
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          cd dist/installers
+          
+          mv lens-setup-with-python.exe "lens-setup-with-python-${VERSION}.exe"
+          mv lens-setup-requires-python.exe "lens-setup-requires-python-${VERSION}.exe"
+          
+          echo "Installers renamed:"
+          ls -lh
       
-      - name: Upload installers as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-installers
-          path: |
-            dist/windows/lens-setup-*.exe
-          retention-days: 30
-      
-      - name: Upload to release (if release)
-        if: github.event_name == 'release'
+      - name: Create Release
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            dist/windows/lens-setup-*.exe
+            dist/installers/*.exe
+          body: |
+            ## Lens v${{ steps.get_version.outputs.VERSION }}
+            
+            ### Windows Installers
+            
+            **Self-Contained Installer (Recommended)**
+            - Includes Python runtime
+            - No additional software required
+            - Download: `lens-setup-with-python-${{ steps.get_version.outputs.VERSION }}.exe`
+            
+            **Python-Required Installer**
+            - Requires Python 3.x to be installed
+            - Smaller download size
+            - Download: `lens-setup-requires-python-${{ steps.get_version.outputs.VERSION }}.exe`
+            
+            ### Installation
+            
+            1. Download the appropriate installer
+            2. Run the installer and follow the prompts
+            3. Launch Lens from the Start Menu or Desktop shortcut
+            
+            See [CHANGELOG.md](https://github.com/hihanifm/awebees/blob/master/CHANGELOG.md) for full release notes.
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers-${{ steps.get_version.outputs.VERSION }}
+          path: dist/installers/*.exe
+          retention-days: 90
