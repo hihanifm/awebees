@@ -1,11 +1,13 @@
 """API routes for file selection."""
 
-from typing import List
+from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import logging
+import os
 
 from app.services.file_handler import validate_file_path, list_files_in_folder
+from app.core.constants import SAMPLE_FILES
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -115,4 +117,34 @@ async def select_files(request: FileSelectRequest):
         files=unique_files,
         count=len(unique_files)
     )
+
+
+@router.get("/samples")
+async def get_sample_files() -> Dict[str, Any]:
+    """
+    Get information about available sample files.
+    
+    Returns:
+        Dictionary with sample file information including paths and availability
+    """
+    logger.info("Files API: Getting sample files information")
+    
+    samples = []
+    for sample_id, sample_info in SAMPLE_FILES.items():
+        # Check if sample file exists
+        file_path = sample_info["path"]
+        exists = os.path.exists(file_path)
+        
+        samples.append({
+            "id": sample_id,
+            "name": sample_info["name"],
+            "description": sample_info["description"],
+            "path": file_path,
+            "size_mb": sample_info["size_mb"],
+            "exists": exists,
+            "recommended_insights": sample_info.get("recommended_insights", [])
+        })
+    
+    logger.info(f"Files API: Returning {len(samples)} sample file(s)")
+    return {"samples": samples}
 

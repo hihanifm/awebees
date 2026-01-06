@@ -172,6 +172,24 @@ Lens provides a modular plugin-based system for analyzing log files:
 - **Line Count**: Counts total lines, empty lines, and non-empty lines in log files
 - **Error Detector**: Detects ERROR and FATAL log lines in log files
 
+### Quick Start with Sample File
+
+**New to Lens?** Try it immediately with the included Android bugreport sample:
+
+1. Start the application (see Quick Start above)
+2. Click **"Load Sample File"** button on the main page
+3. Select one or more insights (try "Error Detector" or "Line Count")
+4. Click **"Analyze Files"** and watch real-time progress
+
+The sample file is a 57MB Android bugreport that's automatically extracted on first startup. Perfect for testing performance and exploring insights!
+
+**Command Line:**
+```bash
+# From backend directory
+cd backend
+python -m app.insights.error_detector samples/android-bugreport.txt
+```
+
 ### Usage
 
 1. **Enter File or Folder Paths**: 
@@ -179,6 +197,7 @@ Lens provides a modular plugin-based system for analyzing log files:
    - Folders will be scanned recursively
    - The last used paths will be prefilled automatically
    - Example: `/Users/username/logs/file.log` or `/var/log/app.log`
+   - **Tip:** Click "Load Sample File" to try the included Android bugreport
 
 2. **Select Insights**: 
    - Choose one or more insights to run on your files

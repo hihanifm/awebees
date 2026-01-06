@@ -37,6 +37,15 @@ mkdir -p "$PACKAGE_DIR/backend"
 cp -r "$PROJECT_ROOT/backend/app" "$PACKAGE_DIR/backend/"
 cp "$PROJECT_ROOT/backend/requirements.txt" "$PACKAGE_DIR/backend/"
 
+# Copy sample files
+echo "  Copying sample files..."
+if [ -d "$PROJECT_ROOT/backend/samples" ]; then
+    cp -r "$PROJECT_ROOT/backend/samples" "$PACKAGE_DIR/backend/"
+    echo "  ✓ Sample files included"
+else
+    echo "  ⚠ Warning: samples directory not found"
+fi
+
 # Copy frontend/out
 echo "  Copying frontend build..."
 # Create frontend directory first

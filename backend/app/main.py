@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import logging
 import os
+import zipfile
 from pathlib import Path
 from dotenv import load_dotenv
 from app.version import get_version
@@ -15,6 +16,56 @@ load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def extract_sample_files():
+    """Extract sample files on first startup if not already extracted."""
+    try:
+        # Get backend directory (app/main.py -> app/ -> backend/)
+        backend_dir = Path(__file__).parent.parent
+        samples_dir = backend_dir / "samples"
+        
+        # Sample file paths
+        zip_path = samples_dir / "android-bugreport.zip"
+        txt_path = samples_dir / "android-bugreport.txt"
+        
+        # Check if sample directory and zip exist
+        if not samples_dir.exists():
+            logger.warning(f"Samples directory not found: {samples_dir}")
+            return
+        
+        if not zip_path.exists():
+            logger.warning(f"Sample zip file not found: {zip_path}")
+            return
+        
+        # Extract if not already extracted
+        if not txt_path.exists():
+            logger.info(f"Extracting sample file: {zip_path.name}")
+            logger.info(f"This may take a moment (extracting ~57MB)...")
+            
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                # Extract only the .txt file, skip __MACOSX folder
+                for member in zip_ref.namelist():
+                    if member.endswith('.txt') and not member.startswith('__MACOSX'):
+                        # Extract with original name then rename
+                        extracted_path = samples_dir / member
+                        zip_ref.extract(member, samples_dir)
+                        
+                        # Rename to simplified name if different
+                        if extracted_path.name != txt_path.name:
+                            extracted_path.rename(txt_path)
+                        
+                        file_size_mb = txt_path.stat().st_size / (1024 * 1024)
+                        logger.info(f"✓ Sample file extracted: {txt_path.name} ({file_size_mb:.1f}MB)")
+                        logger.info(f"✓ Sample file location: {txt_path}")
+                        break
+        else:
+            file_size_mb = txt_path.stat().st_size / (1024 * 1024)
+            logger.info(f"✓ Sample file ready: {txt_path.name} ({file_size_mb:.1f}MB)")
+            logger.debug(f"  Location: {txt_path}")
+    
+    except Exception as e:
+        logger.error(f"Failed to extract sample files: {e}", exc_info=True)
 
 app = FastAPI(
     title="Lens API",
@@ -63,6 +114,9 @@ async def startup_event():
     plugin_manager = get_plugin_manager()
     plugin_manager.discover_insights()
     logger.info(f"Discovered {len(plugin_manager.get_all_insights())} insights")
+    
+    # Extract sample files if needed
+    extract_sample_files()
 
 
 @app.get("/api/health")

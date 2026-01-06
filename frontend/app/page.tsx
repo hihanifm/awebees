@@ -41,6 +41,7 @@ export default function Home() {
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
+  const [loadingSample, setLoadingSample] = useState(false);
 
   // Stream backend errors on mount
   useEffect(() => {
@@ -77,6 +78,34 @@ export default function Home() {
       } catch (err) {
         console.error("Error cancelling analysis:", err);
       }
+    }
+  };
+
+  const handleLoadSample = async () => {
+    setLoadingSample(true);
+    setError(null);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/files/samples`);
+      if (!response.ok) {
+        throw new Error("Failed to load sample files");
+      }
+      const data = await response.json();
+      
+      if (data.samples && data.samples.length > 0) {
+        const sample = data.samples[0]; // Get first available sample
+        if (sample.exists) {
+          setFilePaths(sample.path);
+          localStorage.setItem(LAST_PATH_KEY, sample.path);
+        } else {
+          setError("Sample file not extracted yet. Please restart the server.");
+        }
+      } else {
+        setError("No sample files available");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load sample file");
+    } finally {
+      setLoadingSample(false);
     }
   };
 
@@ -183,10 +212,21 @@ export default function Home() {
                 rows={2}
                 disabled={analyzing}
               />
-              <p className="text-xs text-muted-foreground">
-                Enter absolute paths to log files or folders on the server (e.g., /Users/username/logs/file.log or /var/log/app.log).
-                Folders will be scanned recursively. The last used paths will be prefilled automatically.
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Enter absolute paths to log files or folders on the server (e.g., /Users/username/logs/file.log or /var/log/app.log).
+                  Folders will be scanned recursively.
+                </p>
+                <Button
+                  onClick={handleLoadSample}
+                  disabled={analyzing || loadingSample}
+                  variant="outline"
+                  size="sm"
+                  className="ml-4 whitespace-nowrap"
+                >
+                  {loadingSample ? "Loading..." : "Load Sample File"}
+                </Button>
+              </div>
             </div>
           </section>
 
