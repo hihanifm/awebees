@@ -55,6 +55,23 @@ VERSION=$(cat "$PROJECT_ROOT/VERSION" | tr -d '[:space:]')
 echo "Version: $VERSION"
 echo ""
 
+# Update docs/index.html with new version
+echo "Updating download page (docs/index.html)..."
+DOCS_INDEX="$PROJECT_ROOT/docs/index.html"
+if [ -f "$DOCS_INDEX" ]; then
+    # Use sed to update version in all occurrences
+    # macOS and Linux sed have different syntax, so we use a temp file approach
+    sed "s/Version [0-9]\+\.[0-9]\+\.[0-9]\+/Version $VERSION/g" "$DOCS_INDEX" > "$DOCS_INDEX.tmp"
+    sed "s|/v[0-9]\+\.[0-9]\+\.[0-9]\+/|/v$VERSION/|g" "$DOCS_INDEX.tmp" > "$DOCS_INDEX.tmp2"
+    sed "s/lens-setup-with-python-[0-9]\+\.[0-9]\+\.[0-9]\+\.exe/lens-setup-with-python-$VERSION.exe/g" "$DOCS_INDEX.tmp2" > "$DOCS_INDEX.tmp3"
+    sed "s/lens-setup-requires-python-[0-9]\+\.[0-9]\+\.[0-9]\+\.exe/lens-setup-requires-python-$VERSION.exe/g" "$DOCS_INDEX.tmp3" > "$DOCS_INDEX"
+    rm -f "$DOCS_INDEX.tmp" "$DOCS_INDEX.tmp2" "$DOCS_INDEX.tmp3"
+    echo -e "${GREEN}✓ Download page updated to version $VERSION${NC}"
+else
+    echo -e "${YELLOW}Warning: docs/index.html not found, skipping update${NC}"
+fi
+echo ""
+
 # Build frontend
 echo "Building frontend..."
 cd "$PROJECT_ROOT/frontend"
