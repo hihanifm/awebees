@@ -208,7 +208,7 @@ export default function Home() {
                 value={filePaths}
                 onChange={(e) => setFilePaths(e.target.value)}
                 placeholder="Enter file or folder paths (one per line)&#10;Example:&#10;/Users/username/logs/file.log&#10;/var/log/app.log"
-                className="w-full h-[3.5rem] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm resize-y"
+                className="w-full h-[3.5rem] rounded-md border border-input bg-muted px-4 py-2 font-mono text-sm resize-y"
                 rows={2}
                 disabled={analyzing}
               />

@@ -106,7 +106,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
               <div className="text-xs font-semibold text-muted-foreground mb-2">
                 Activity History ({events.length} events):
               </div>
-              <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-2 bg-muted/20">
+              <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-4 bg-muted">
                 {events.map((event, index) => (
                   <div
                     key={index}
@@ -118,7 +118,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
                         ? "text-orange-600 dark:text-orange-400"
                         : event.type === "analysis_complete" || event.type === "result"
                         ? "text-green-600 dark:text-green-400"
-                        : "text-muted-foreground"
+                        : "text-foreground"
                     )}
                   >
                     [{event.type}] {event.message}
