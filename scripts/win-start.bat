@@ -88,19 +88,20 @@ set "BACKEND_PORT=34001"
 set "BACKEND_HOST=0.0.0.0"
 
 if exist "%PROJECT_ROOT%\backend\.env" (
-    for /f "usebackq tokens=1,* delims==" %%a in ("%PROJECT_ROOT%\backend\.env") do (
-        set "LINE=%%a"
-        if not "!LINE:~0,1!"=="#" (
-            if "%%a"=="PORT" (
-                set "BACKEND_PORT=%%b"
-                REM Remove any quotes from the value
-                set "BACKEND_PORT=!BACKEND_PORT:"=!"
-            )
-            if "%%a"=="HOST" (
-                set "BACKEND_HOST=%%b"
-                REM Remove any quotes from the value
-                set "BACKEND_HOST=!BACKEND_HOST:"=!"
-            )
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in ("%PROJECT_ROOT%\backend\.env") do (
+        if "%%a"=="PORT" (
+            set "BACKEND_PORT=%%b"
+            REM Remove quotes, spaces, and carriage returns
+            set "BACKEND_PORT=!BACKEND_PORT:"=!"
+            set "BACKEND_PORT=!BACKEND_PORT: =!"
+            for /f "tokens=*" %%x in ("!BACKEND_PORT!") do set "BACKEND_PORT=%%x"
+        )
+        if "%%a"=="HOST" (
+            set "BACKEND_HOST=%%b"
+            REM Remove quotes, spaces, and carriage returns
+            set "BACKEND_HOST=!BACKEND_HOST:"=!"
+            set "BACKEND_HOST=!BACKEND_HOST: =!"
+            for /f "tokens=*" %%x in ("!BACKEND_HOST!") do set "BACKEND_HOST=%%x"
         )
     )
 )
@@ -111,14 +112,13 @@ REM ===================================
 set "FRONTEND_PORT=34000"
 
 if exist "%PROJECT_ROOT%\frontend\.env.local" (
-    for /f "usebackq tokens=1,* delims==" %%a in ("%PROJECT_ROOT%\frontend\.env.local") do (
-        set "LINE=%%a"
-        if not "!LINE:~0,1!"=="#" (
-            if "%%a"=="PORT" (
-                set "FRONTEND_PORT=%%b"
-                REM Remove any quotes from the value
-                set "FRONTEND_PORT=!FRONTEND_PORT:"=!"
-            )
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in ("%PROJECT_ROOT%\frontend\.env.local") do (
+        if "%%a"=="PORT" (
+            set "FRONTEND_PORT=%%b"
+            REM Remove quotes, spaces, and carriage returns
+            set "FRONTEND_PORT=!FRONTEND_PORT:"=!"
+            set "FRONTEND_PORT=!FRONTEND_PORT: =!"
+            for /f "tokens=*" %%x in ("!FRONTEND_PORT!") do set "FRONTEND_PORT=%%x"
         )
     )
 )
@@ -138,14 +138,14 @@ if not exist "venv" (
 
 REM Start backend (will be restarted in prod mode after frontend build)
 if not "%MODE%"=="prod" (
-    start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host %BACKEND_HOST% --port %BACKEND_PORT% > "%BACKEND_LOG%" 2>&1"
+    start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host !BACKEND_HOST! --port !BACKEND_PORT! > "!BACKEND_LOG!" 2>&1"
     
     REM Wait for backend to start (uvicorn with reload needs more time)
     timeout /t 5 /nobreak >nul
     
     REM Get PID of the backend process (find python.exe listening on backend port)
     set "BACKEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
     
     REM Verify backend is running by checking if port is listening
     if "!BACKEND_PID!"=="" (
@@ -153,12 +153,12 @@ if not "%MODE%"=="prod" (
         timeout /t 2 /nobreak >nul
         
         REM Try again after additional wait
-        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
+        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
         
         if "!BACKEND_PID!"=="" (
-            echo Error: Backend failed to start - no process listening on port %BACKEND_PORT%
-            echo Check backend logs: %BACKEND_LOG%
-            type "%BACKEND_LOG%" 2>nul | more
+            echo Error: Backend failed to start - no process listening on port !BACKEND_PORT!
+            echo Check backend logs: !BACKEND_LOG!
+            type "!BACKEND_LOG!" 2>nul | more
             pause
             exit /b 1
         )
@@ -178,7 +178,7 @@ if not "%MODE%"=="prod" (
             pause
             exit /b 1
         ) else (
-            echo Backend appears to be running on port %BACKEND_PORT% ^(PID detection uncertain^)
+            echo Backend appears to be running on port !BACKEND_PORT! ^(PID detection uncertain^)
             REM Try to find actual python.exe process
             for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" ^| findstr "python.exe"') do (
                 set "BACKEND_PID=%%a"
@@ -187,7 +187,7 @@ if not "%MODE%"=="prod" (
             :pid_found
         )
     ) else (
-        echo Backend started ^(PID: !BACKEND_PID!, Port: %BACKEND_PORT%^)
+        echo Backend started ^(PID: !BACKEND_PID!, Port: !BACKEND_PORT!^)
     )
 )
 
@@ -226,14 +226,14 @@ if "%MODE%"=="prod" (
     REM Start backend with SERVE_FRONTEND enabled
     cd /d "%PROJECT_ROOT%\backend"
     set "SERVE_FRONTEND=true"
-    start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% > "%BACKEND_LOG%" 2>&1"
+    start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host !BACKEND_HOST! --port !BACKEND_PORT! > "!BACKEND_LOG!" 2>&1"
     
     REM Wait for backend to start
     timeout /t 5 /nobreak >nul
     
     REM Get PID of the backend process (find python.exe listening on backend port)
     set "BACKEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
     
     REM Verify backend is running by checking if port is listening
     if "!BACKEND_PID!"=="" (
@@ -241,12 +241,12 @@ if "%MODE%"=="prod" (
         timeout /t 2 /nobreak >nul
         
         REM Try again after additional wait
-        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
+        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
         
         if "!BACKEND_PID!"=="" (
-            echo Error: Backend failed to restart with frontend serving - no process listening on port %BACKEND_PORT%
-            echo Check backend logs: %BACKEND_LOG%
-            type "%BACKEND_LOG%" 2>nul | more
+            echo Error: Backend failed to restart with frontend serving - no process listening on port !BACKEND_PORT!
+            echo Check backend logs: !BACKEND_LOG!
+            type "!BACKEND_LOG!" 2>nul | more
             pause
             exit /b 1
         )
@@ -258,15 +258,15 @@ if "%MODE%"=="prod" (
         echo Warning: Backend PID verification failed, but checking if server is responding...
         
         REM Check if we can find any python process on the port
-        netstat -ano | findstr ":%BACKEND_PORT% " | findstr "LISTENING" >nul
+        netstat -ano | findstr ":!BACKEND_PORT! " | findstr "LISTENING" >nul
         if errorlevel 1 (
             echo Error: Backend process not found and port not listening
-            echo Check backend logs: %BACKEND_LOG%
-            type "%BACKEND_LOG%" 2>nul | more
+            echo Check backend logs: !BACKEND_LOG!
+            type "!BACKEND_LOG!" 2>nul | more
             pause
             exit /b 1
         ) else (
-            echo Backend appears to be running on port %BACKEND_PORT% ^(PID detection uncertain^)
+            echo Backend appears to be running on port !BACKEND_PORT! ^(PID detection uncertain^)
             REM Try to find actual python.exe process
             for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" ^| findstr "python.exe"') do (
                 set "BACKEND_PID=%%a"
@@ -281,33 +281,33 @@ if "%MODE%"=="prod" (
     
     echo.
     echo Services started successfully in PRODUCTION mode!
-    echo Backend ^(serving API + Frontend^): http://localhost:%BACKEND_PORT% ^(PID: !BACKEND_PID!^)
+    echo Backend ^(serving API + Frontend^): http://localhost:!BACKEND_PORT! ^(PID: !BACKEND_PID!^)
     echo.
     echo Logs:
-    echo   Backend: %BACKEND_LOG%
+    echo   Backend: !BACKEND_LOG!
     echo.
     echo Use 'scripts\win-status.bat' to check status
     echo Use 'scripts\win-stop.bat' to stop services
     
 ) else (
     REM Development mode: Start separate frontend server
-    echo Starting frontend in DEVELOPMENT mode on port %FRONTEND_PORT%...
+    echo Starting frontend in DEVELOPMENT mode on port !FRONTEND_PORT!...
     
     cd /d "%PROJECT_ROOT%\frontend"
-    start /b cmd /c "set PORT=%FRONTEND_PORT% && call npm run dev > "%FRONTEND_LOG%" 2>&1"
+    start /b cmd /c "set PORT=!FRONTEND_PORT! && call npm run dev > "!FRONTEND_LOG!" 2>&1"
     
     REM Wait for frontend to start (Next.js takes longer)
     timeout /t 5 /nobreak >nul
     
     REM Get PID of the frontend process (find node.exe listening on frontend port)
     set "FRONTEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%FRONTEND_PORT% " ^| findstr "LISTENING"') do set "FRONTEND_PID=%%a"
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!FRONTEND_PORT! " ^| findstr "LISTENING"') do set "FRONTEND_PID=%%a"
     
     REM Verify frontend is running by checking if PID exists and port is listening
     if "!FRONTEND_PID!"=="" (
-        echo Error: Frontend failed to start - no process listening on port %FRONTEND_PORT%
-        echo Check frontend logs: %FRONTEND_LOG%
-        type "%FRONTEND_LOG%" | more
+        echo Error: Frontend failed to start - no process listening on port !FRONTEND_PORT!
+        echo Check frontend logs: !FRONTEND_LOG!
+        type "!FRONTEND_LOG!" | more
         REM Clean up backend if frontend failed
         taskkill /PID !BACKEND_PID! /F >nul 2>&1
         pause
@@ -317,8 +317,8 @@ if "%MODE%"=="prod" (
     tasklist /FI "PID eq !FRONTEND_PID!" 2>nul | find "!FRONTEND_PID!" >nul
     if errorlevel 1 (
         echo Error: Frontend process not found
-        echo Check frontend logs: %FRONTEND_LOG%
-        type "%FRONTEND_LOG%" | more
+        echo Check frontend logs: !FRONTEND_LOG!
+        type "!FRONTEND_LOG!" | more
         REM Clean up backend if frontend failed
         taskkill /PID !BACKEND_PID! /F >nul 2>&1
         pause
@@ -331,12 +331,12 @@ if "%MODE%"=="prod" (
     
     echo.
     echo Services started successfully in DEVELOPMENT mode!
-    echo Backend: http://localhost:%BACKEND_PORT% ^(PID: !BACKEND_PID!^)
-    echo Frontend: http://localhost:%FRONTEND_PORT% ^(PID: !FRONTEND_PID!^)
+    echo Backend: http://localhost:!BACKEND_PORT! ^(PID: !BACKEND_PID!^)
+    echo Frontend: http://localhost:!FRONTEND_PORT! ^(PID: !FRONTEND_PID!^)
     echo.
     echo Logs:
-    echo   Backend: %BACKEND_LOG%
-    echo   Frontend: %FRONTEND_LOG%
+    echo   Backend: !BACKEND_LOG!
+    echo   Frontend: !FRONTEND_LOG!
     echo.
     echo Use 'scripts\win-status.bat' to check status
     echo Use 'scripts\win-stop.bat' to stop services
