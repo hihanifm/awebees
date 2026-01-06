@@ -125,8 +125,21 @@ del "%TEMP_MARKER%" >nul 2>&1
 REM Get the full path to the Python executable in the venv
 set "VENV_PYTHON=%INSTALL_ROOT%\venv\Scripts\python.exe"
 echo [DEBUG] Using Python from venv: %VENV_PYTHON%
-REM Use the venv Python directly instead of relying on PATH
-start "Lens Backend" /min cmd /c "cd /d %CD% && \"%VENV_PYTHON%\" -u -m uvicorn app.main:app --host 0.0.0.0 --port 34001 >> \"%LOG_FILE%\" 2>&1"
+REM Create a wrapper batch file to handle logging properly
+REM This avoids issues with redirection in nested cmd /c contexts
+set "WRAPPER_BAT=%TEMP%\lens-backend-wrapper-%RANDOM%.bat"
+(
+    echo @echo off
+    echo cd /d "%CD%"
+    echo echo [START] Backend starting at %%DATE%% %%TIME%% ^>^> "%LOG_FILE%"
+    echo "%VENV_PYTHON%" -u -m uvicorn app.main:app --host 0.0.0.0 --port 34001 ^>^> "%LOG_FILE%" 2^>^&1
+) > "%WRAPPER_BAT%"
+echo [DEBUG] Wrapper script created at: %WRAPPER_BAT%
+echo [DEBUG] Wrapper script will log to: %LOG_FILE%
+REM Display wrapper contents for debugging
+echo [DEBUG] Wrapper script contents:
+type "%WRAPPER_BAT%"
+start "Lens Backend" /min cmd /c "%WRAPPER_BAT%"
 if errorlevel 1 goto error_start_backend
 echo [DEBUG] Backend started
 echo [DEBUG] Log file location: %LOG_FILE%
