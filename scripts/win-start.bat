@@ -128,15 +128,25 @@ REM Start backend (will be restarted in prod mode after frontend build)
 if not "%MODE%"=="prod" (
     start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host %BACKEND_HOST% --port %BACKEND_PORT% > "%BACKEND_LOG%" 2>&1"
     
-    REM Get PID of the started process (approximate - get most recent cmd.exe)
-    timeout /t 1 /nobreak >nul
-    for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO LIST ^| find "PID:"') do set "BACKEND_PID=%%a"
+    REM Wait for backend to start
+    timeout /t 3 /nobreak >nul
     
-    REM Wait and check if backend started successfully
-    timeout /t 2 /nobreak >nul
+    REM Get PID of the backend process (find python.exe listening on backend port)
+    set "BACKEND_PID="
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING"') do set "BACKEND_PID=%%a"
+    
+    REM Verify backend is running by checking if PID exists and port is listening
+    if "!BACKEND_PID!"=="" (
+        echo Error: Backend failed to start - no process listening on port %BACKEND_PORT%
+        echo Check backend logs: %BACKEND_LOG%
+        type "%BACKEND_LOG%" | more
+        pause
+        exit /b 1
+    )
+    
     tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
     if errorlevel 1 (
-        echo Error: Backend failed to start
+        echo Error: Backend process not found
         echo Check backend logs: %BACKEND_LOG%
         type "%BACKEND_LOG%" | more
         pause
@@ -183,15 +193,25 @@ if "%MODE%"=="prod" (
     set "SERVE_FRONTEND=true"
     start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% > "%BACKEND_LOG%" 2>&1"
     
-    REM Get PID of the started process
-    timeout /t 1 /nobreak >nul
-    for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO LIST ^| find "PID:"') do set "BACKEND_PID=%%a"
+    REM Wait for backend to start
+    timeout /t 3 /nobreak >nul
     
-    REM Wait and verify backend started
-    timeout /t 2 /nobreak >nul
+    REM Get PID of the backend process (find python.exe listening on backend port)
+    set "BACKEND_PID="
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%BACKEND_PORT% " ^| findstr "LISTENING"') do set "BACKEND_PID=%%a"
+    
+    REM Verify backend is running by checking if PID exists and port is listening
+    if "!BACKEND_PID!"=="" (
+        echo Error: Backend failed to restart with frontend serving - no process listening on port %BACKEND_PORT%
+        echo Check backend logs: %BACKEND_LOG%
+        type "%BACKEND_LOG%" | more
+        pause
+        exit /b 1
+    )
+    
     tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
     if errorlevel 1 (
-        echo Error: Backend failed to restart with frontend serving
+        echo Error: Backend process not found
         echo Check backend logs: %BACKEND_LOG%
         type "%BACKEND_LOG%" | more
         pause
@@ -218,15 +238,27 @@ if "%MODE%"=="prod" (
     cd /d "%PROJECT_ROOT%\frontend"
     start /b cmd /c "set PORT=%FRONTEND_PORT% && call npm run dev > "%FRONTEND_LOG%" 2>&1"
     
-    REM Get PID of the started process
-    timeout /t 1 /nobreak >nul
-    for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq node.exe" /FO LIST ^| find "PID:"') do set "FRONTEND_PID=%%a"
+    REM Wait for frontend to start (Next.js takes longer)
+    timeout /t 5 /nobreak >nul
     
-    REM Wait and check if frontend started successfully
-    timeout /t 3 /nobreak >nul
+    REM Get PID of the frontend process (find node.exe listening on frontend port)
+    set "FRONTEND_PID="
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%FRONTEND_PORT% " ^| findstr "LISTENING"') do set "FRONTEND_PID=%%a"
+    
+    REM Verify frontend is running by checking if PID exists and port is listening
+    if "!FRONTEND_PID!"=="" (
+        echo Error: Frontend failed to start - no process listening on port %FRONTEND_PORT%
+        echo Check frontend logs: %FRONTEND_LOG%
+        type "%FRONTEND_LOG%" | more
+        REM Clean up backend if frontend failed
+        taskkill /PID !BACKEND_PID! /F >nul 2>&1
+        pause
+        exit /b 1
+    )
+    
     tasklist /FI "PID eq !FRONTEND_PID!" 2>nul | find "!FRONTEND_PID!" >nul
     if errorlevel 1 (
-        echo Error: Frontend failed to start
+        echo Error: Frontend process not found
         echo Check frontend logs: %FRONTEND_LOG%
         type "%FRONTEND_LOG%" | more
         REM Clean up backend if frontend failed
