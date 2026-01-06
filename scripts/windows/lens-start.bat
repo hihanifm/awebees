@@ -16,6 +16,13 @@ echo [DEBUG] Creating logs directory
 if not exist "logs" mkdir logs
 set "LOG_FILE=%CD%\logs\backend.log"
 echo [DEBUG] Log file will be: %LOG_FILE%
+REM Test if we can write to the log file
+echo [DEBUG] Testing log file write access... > "%LOG_FILE%"
+if errorlevel 1 (
+    echo [DEBUG] WARNING: Cannot write to log file: %LOG_FILE%
+) else (
+    echo [DEBUG] Log file write test successful
+)
 
 REM Check if Python directory exists (self-contained variant)
 echo [DEBUG] Checking for embedded Python at: python\python.exe
@@ -74,6 +81,9 @@ goto start_backend
 :start_backend
 echo [DEBUG] Setting SERVE_FRONTEND=true
 set SERVE_FRONTEND=true
+REM Store installation root before changing directories
+set "INSTALL_ROOT=%CD%"
+echo [DEBUG] Installation root: %INSTALL_ROOT%
 echo [DEBUG] Changing to backend directory
 cd /d backend
 if errorlevel 1 goto error_backend_dir
@@ -81,9 +91,25 @@ echo [DEBUG] Current directory: %CD%
 echo [DEBUG] Starting backend server
 echo Starting Lens backend on http://127.0.0.1:34001...
 echo [DEBUG] Logs will be written to: %LOG_FILE%
-start "Lens Backend" /min cmd /c "cd /d %CD% && python -m uvicorn app.main:app --host 0.0.0.0 --port 34001 >> \"%LOG_FILE%\" 2>&1"
+REM Ensure log file exists and is writable
+if not exist "%LOG_FILE%" (
+    echo. > "%LOG_FILE%"
+    if errorlevel 1 (
+        echo [DEBUG] ERROR: Cannot create log file: %LOG_FILE%
+        goto error_start_backend
+    )
+)
+REM Use Python unbuffered mode (-u) and ensure proper redirection
+REM The -u flag makes Python output unbuffered, so logs appear immediately
+REM Write a startup marker to the log file
+echo ======================================== >> "%LOG_FILE%"
+echo Lens Backend Started: %DATE% %TIME% >> "%LOG_FILE%"
+echo ======================================== >> "%LOG_FILE%"
+start "Lens Backend" /min cmd /c "cd /d %CD% && python -u -m uvicorn app.main:app --host 0.0.0.0 --port 34001 >> \"%LOG_FILE%\" 2>&1"
 if errorlevel 1 goto error_start_backend
 echo [DEBUG] Backend started
+echo [DEBUG] Log file location: %LOG_FILE%
+echo [DEBUG] You can view logs with: lens-logs.bat
 echo [DEBUG] Waiting 3 seconds for backend to start...
 timeout /t 3 /nobreak >nul
 echo [DEBUG] Wait complete
