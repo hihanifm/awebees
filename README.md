@@ -6,8 +6,8 @@ A local web application for analyzing log files with a plugin-based insight syst
 
 ## Architecture
 
-- **Frontend**: Next.js App Router + TypeScript + shadcn/ui + Tailwind CSS (Port 5000)
-- **Backend**: FastAPI + Python (Port 5001)
+- **Frontend**: Next.js App Router + TypeScript + shadcn/ui + Tailwind CSS (Port 34000)
+- **Backend**: FastAPI + Python (Port 34001)
 
 ## Quick Start
 
