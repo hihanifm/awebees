@@ -1,0 +1,128 @@
+; NSIS Installer Script for Lens (Requires Python)
+; This installer requires Python to be pre-installed
+
+!include "MUI2.nsh"
+
+; Installer Information
+Name "Lens (Requires Python)"
+!ifdef OUTDIR
+OutFile "${OUTDIR}\lens-setup-requires-python.exe"
+!else
+OutFile "lens-setup-requires-python.exe"
+!endif
+InstallDir "$PROGRAMFILES\Lens"
+RequestExecutionLevel admin
+
+; Build directory (passed from GitHub Actions)
+!ifndef BUILD_DIR
+!define BUILD_DIR "build\windows"
+!endif
+
+; Version information (will be replaced by build script)
+!define VERSION "2.6.0"
+!define APP_NAME "Lens"
+!define PUBLISHER "Lens Development Team"
+!define APP_URL "https://github.com/hihanifm/awebees"
+
+VIProductVersion "${VERSION}.0"
+VIAddVersionKey "ProductName" "${APP_NAME}"
+VIAddVersionKey "ProductVersion" "${VERSION}"
+VIAddVersionKey "CompanyName" "${PUBLISHER}"
+VIAddVersionKey "FileVersion" "${VERSION}"
+VIAddVersionKey "FileDescription" "${APP_NAME} Installer (Requires Python)"
+VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
+
+; Interface Settings
+!define MUI_ABORTWARNING
+!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
+!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+
+; Pages
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "${NSISDIR}\Docs\Modern UI\License.txt"
+!insertmacro MUI_PAGE_COMPONENTS
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_WELCOME
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+; Languages
+!insertmacro MUI_LANGUAGE "English"
+
+; Function to check for Python
+Function CheckPython
+    ClearErrors
+    ExecWait 'python --version' $0
+    IfErrors 0 PythonFound
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION \
+        "Python is not installed or not in PATH.$\n$\n" \
+        "Lens requires Python 3.x to be installed.$\n" \
+        "Would you like to open the Python download page?" \
+        IDNO NoPython
+    ExecShell "open" "https://www.python.org/downloads/"
+    Abort
+    NoPython:
+    Abort
+    PythonFound:
+FunctionEnd
+
+; Installer Sections
+Section "Lens Application" SecApp
+    SectionIn RO
+    
+    ; Check for Python before installation
+    Call CheckPython
+    
+    SetOutPath "$INSTDIR"
+    
+    ; Extract package contents
+    File /r "${BUILD_DIR}\lens-app-requires-python\*"
+    
+    ; Create virtual environment and install dependencies
+    DetailPrint "Creating virtual environment..."
+    ExecWait 'python -m venv "$INSTDIR\venv"'
+    
+    DetailPrint "Installing dependencies..."
+    ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m pip install --upgrade pip'
+    ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m pip install -r "$INSTDIR\backend\requirements.txt"'
+    
+    ; Create Start Menu shortcuts
+    CreateDirectory "$SMPROGRAMS\Lens"
+    CreateShortcut "$SMPROGRAMS\Lens\Lens.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
+    CreateShortcut "$SMPROGRAMS\Lens\Stop Lens.lnk" "$INSTDIR\lens-stop.bat" "" "$INSTDIR\lens-stop.bat" 0
+    CreateShortcut "$SMPROGRAMS\Lens\Uninstall Lens.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
+    
+    ; Create desktop shortcut (optional)
+    CreateShortcut "$DESKTOP\Lens.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
+    
+    ; Write registry keys for Add/Remove Programs
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "DisplayName" "${APP_NAME}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "DisplayVersion" "${VERSION}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "Publisher" "${PUBLISHER}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "URLInfoAbout" "${APP_URL}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "UninstallString" "$INSTDIR\Uninstall.exe"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "NoRepair" 1
+    
+    ; Create uninstaller
+    WriteUninstaller "$INSTDIR\Uninstall.exe"
+SectionEnd
+
+; Uninstaller Section
+Section "Uninstall"
+    ; Remove files
+    RMDir /r "$INSTDIR"
+    
+    ; Remove shortcuts
+    RMDir /r "$SMPROGRAMS\Lens"
+    Delete "$DESKTOP\Lens.lnk"
+    
+    ; Remove registry keys
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens"
+SectionEnd
+

@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# Prepare individual Windows package structure
+# Usage: prepare-package.sh <variant> <version> <build_dir> <dist_dir>
+# Variant: "with-python" or "requires-python"
+
+set -e
+
+VARIANT=$1
+VERSION=$2
+BUILD_DIR=$3
+DIST_DIR=$4
+
+if [ -z "$VARIANT" ] || [ -z "$VERSION" ] || [ -z "$BUILD_DIR" ] || [ -z "$DIST_DIR" ]; then
+    echo "Usage: prepare-package.sh <variant> <version> <build_dir> <dist_dir>"
+    exit 1
+fi
+
+if [ "$VARIANT" != "with-python" ] && [ "$VARIANT" != "requires-python" ]; then
+    echo "Error: Variant must be 'with-python' or 'requires-python'"
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PACKAGE_DIR="$BUILD_DIR/lens-app-$VARIANT"
+
+echo "Preparing package: $VARIANT"
+
+# Create package directory
+rm -rf "$PACKAGE_DIR"
+mkdir -p "$PACKAGE_DIR"
+
+# Copy backend code
+echo "  Copying backend code..."
+cp -r "$PROJECT_ROOT/backend/app" "$PACKAGE_DIR/backend/"
+cp "$PROJECT_ROOT/backend/requirements.txt" "$PACKAGE_DIR/backend/"
+
+# Copy frontend/out
+echo "  Copying frontend build..."
+cp -r "$PROJECT_ROOT/frontend/out" "$PACKAGE_DIR/frontend/"
+
+# Copy Windows launcher scripts
+echo "  Copying Windows launcher scripts..."
+cp "$SCRIPT_DIR/lens-start.bat" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/lens-stop.bat" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/lens-status.bat" "$PACKAGE_DIR/"
+
+# Read build config
+CONFIG_FILE="$SCRIPT_DIR/build-config.json"
+if [ -f "$CONFIG_FILE" ]; then
+    PYTHON_VERSION=$(grep -o '"python_version": "[^"]*"' "$CONFIG_FILE" | cut -d'"' -f4)
+else
+    PYTHON_VERSION="3.11.9"
+fi
+
+if [ "$VARIANT" = "with-python" ]; then
+    echo "  Downloading embeddable Python..."
+    PYTHON_EMBED_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-embed-amd64.zip"
+    PYTHON_ZIP="$BUILD_DIR/python-embed.zip"
+    
+    if [ ! -f "$PYTHON_ZIP" ]; then
+        curl -L -o "$PYTHON_ZIP" "$PYTHON_EMBED_URL" || {
+            echo "Error: Failed to download embeddable Python"
+            exit 1
+        }
+    fi
+    
+    # Extract Python to package directory
+    unzip -q "$PYTHON_ZIP" -d "$PACKAGE_DIR/python"
+    
+    # Create python._pth file for embedded Python
+    PYTHON_ZIP_NAME="python${PYTHON_VERSION//./}.zip"
+    cat > "$PACKAGE_DIR/python/python._pth" << EOF
+$PYTHON_ZIP_NAME
+.
+import site
+EOF
+    
+    echo "  Note: Virtual environment will be created on Windows during installation"
+    echo "  Embedded Python will be used to install dependencies"
+else
+    echo "  Creating virtual environment structure..."
+    # For requires-python, we'll create venv on Windows during installation
+    # For now, just create the structure
+    mkdir -p "$PACKAGE_DIR/venv"
+    echo "  Dependencies will be installed on Windows during setup"
+fi
+
+# Install Python dependencies (only for with-python variant on Linux/Mac)
+if [ "$VARIANT" = "with-python" ]; then
+    echo "  Installing Python dependencies..."
+    # Note: We can't actually install Windows Python packages on Linux/Mac
+    # The installer will handle this, or we can create a requirements.txt marker
+    echo "  Dependencies will be installed on Windows (embedded Python requires Windows environment)"
+fi
+
+# Create ZIP archive
+echo "  Creating ZIP archive..."
+cd "$BUILD_DIR"
+ZIP_NAME="lens-package-${VARIANT}-${VERSION}.zip"
+zip -r "$DIST_DIR/$ZIP_NAME" "lens-app-$VARIANT" > /dev/null
+
+echo "  ✓ Package created: $ZIP_NAME"
+

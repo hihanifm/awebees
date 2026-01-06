@@ -1,0 +1,12 @@
+{
+  "app_name": "Lens",
+  "app_publisher": "Lens Development Team",
+  "app_url": "https://github.com/hihanifm/awebees",
+  "default_install_dir": "C:\\Program Files\\Lens",
+  "python_version": "3.11.9",
+  "python_embed_url": "https://www.python.org/ftp/python/{version}/python-{version}-embed-amd64.zip",
+  "start_menu_folder": "Lens",
+  "create_desktop_shortcut": true,
+  "create_start_menu_shortcut": true
+}
+
