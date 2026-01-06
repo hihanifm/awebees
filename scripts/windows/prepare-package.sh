@@ -39,6 +39,10 @@ cp "$PROJECT_ROOT/backend/requirements.txt" "$PACKAGE_DIR/backend/"
 
 # Copy frontend/out
 echo "  Copying frontend build..."
+# Create frontend directory first
+mkdir -p "$PACKAGE_DIR/frontend"
+# Copy the entire 'out' directory to 'frontend/out'
+# Using trailing slash on source to copy contents, but we want the directory itself
 cp -r "$PROJECT_ROOT/frontend/out" "$PACKAGE_DIR/frontend/"
 
 # Copy Windows launcher scripts
