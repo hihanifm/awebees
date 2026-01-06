@@ -30,17 +30,23 @@ jobs:
           $packageRequiresPython = "lens-package-requires-python-${{ steps.version.outputs.version }}.zip"
           
           # Try to download from release assets
-          gh release download ${{ github.event.release.tag_name }} --pattern "$packageWithPython" --pattern "$packageRequiresPython" || echo "Packages not found in release, will build from source"
+          gh release download ${{ github.event.release.tag_name }} --pattern "$packageWithPython" --pattern "$packageRequiresPython" || echo "Packages not found in release, will use packages from repository"
       
-      - name: Build packages from source (if not in release)
-        if: github.event_name != 'release' || !(Test-Path "lens-package-*.zip")
+      - name: Verify packages exist
         run: |
-          # This would require Node.js and Python on Windows runner
-          # For now, we assume packages are already prepared
-          echo "Packages should be prepared locally and committed to repository"
-          if (-not (Test-Path "dist/windows/lens-package-*.zip")) {
-            Write-Error "Packages not found. Please run build-windows.sh locally first."
+          $version = "${{ steps.version.outputs.version }}"
+          $packageWithPython = "dist/windows/lens-package-with-python-$version.zip"
+          $packageRequiresPython = "dist/windows/lens-package-requires-python-$version.zip"
+          
+          # Check if packages exist in repository
+          if (-not (Test-Path $packageWithPython) -and -not (Test-Path "lens-package-with-python-$version.zip")) {
+            Write-Error "Package not found: $packageWithPython. Please run build-windows.sh locally first and commit the packages."
           }
+          if (-not (Test-Path $packageRequiresPython) -and -not (Test-Path "lens-package-requires-python-$version.zip")) {
+            Write-Error "Package not found: $packageRequiresPython. Please run build-windows.sh locally first and commit the packages."
+          }
+          
+          echo "Packages verified successfully"
       
       - name: Install NSIS
         uses: martinrotter/install-nsis@v1.0.0
