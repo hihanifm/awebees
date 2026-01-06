@@ -185,7 +185,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-orange-50/30 via-background to-amber-50/20 font-sans dark:from-orange-950/10 dark:via-background dark:to-amber-950/5">
       <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 py-8 px-4 mx-auto bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm border-x border-orange-100/50 dark:border-orange-900/20">
-        <div className="bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 dark:from-orange-950/50 dark:via-amber-950/30 dark:to-orange-950/50 border-l-4 border-orange-500 rounded-lg px-6 py-4 shadow-md">
+        <div className="bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 dark:from-orange-950/50 dark:via-amber-950/30 dark:to-orange-950/50 -mx-4 px-6 py-4">
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 bg-clip-text text-transparent dark:from-orange-400 dark:via-amber-400 dark:to-orange-300">
             Lens
           </h1>
