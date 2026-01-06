@@ -72,8 +72,13 @@ jobs:
       - name: Install NSIS
         run: |
           # Install NSIS using Chocolatey (if available) or download directly
+          $nsisPath = $null
+          
           if (Get-Command choco -ErrorAction SilentlyContinue) {
+            Write-Host "Installing NSIS via Chocolatey..."
             choco install nsis -y
+            # Chocolatey installs to Program Files (x86)
+            $nsisPath = "C:\Program Files (x86)\NSIS"
           } else {
             # Download and install NSIS manually
             $nsisUrl = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.09/nsis-3.09-setup.exe/download"
@@ -82,15 +87,28 @@ jobs:
             Invoke-WebRequest -Uri $nsisUrl -OutFile $nsisInstaller -UseBasicParsing
             Write-Host "Installing NSIS (silent mode)..."
             Start-Process -FilePath $nsisInstaller -ArgumentList "/S" -Wait -NoNewWindow
-            # Add NSIS to PATH
             $nsisPath = "C:\Program Files (x86)\NSIS"
-            if (Test-Path $nsisPath) {
-              $env:PATH = "$nsisPath;$env:PATH"
-              echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
-            }
           }
+          
+          # Add NSIS to PATH for current session and future steps
+          if (Test-Path $nsisPath) {
+            $env:PATH = "$nsisPath;$env:PATH"
+            echo "$nsisPath" >> $env:GITHUB_PATH
+            Write-Host "NSIS installed at: $nsisPath"
+            Write-Host "Added to PATH: $nsisPath"
+          } else {
+            Write-Error "NSIS installation path not found: $nsisPath"
+            exit 1
+          }
+          
           # Verify NSIS installation
-          makensis /VERSION
+          Write-Host "Verifying NSIS installation..."
+          & "$nsisPath\makensis.exe" /VERSION
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "NSIS verification failed"
+            exit 1
+          }
+          Write-Host "NSIS verified successfully"
       
       - name: Extract packages
         run: |
