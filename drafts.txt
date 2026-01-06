@@ -1,0 +1,67 @@
+@echo off
+setlocal EnableExtensions EnableDelayedExpansion
+
+REM --- Install directory (read-only; safe to read) ---
+set "INSTALL_DIR=%~dp0"
+REM Remove trailing backslash just for neat path joins (optional; safe)
+if "%INSTALL_DIR:~-1%"=="\" set "INSTALL_DIR=%INSTALL_DIR:~0,-1%"
+
+echo [DEBUG] INSTALL_DIR="%INSTALL_DIR%"
+
+REM --- User runtime directory (writable) ---
+set "RUNTIME_DIR=%LOCALAPPDATA%\Lens"
+set "VENV_DIR=%RUNTIME_DIR%\venv"
+echo [DEBUG] RUNTIME_DIR="%RUNTIME_DIR%"
+echo [DEBUG] VENV_DIR="%VENV_DIR%"
+
+if not exist "%RUNTIME_DIR%" mkdir "%RUNTIME_DIR%" >nul 2>&1
+
+REM --- Prefer embedded Python if shipped ---
+set "EMBED_PY=%INSTALL_DIR%\python\python.exe"
+if exist "%EMBED_PY%" (
+  echo Starting Lens (Self-contained with Python)...
+  set "PYTHON_EXE=%EMBED_PY%"
+) else (
+  echo Starting Lens (Requires Python)...
+  where python >nul 2>&1 || (
+    echo [ERROR] Python not found in PATH and embedded Python not bundled.
+    pause
+    exit /b 1
+  )
+  set "PYTHON_EXE=python"
+)
+echo [DEBUG] PYTHON_EXE="%PYTHON_EXE%"
+
+REM --- Create/activate venv in user space ---
+if exist "%VENV_DIR%\Scripts\activate.bat" (
+  call "%VENV_DIR%\Scripts\activate.bat" || (echo [ERROR] Failed to activate venv & pause & exit /b 1)
+) else (
+  echo [DEBUG] Creating venv at "%VENV_DIR%"
+  "%PYTHON_EXE%" -m venv "%VENV_DIR%" || (echo [ERROR] Failed to create venv & pause & exit /b 1)
+  call "%VENV_DIR%\Scripts\activate.bat" || (echo [ERROR] Failed to activate venv & pause & exit /b 1)
+
+  echo [DEBUG] Installing dependencies from install dir...
+  python -m pip install --upgrade pip
+  python -m pip install -r "%INSTALL_DIR%\backend\requirements.txt" || (echo [ERROR] pip install failed & pause & exit /b 1)
+)
+
+REM --- Env for serving frontend from backend ---
+set "SERVE_FRONTEND=true"
+
+REM --- Start backend ---
+echo Starting Lens backend on http://localhost:34001...
+pushd "%INSTALL_DIR%\backend" || (echo [ERROR] Failed to enter backend dir & pause & exit /b 1)
+
+REM Use the venv's python explicitly to avoid PATH surprises:
+start "Lens Backend" /min "%VENV_DIR%\Scripts\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 34001
+
+popd
+
+timeout /t 2 /nobreak >nul
+start "" "http://localhost:34001"
+
+echo.
+echo Lens is starting...
+echo Backend: http://localhost:34001
+echo.
+pause >nul
