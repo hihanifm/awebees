@@ -80,6 +80,11 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 mkdir -p "$DIST_DIR"
 
+# Remove old ZIP files to prevent duplication issues
+echo "Cleaning old packages..."
+rm -f "$DIST_DIR"/*.zip
+rm -rf "$DIST_DIR"/lens-app-*
+
 echo -e "${GREEN}✓ Build directories created${NC}"
 echo ""
 
