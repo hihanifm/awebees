@@ -6,12 +6,13 @@ setlocal enabledelayedexpansion
 
 REM Get the directory where this script is located
 set "SCRIPT_DIR=%~dp0"
-set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
+REM Remove trailing backslash if present
+if "!SCRIPT_DIR:~-1!"=="\" set "SCRIPT_DIR=!SCRIPT_DIR:~0,-1!"
 
 REM Check if Python directory exists (self-contained variant)
-if exist "%SCRIPT_DIR%\python\python.exe" (
+if exist "!SCRIPT_DIR!\python\python.exe" (
     echo Starting Lens (Self-contained with Python)...
-    set "PYTHON_EXE=%SCRIPT_DIR%\python\python.exe"
+    set "PYTHON_EXE=!SCRIPT_DIR!\python\python.exe"
     set "VARIANT=with-python"
 ) else (
     echo Starting Lens (Requires Python)...
@@ -28,14 +29,14 @@ if exist "%SCRIPT_DIR%\python\python.exe" (
 )
 
 REM Change to script directory
-cd /d "%SCRIPT_DIR%"
+cd /d "!SCRIPT_DIR!"
 
 REM Activate virtual environment or create it
 if exist "venv\Scripts\activate.bat" (
     call venv\Scripts\activate.bat
 ) else (
     echo Creating virtual environment...
-    %PYTHON_EXE% -m venv venv
+    "!PYTHON_EXE!" -m venv venv
     if errorlevel 1 (
         echo ERROR: Failed to create virtual environment
         pause
@@ -57,7 +58,7 @@ set SERVE_FRONTEND=true
 
 REM Start backend
 echo Starting Lens backend on http://localhost:34001...
-cd /d "%SCRIPT_DIR%\backend"
+cd /d "!SCRIPT_DIR!\backend"
 start "Lens Backend" /min python -m uvicorn app.main:app --host 0.0.0.0 --port 34001
 
 REM Wait a moment for server to start
