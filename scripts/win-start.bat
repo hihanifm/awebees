@@ -91,8 +91,16 @@ if exist "%PROJECT_ROOT%\backend\.env" (
     for /f "usebackq tokens=1,* delims==" %%a in ("%PROJECT_ROOT%\backend\.env") do (
         set "LINE=%%a"
         if not "!LINE:~0,1!"=="#" (
-            if "%%a"=="PORT" set "BACKEND_PORT=%%b"
-            if "%%a"=="HOST" set "BACKEND_HOST=%%b"
+            if "%%a"=="PORT" (
+                set "BACKEND_PORT=%%b"
+                REM Remove any quotes from the value
+                set "BACKEND_PORT=!BACKEND_PORT:"=!"
+            )
+            if "%%a"=="HOST" (
+                set "BACKEND_HOST=%%b"
+                REM Remove any quotes from the value
+                set "BACKEND_HOST=!BACKEND_HOST:"=!"
+            )
         )
     )
 )
@@ -106,7 +114,11 @@ if exist "%PROJECT_ROOT%\frontend\.env.local" (
     for /f "usebackq tokens=1,* delims==" %%a in ("%PROJECT_ROOT%\frontend\.env.local") do (
         set "LINE=%%a"
         if not "!LINE:~0,1!"=="#" (
-            if "%%a"=="PORT" set "FRONTEND_PORT=%%b"
+            if "%%a"=="PORT" (
+                set "FRONTEND_PORT=%%b"
+                REM Remove any quotes from the value
+                set "FRONTEND_PORT=!FRONTEND_PORT:"=!"
+            )
         )
     )
 )
