@@ -115,6 +115,17 @@ async def startup_event():
     plugin_manager.discover_insights()
     logger.info(f"Discovered {len(plugin_manager.get_all_insights())} insights")
     
+    # Check ripgrep availability
+    from app.utils.ripgrep import is_ripgrep_available
+    if is_ripgrep_available():
+        logger.info("✓ Ripgrep is available for fast pattern matching (10-100x faster)")
+    else:
+        logger.warning("⚠ Ripgrep not found. Install for 10-100x faster pattern matching:")
+        logger.warning("  - macOS: brew install ripgrep")
+        logger.warning("  - Linux (Debian/Ubuntu): sudo apt-get install ripgrep")
+        logger.warning("  - Linux (Fedora): sudo dnf install ripgrep")
+        logger.warning("  - More info: https://github.com/BurntSushi/ripgrep#installation")
+    
     # Extract sample files if needed
     extract_sample_files()
 

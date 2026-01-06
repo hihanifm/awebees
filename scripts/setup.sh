@@ -85,6 +85,46 @@ else
 fi
 
 echo ""
+
+# Check and install ripgrep
+echo "=== Optional Tools ==="
+echo "Checking for ripgrep..."
+if ! command -v rg &> /dev/null; then
+    echo "ripgrep not found. Installing for 10-100x faster pattern matching..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        if command -v brew &> /dev/null; then
+            brew install ripgrep
+            echo "✓ ripgrep installed via Homebrew"
+        else
+            echo "⚠ Homebrew not found. Please install ripgrep manually:"
+            echo "  brew install ripgrep"
+            echo "  Or visit: https://github.com/BurntSushi/ripgrep#installation"
+        fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y ripgrep
+            echo "✓ ripgrep installed via apt"
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y ripgrep
+            echo "✓ ripgrep installed via dnf"
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -S ripgrep
+            echo "✓ ripgrep installed via pacman"
+        else
+            echo "⚠ Package manager not detected. Please install ripgrep manually:"
+            echo "  https://github.com/BurntSushi/ripgrep#installation"
+        fi
+    else
+        echo "⚠ Unsupported OS. Please install ripgrep manually:"
+        echo "  https://github.com/BurntSushi/ripgrep#installation"
+    fi
+else
+    echo "✓ ripgrep is already installed ($(rg --version | head -1))"
+fi
+
+echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "You can now start the services with:"

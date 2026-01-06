@@ -13,15 +13,8 @@ INSIGHT_CONFIG = {
         "description": "Detects ERROR and FATAL log lines in log files"
     },
     "filters": {
-        "file_patterns": None,  # Process all files
-        "line_pattern": r"\b(ERROR|FATAL)\b",
-        "regex_flags": "IGNORECASE",
-        "reading_mode": "lines"
-    },
-    "default_file_paths": [
-        # Add your default test file paths here for quick testing, e.g.:
-        # "/path/to/test/logfile.log",
-    ]
+        "line_pattern": r"\b(ERROR|FATAL)\b"
+    }
 }
 
 

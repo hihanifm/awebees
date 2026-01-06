@@ -31,8 +31,8 @@ class ConfigBasedInsight(Insight):
                 "file_patterns": [r"\\.log$"],  # Optional
                 "line_pattern": r"ERROR",       # Required
                 "regex_flags": "IGNORECASE",    # Optional
-                "reading_mode": "lines",        # Optional: "lines" or "chunks"
-                "chunk_size": 1048576           # Optional
+                "reading_mode": "ripgrep",      # Optional: "ripgrep" (default, 10-100x faster), "chunks", or "lines"
+                "chunk_size": 1048576           # Optional (only for chunks mode)
             }
         }
         
@@ -77,7 +77,7 @@ class ConfigBasedInsight(Insight):
         self._file_patterns = filters.get("file_patterns")
         self._line_pattern = filters.get("line_pattern")
         self._regex_flags_str = filters.get("regex_flags", "")
-        self._reading_mode_str = filters.get("reading_mode", "lines")
+        self._reading_mode_str = filters.get("reading_mode", "ripgrep")  # Default to ripgrep for best performance
         self._chunk_size = filters.get("chunk_size", 1048576)
         
         # Parse regex flags
@@ -137,7 +137,7 @@ class ConfigBasedInsight(Insight):
         Parse reading mode from string.
         
         Args:
-            mode_str: "lines" or "chunks"
+            mode_str: "lines", "chunks", or "ripgrep"
             
         Returns:
             ReadingMode enum value
@@ -147,9 +147,11 @@ class ConfigBasedInsight(Insight):
             return ReadingMode.LINES
         elif mode_str == "chunks":
             return ReadingMode.CHUNKS
+        elif mode_str == "ripgrep":
+            return ReadingMode.RIPGREP
         else:
-            logger.warning(f"Unknown reading mode: {mode_str}, defaulting to 'lines'")
-            return ReadingMode.LINES
+            logger.warning(f"Unknown reading mode: {mode_str}, defaulting to 'ripgrep'")
+            return ReadingMode.RIPGREP
     
     @property
     def id(self) -> str:

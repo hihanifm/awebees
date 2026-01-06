@@ -61,6 +61,30 @@ cp "$SCRIPT_DIR/lens-stop.bat" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/lens-status.bat" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/lens-logs.bat" "$PACKAGE_DIR/"
 
+# Download ripgrep for Windows
+echo "  Downloading ripgrep for Windows..."
+RIPGREP_VERSION="14.1.0"
+RIPGREP_URL="https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc.zip"
+RIPGREP_ZIP="$BUILD_DIR/ripgrep.zip"
+
+mkdir -p "$PACKAGE_DIR/bin"
+
+if [ ! -f "$RIPGREP_ZIP" ]; then
+    curl -L -o "$RIPGREP_ZIP" "$RIPGREP_URL" || {
+        echo "  ⚠ Warning: Failed to download ripgrep (optional tool)"
+        RIPGREP_DOWNLOAD_FAILED=true
+    }
+fi
+
+if [ "$RIPGREP_DOWNLOAD_FAILED" != "true" ] && [ -f "$RIPGREP_ZIP" ]; then
+    unzip -q "$RIPGREP_ZIP" -d "$BUILD_DIR"
+    cp "$BUILD_DIR/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc/rg.exe" "$PACKAGE_DIR/bin/"
+    rm -rf "$BUILD_DIR/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc"
+    echo "  ✓ ripgrep included for 10-100x faster pattern matching"
+else
+    echo "  ⚠ ripgrep not included (optional, can be installed later)"
+fi
+
 # Read build config
 CONFIG_FILE="$SCRIPT_DIR/build-config.json"
 if [ -f "$CONFIG_FILE" ]; then

@@ -11,6 +11,12 @@ cd /d "%~dp0"
 if errorlevel 1 goto error_no_directory
 echo [DEBUG] Changed to directory: %CD%
 
+REM Add bin directory to PATH for optional tools (like ripgrep)
+if exist "bin" (
+    set "PATH=%CD%\bin;%PATH%"
+    echo [DEBUG] Added bin directory to PATH
+)
+
 REM Create logs directory in installation root
 echo [DEBUG] Creating logs directory
 if not exist "logs" mkdir logs
