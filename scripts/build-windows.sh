@@ -91,10 +91,13 @@ echo ""
 # Prepare both package variants
 echo "Preparing packages..."
 "$SCRIPT_DIR/windows/prepare-package.sh" "with-python" "$VERSION" "$BUILD_DIR" "$DIST_DIR"
+"$SCRIPT_DIR/windows/verify-package.sh" "$BUILD_DIR/lens-app-with-python" "with-python"
+
 "$SCRIPT_DIR/windows/prepare-package.sh" "requires-python" "$VERSION" "$BUILD_DIR" "$DIST_DIR"
+"$SCRIPT_DIR/windows/verify-package.sh" "$BUILD_DIR/lens-app-requires-python" "requires-python"
 
 echo ""
-echo -e "${GREEN}✓ Windows packages prepared successfully!${NC}"
+echo -e "${GREEN}✓ Windows packages prepared and verified successfully!${NC}"
 echo ""
 echo "Packages created in: $DIST_DIR"
 echo "  - lens-package-with-python-${VERSION}.zip"
