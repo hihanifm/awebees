@@ -1,22 +1,4 @@
-ess any key to continue . . .
 C:\Users\m.hanifa\Desktop\work\lens\awebees\scripts>win-start.bat
 Starting Lens services in DEVELOPMENT mode...
 Starting backend on port 34001...
-The process cannot access the file because it is being used by another process.
-Error: Backend process not found
-Check backend logs: C:\Users\m.hanifa\Desktop\work\lens\awebees\scripts\..\logs\backend.log
-INFO:     Will watch for changes in these directories: ['C:\\Users\\m.hanifa\\Desktop\\work\\lens\\awebees\\backend']
-INFO:     Uvicorn running on http://0.0.0.0:34001 (Press CTRL+C to quit)
-INFO:     Started reloader process [102732] using WatchFiles
-C:\Users\m.hanifa\Desktop\work\lens\awebees\backend\app\core\config_insight.py:31: SyntaxWarning: invalid escape sequence '\.'
-  "file_patterns": [r"\.log$"],  # Optional
-INFO:     Started server process [98680]
-INFO:     Waiting for application startup.
-INFO:app.main:Initializing plugin manager...
-INFO:app.core.config_insight:ConfigBasedInsight initialized: error_detector from app.insights.error_detector
-INFO:app.core.plugin_manager:Registered config-based insight: error_detector (Error Detector) in folder: root
-INFO:app.core.plugin_manager:Registered class-based insight: line_count (Line Count) in folder: root
-INFO:app.main:Discovered 2 insights
-INFO:     Application startup complete.
-
-Press any key to continue . . .
+) was unexpected at this time.
