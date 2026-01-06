@@ -2,12 +2,20 @@
 
 Scripts to manage Lens frontend and backend services.
 
+Available for both **Linux/Mac** and **Windows** platforms.
+
 ## Usage
 
 ### Initial Setup (Run Once)
 
+**Linux/Mac:**
 ```bash
 ./scripts/setup.sh
+```
+
+**Windows:**
+```cmd
+scripts\win-setup.bat
 ```
 
 Sets up the project for the first time:
@@ -18,10 +26,18 @@ Sets up the project for the first time:
 
 ### Start Services
 
+**Linux/Mac:**
 ```bash
 ./scripts/start.sh          # Development mode (default)
 ./scripts/start.sh -p       # Production mode
 ./scripts/start.sh --help   # Show help
+```
+
+**Windows:**
+```cmd
+scripts\win-start.bat          REM Development mode (default)
+scripts\win-start.bat -p       REM Production mode
+scripts\win-start.bat --help   REM Show help
 ```
 
 Starts both frontend (port 34000) and backend (port 34001) as background processes.
@@ -42,32 +58,53 @@ Starts both frontend (port 34000) and backend (port 34001) as background process
 
 ### Check Status
 
+**Linux/Mac:**
 ```bash
 ./scripts/status.sh
+```
+
+**Windows:**
+```cmd
+scripts\win-status.bat
 ```
 
 Shows whether frontend and backend services are running.
 
 ### Stop Services
 
+**Linux/Mac:**
 ```bash
 ./scripts/stop.sh
+```
+
+**Windows:**
+```cmd
+scripts\win-stop.bat
 ```
 
 Stops both frontend and backend services.
 
 ### View Logs
 
+**Linux/Mac:**
 ```bash
 ./scripts/logs.sh          # Show frontend logs (default)
 ./scripts/logs.sh -f       # Show frontend logs
 ./scripts/logs.sh -b       # Show backend logs
 ```
 
+**Windows:**
+```cmd
+scripts\win-logs.bat          REM Show frontend logs (default)
+scripts\win-logs.bat -f       REM Show frontend logs
+scripts\win-logs.bat -b       REM Show backend logs
+```
+
 Shows the last 20 lines of frontend or backend logs with the file path. Defaults to frontend logs.
 
 ### Version Management
 
+**Linux/Mac:**
 ```bash
 ./scripts/version.sh get              # Show current version
 ./scripts/version.sh set 0.2.0        # Set version to 0.2.0
@@ -75,6 +112,16 @@ Shows the last 20 lines of frontend or backend logs with the file path. Defaults
 ./scripts/version.sh bump minor       # Bump minor version (1.0.0 -> 1.1.0)
 ./scripts/version.sh bump patch       # Bump patch version (1.0.0 -> 1.0.1)
 ./scripts/version.sh sync             # Sync version to package.json
+```
+
+**Windows:**
+```cmd
+scripts\win-version.bat get              REM Show current version
+scripts\win-version.bat set 0.2.0        REM Set version to 0.2.0
+scripts\win-version.bat bump major       REM Bump major version (1.0.0 -> 2.0.0)
+scripts\win-version.bat bump minor       REM Bump minor version (1.0.0 -> 1.1.0)
+scripts\win-version.bat bump patch       REM Bump patch version (1.0.0 -> 1.0.1)
+scripts\win-version.bat sync             REM Sync version to package.json
 ```
 
 Manages the application version stored in `VERSION` file at the project root. This is the single source of truth for the application version.
@@ -108,40 +155,99 @@ All logs are stored in the `logs/` directory at the project root:
 If you get errors about ports being in use:
 
 1. Check what's using the port:
+   
+   **Linux/Mac:**
    ```bash
    lsof -i :34000  # Frontend port
    lsof -i :34001  # Backend port
    ```
+   
+   **Windows:**
+   ```cmd
+   netstat -ano | findstr :34000  REM Frontend port
+   netstat -ano | findstr :34001  REM Backend port
+   ```
 
 2. Change the port in `.env` files:
-   - Backend: Edit `backend/.env` and change `PORT=34001` to another port
-   - Frontend: Edit `frontend/.env.local` and change `PORT=34000` to another port
-   - Update `NEXT_PUBLIC_API_URL` in `frontend/.env.local` if backend port changed
-   - Update `FRONTEND_URL` in `backend/.env` if frontend port changed
+   - Backend: Edit `backend\.env` and change `PORT=34001` to another port
+   - Frontend: Edit `frontend\.env.local` and change `PORT=34000` to another port
+   - Update `NEXT_PUBLIC_API_URL` in `frontend\.env.local` if backend port changed
+   - Update `FRONTEND_URL` in `backend\.env` if frontend port changed
 
 ### Services Not Starting
 
 1. Check the logs (stored in `logs/` directory):
+   
+   **Linux/Mac:**
    ```bash
    ./scripts/logs.sh        # Frontend logs (default)
    ./scripts/logs.sh -b     # Backend logs
    ```
+   
+   **Windows:**
+   ```cmd
+   scripts\win-logs.bat        REM Frontend logs (default)
+   scripts\win-logs.bat -b     REM Backend logs
+   ```
 
 2. Verify dependencies are installed:
+   
+   **Linux/Mac:**
    ```bash
    cd backend && source venv/bin/activate && pip list
    cd frontend && npm list --depth=0
    ```
+   
+   **Windows:**
+   ```cmd
+   cd backend && call venv\Scripts\activate.bat && pip list
+   cd frontend && npm list --depth=0
+   ```
 
 3. Check if services are actually running:
+   
+   **Linux/Mac:**
    ```bash
    ./scripts/status.sh
    ps aux | grep -E "(uvicorn|next dev)"
    ```
+   
+   **Windows:**
+   ```cmd
+   scripts\win-status.bat
+   tasklist | findstr "python.exe node.exe"
+   ```
 
-## Notes
+## Platform-Specific Notes
 
-- The scripts track process IDs in `scripts/.pids`
-- Logs are written to `logs/backend.log` and `logs/frontend.log`
-- If services are already running, `start.sh` will exit with an error
+### Linux/Mac
+- Scripts use bash shell (`.sh` extension)
+- Process management uses `kill` command
+- Virtual environment activation: `source venv/bin/activate`
+
+### Windows
+- Scripts use CMD batch files (`.bat` extension, `win-` prefix)
+- No PowerShell execution policy configuration needed
+- Process management uses `taskkill` command
+- Virtual environment activation: `call venv\Scripts\activate.bat`
+- Color output in status script may vary depending on CMD version
+
+## General Notes
+
+- The scripts track process IDs in `scripts\.pids`
+- Logs are written to `logs\backend.log` and `logs\frontend.log`
+- If services are already running, start scripts will exit with an error
 - Services can be started/stopped independently if needed (manual process management)
+
+## Script Reference
+
+| Function | Linux/Mac | Windows |
+|----------|-----------|---------|
+| Setup | `./scripts/setup.sh` | `scripts\win-setup.bat` |
+| Start (Dev) | `./scripts/start.sh` | `scripts\win-start.bat` |
+| Start (Prod) | `./scripts/start.sh -p` | `scripts\win-start.bat -p` |
+| Stop | `./scripts/stop.sh` | `scripts\win-stop.bat` |
+| Status | `./scripts/status.sh` | `scripts\win-status.bat` |
+| Logs (Frontend) | `./scripts/logs.sh` | `scripts\win-logs.bat` |
+| Logs (Backend) | `./scripts/logs.sh -b` | `scripts\win-logs.bat -b` |
+| Version | `./scripts/version.sh` | `scripts\win-version.bat` |

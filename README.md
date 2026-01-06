@@ -17,7 +17,7 @@ A local web application for analyzing log files with a plugin-based insight syst
 - Node.js and npm
 - Git
 
-### Setup
+### Setup (Linux/Mac)
 
 1. Clone the repository:
    ```bash
@@ -50,21 +50,72 @@ A local web application for analyzing log files with a plugin-based insight syst
    - Separate servers: Frontend (34000) and Backend (34001)
    - Hot reload enabled for better development experience
 
-5. Check Status:
+4. Check Status:
    ```bash
    ./scripts/status.sh
    ```
 
-6. View Logs:
+5. View Logs:
    ```bash
    ./scripts/logs.sh        # Frontend logs (default)
    ./scripts/logs.sh -b     # Backend logs
    ```
 
-7. Stop Services:
+6. Stop Services:
    ```bash
    ./scripts/stop.sh
    ```
+
+### Setup (Windows)
+
+1. Clone the repository:
+   ```cmd
+   git clone <repository-url>
+   cd awebees
+   ```
+
+2. Run setup script (one-time setup):
+   ```cmd
+   scripts\win-setup.bat
+   ```
+   
+   This will:
+   - Create Python virtual environment
+   - Install all dependencies (Python and Node.js)
+   - Create `.env` files from examples
+
+3. Start Services:
+   ```cmd
+   scripts\win-start.bat        REM Development mode (default)
+   scripts\win-start.bat -p     REM Production mode (builds frontend automatically)
+   ```
+   
+   **Production Mode:**
+   - Automatically builds the frontend and serves it from the backend
+   - Single server on port 34001 (API + Frontend)
+   - No separate frontend server needed
+   
+   **Development Mode:**
+   - Separate servers: Frontend (34000) and Backend (34001)
+   - Hot reload enabled for better development experience
+
+4. Check Status:
+   ```cmd
+   scripts\win-status.bat
+   ```
+
+5. View Logs:
+   ```cmd
+   scripts\win-logs.bat        REM Frontend logs (default)
+   scripts\win-logs.bat -b     REM Backend logs
+   ```
+
+6. Stop Services:
+   ```cmd
+   scripts\win-stop.bat
+   ```
+
+**Note:** Windows scripts use CMD batch files (no PowerShell execution policy configuration needed).
 
 ## Configuration
 
@@ -87,11 +138,19 @@ Error and application logs are stored in the `logs/` directory:
 - **Frontend logs**: `logs/frontend.log`
 
 View logs:
+
+**Linux/Mac:**
 ```bash
 ./scripts/logs.sh        # Frontend logs (last 20 lines)
 ./scripts/logs.sh -b     # Backend logs (last 20 lines)
 tail -f logs/backend.log   # Backend logs (follow mode)
 tail -f logs/frontend.log  # Frontend logs (follow mode)
+```
+
+**Windows:**
+```cmd
+scripts\win-logs.bat        REM Frontend logs (last 20 lines)
+scripts\win-logs.bat -b     REM Backend logs (last 20 lines)
 ```
 
 ## Features
@@ -158,6 +217,7 @@ The version is stored in `VERSION` at the project root. This is the single sourc
 
 Use the version management script to manage versions:
 
+**Linux/Mac:**
 ```bash
 ./scripts/version.sh get              # Show current version
 ./scripts/version.sh set 0.2.0        # Set version to 0.2.0
@@ -165,6 +225,16 @@ Use the version management script to manage versions:
 ./scripts/version.sh bump minor       # Bump minor version (1.0.0 -> 1.1.0)
 ./scripts/version.sh bump patch       # Bump patch version (1.0.0 -> 1.0.1)
 ./scripts/version.sh sync             # Sync version to package.json
+```
+
+**Windows:**
+```cmd
+scripts\win-version.bat get              REM Show current version
+scripts\win-version.bat set 0.2.0        REM Set version to 0.2.0
+scripts\win-version.bat bump major       REM Bump major version (1.0.0 -> 2.0.0)
+scripts\win-version.bat bump minor       REM Bump minor version (1.0.0 -> 1.1.0)
+scripts\win-version.bat bump patch       REM Bump patch version (1.0.0 -> 1.0.1)
+scripts\win-version.bat sync             REM Sync version to package.json
 ```
 
 ### Version Endpoint
@@ -175,8 +245,15 @@ The backend provides a version endpoint:
 ### Release Workflow
 
 1. Update the version using the version script:
+   
+   **Linux/Mac:**
    ```bash
    ./scripts/version.sh bump patch    # or major/minor
+   ```
+   
+   **Windows:**
+   ```cmd
+   scripts\win-version.bat bump patch    REM or major/minor
    ```
 
 2. Update `CHANGELOG.md` with the changes for the new version
@@ -188,8 +265,18 @@ The backend provides a version endpoint:
    ```
 
 4. Tag the release:
+   
+   **Linux/Mac:**
    ```bash
    git tag -a v$(./scripts/version.sh get) -m "Release v$(./scripts/version.sh get)"
+   git push origin master
+   git push origin --tags
+   ```
+   
+   **Windows:**
+   ```cmd
+   for /f %i in ('scripts\win-version.bat get') do set VERSION=%i
+   git tag -a v%VERSION% -m "Release v%VERSION%"
    git push origin master
    git push origin --tags
    ```
