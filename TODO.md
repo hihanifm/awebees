@@ -13,6 +13,9 @@
 - [backend] [storage] [frontend] Store insight results in files for each session with structure: session-id/insight-name/filename/output, send output path to user for offline access, and add a button in frontend to open the output folder
 - [ui] [frontend] Give option to the user to select recently given inputs for files/folders (e.g., the last 10 inputs)
 - [ui] [frontend] Add a card that shows the output of the whole analyze process: # of insights called and the time that each insight took
+- [ui] [frontend] [backend] Add a settings page to control system behavior (backend config, AI config, path-related settings, themes, language, upgrade options)
+- [ui] [frontend] [backend] Add playground support to let users dynamically add filters for files and upload them to the server
+- [insights] [backend] [frontend] Support downloading insights from the server (insight marketplace/repository)
 
 ## Low Priority
 - 
