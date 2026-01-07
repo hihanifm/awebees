@@ -182,7 +182,9 @@ class LineFilter:
         pattern: str,
         reading_mode: ReadingMode = ReadingMode.LINES,
         chunk_size: int = 1048576,
-        flags: int = 0
+        flags: int = 0,
+        context_before: int = 0,
+        context_after: int = 0
     ):
         """
         Initialize line filter.
@@ -192,11 +194,15 @@ class LineFilter:
             reading_mode: Reading mode - LINES (default) or CHUNKS
             chunk_size: Chunk size in bytes (only used for CHUNKS mode, default: 1MB)
             flags: Regex flags (e.g., re.IGNORECASE)
+            context_before: Number of lines to include before each match (default: 0)
+            context_after: Number of lines to include after each match (default: 0)
         """
         self.pattern = pattern
         self.reading_mode = reading_mode
         self.chunk_size = chunk_size
         self.flags = flags
+        self.context_before = context_before
+        self.context_after = context_after
         self._compiled_pattern = re.compile(pattern, flags)
     
     async def filter_lines(
@@ -411,7 +417,9 @@ class LineFilter:
                 try:
                     for line in ripgrep_search(
                         file_path,
-                        self.pattern
+                        self.pattern,
+                        context_before=self.context_before,
+                        context_after=self.context_after
                     ):
                         # Check for cancellation periodically
                         if cancellation_event and cancellation_event.is_set():

@@ -79,6 +79,8 @@ class ConfigBasedInsight(Insight):
         self._regex_flags_str = filters.get("regex_flags", "")
         self._reading_mode_str = filters.get("reading_mode", "ripgrep")  # Default to ripgrep for best performance
         self._chunk_size = filters.get("chunk_size", 1048576)
+        self._context_before = filters.get("context_before", 0)  # Lines of context before match
+        self._context_after = filters.get("context_after", 0)  # Lines of context after match
         
         # Extract AI configuration
         ai_config = config.get("ai", {})
@@ -259,7 +261,9 @@ class ConfigBasedInsight(Insight):
             pattern=self._line_pattern,
             reading_mode=self._reading_mode,
             chunk_size=self._chunk_size,
-            flags=self._regex_flags
+            flags=self._regex_flags,
+            context_before=self._context_before,
+            context_after=self._context_after
         )
         
         # Apply line filtering
