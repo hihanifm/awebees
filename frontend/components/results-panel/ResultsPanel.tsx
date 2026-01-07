@@ -21,6 +21,7 @@ interface AIAnalysisState {
   status: "idle" | "loading" | "streaming" | "complete" | "error";
   response: string;
   error?: string;
+  executionTime?: number; // Time taken in seconds
 }
 
 export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: ResultsPanelProps) {
@@ -149,6 +150,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
     }
 
     // Initialize or update AI state
+    const startTime = Date.now();
     setAiStates(prev => ({
       ...prev,
       [insightId]: {
@@ -176,20 +178,24 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
         }
       );
 
+      const executionTime = (Date.now() - startTime) / 1000; // Convert to seconds
       setAiStates(prev => ({
         ...prev,
         [insightId]: {
           status: "complete",
           response: fullResponse,
+          executionTime,
         }
       }));
     } catch (error) {
+      const executionTime = (Date.now() - startTime) / 1000; // Track time even on error
       setAiStates(prev => ({
         ...prev,
         [insightId]: {
           status: "error",
           response: "",
           error: String(error),
+          executionTime,
         }
       }));
     }
@@ -405,9 +411,16 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                               ) : aiStates[resultItem.insight_id].response ? (
                                 <>
                                   <div className="flex justify-between items-start mb-2">
-                                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase">
-                                      AI Analysis
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase">
+                                        AI Analysis
+                                      </span>
+                                      {aiStates[resultItem.insight_id].executionTime !== undefined && (
+                                        <span className="text-xs text-muted-foreground">
+                                          ({formatTime(aiStates[resultItem.insight_id].executionTime!)})
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="flex gap-2">
                                       <Button
                                         variant="ghost"

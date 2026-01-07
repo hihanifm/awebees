@@ -42,6 +42,7 @@ export default function PlaygroundPage() {
   const [aiResponse, setAiResponse] = useState("");
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiExecutionTime, setAiExecutionTime] = useState<number | undefined>(undefined);
   const [configError, setConfigError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -191,6 +192,9 @@ export default function PlaygroundPage() {
     setAiError(null);
     setConfigError(null); // Clear config error if we got past the check
     setAiResponse("");
+    setAiExecutionTime(undefined);
+
+    const startTime = Date.now();
 
     try {
       const content = filterResult.lines.join("\n");
@@ -210,9 +214,13 @@ export default function PlaygroundPage() {
         }
       );
 
-      // Analysis complete
+      // Analysis complete - calculate execution time
+      const executionTime = (Date.now() - startTime) / 1000; // Convert to seconds
+      setAiExecutionTime(executionTime);
       setAiStreaming(false);
     } catch (err) {
+      const executionTime = (Date.now() - startTime) / 1000; // Track time even on error
+      setAiExecutionTime(executionTime);
       setAiError(err instanceof Error ? err.message : "Failed to analyze with AI");
       setAiStreaming(false);
     }
@@ -427,6 +435,7 @@ export default function PlaygroundPage() {
                 response={aiResponse}
                 streaming={aiStreaming}
                 error={aiError}
+                executionTime={aiExecutionTime}
               />
             </section>
           )}

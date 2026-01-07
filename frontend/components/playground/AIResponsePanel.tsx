@@ -9,15 +9,23 @@ interface AIResponsePanelProps {
   response: string;
   streaming: boolean;
   error: string | null;
+  executionTime?: number; // Time taken in seconds
 }
 
-export function AIResponsePanel({ response, streaming, error }: AIResponsePanelProps) {
+export function AIResponsePanel({ response, streaming, error, executionTime }: AIResponsePanelProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(response);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 1) {
+      return `${(seconds * 1000).toFixed(0)}ms`;
+    }
+    return `${seconds.toFixed(2)}s`;
   };
 
   if (error) {
@@ -68,6 +76,11 @@ export function AIResponsePanel({ response, streaming, error }: AIResponsePanelP
           <span className="text-orange-900 dark:text-orange-200 font-medium">
             AI Analysis
           </span>
+          {executionTime !== undefined && !streaming && (
+            <span className="text-xs text-orange-700/80 dark:text-orange-300/80">
+              ({formatTime(executionTime)})
+            </span>
+          )}
           {streaming && (
             <span className="flex items-center text-sm text-orange-700 dark:text-orange-300">
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
