@@ -9,7 +9,29 @@ set -e  # Exit on error
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Setting up Lens..."
+# Detect OS
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$WINDIR" ]]; then
+  OS_TYPE="Windows"
+  OS_DETAILS="Windows (Git Bash/Cygwin)"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  OS_TYPE="macOS"
+  OS_DETAILS="macOS"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  OS_TYPE="Linux"
+  OS_DETAILS="Linux"
+else
+  OS_TYPE="Unknown"
+  OS_DETAILS="$OSTYPE"
+fi
+
+echo "=========================================="
+echo "Lens Setup Script"
+echo "=========================================="
+echo "OS: $OS_DETAILS"
+echo "OSTYPE: $OSTYPE"
+echo "Project Root: $PROJECT_ROOT"
+echo "Script Dir: $SCRIPT_DIR"
+echo "=========================================="
 echo ""
 
 # Function to activate Python virtual environment (cross-platform)
@@ -17,25 +39,33 @@ activate_venv() {
   local venv_dir="$1"
   # Try Windows path first (Git Bash on Windows)
   if [ -f "$venv_dir/Scripts/activate" ]; then
+    echo "  → Activating venv (Windows path: $venv_dir/Scripts/activate)"
     source "$venv_dir/Scripts/activate" 2>/dev/null && return 0
   fi
   # Try Unix path (Linux/Mac)
   if [ -f "$venv_dir/bin/activate" ]; then
+    echo "  → Activating venv (Unix path: $venv_dir/bin/activate)"
     source "$venv_dir/bin/activate" 2>/dev/null && return 0
   fi
   return 1
 }
 
 # Find Python command (try python3 first, then python)
+echo "Detecting Python..."
 PYTHON_CMD=""
 if command -v python3 &> /dev/null; then
   PYTHON_CMD="python3"
+  PYTHON_VERSION=$(python3 --version 2>&1 || echo "unknown")
+  echo "  → Found: python3 ($PYTHON_VERSION)"
 elif command -v python &> /dev/null; then
   PYTHON_CMD="python"
+  PYTHON_VERSION=$(python --version 2>&1 || echo "unknown")
+  echo "  → Found: python ($PYTHON_VERSION)"
 else
   echo "Error: Python not found. Please install Python 3.7+"
   exit 1
 fi
+echo ""
 
 # Setup Backend
 echo "=== Backend Setup ==="
@@ -85,6 +115,19 @@ echo ""
 # Setup Frontend
 echo "=== Frontend Setup ==="
 cd "$PROJECT_ROOT/frontend"
+
+# Check for npm/node
+echo "Detecting Node.js..."
+if command -v npm &> /dev/null; then
+  NPM_VERSION=$(npm --version 2>&1 || echo "unknown")
+  NODE_VERSION=$(node --version 2>&1 || echo "unknown")
+  echo "  → npm: $NPM_VERSION"
+  echo "  → node: $NODE_VERSION"
+else
+  echo "  → Warning: npm not found in PATH"
+  echo "  → Will attempt to use npm anyway..."
+fi
+echo ""
 
 # Install/update npm dependencies
 echo "Installing/updating Node.js dependencies..."

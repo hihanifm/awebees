@@ -13,6 +13,32 @@ LOGS_DIR="$PROJECT_ROOT/logs"
 BACKEND_LOG="$LOGS_DIR/backend.log"
 FRONTEND_LOG="$LOGS_DIR/frontend.log"
 
+# Detect OS
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$WINDIR" ]]; then
+  OS_TYPE="Windows"
+  OS_DETAILS="Windows (Git Bash/Cygwin)"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  OS_TYPE="macOS"
+  OS_DETAILS="macOS"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  OS_TYPE="Linux"
+  OS_DETAILS="Linux"
+else
+  OS_TYPE="Unknown"
+  OS_DETAILS="$OSTYPE"
+fi
+
+# Print OS information
+echo "=========================================="
+echo "Lens Start Script"
+echo "=========================================="
+echo "OS: $OS_DETAILS"
+echo "OSTYPE: $OSTYPE"
+echo "Project Root: $PROJECT_ROOT"
+echo "Script Dir: $SCRIPT_DIR"
+echo "=========================================="
+echo ""
+
 # Create logs directory if it doesn't exist
 mkdir -p "$LOGS_DIR"
 
@@ -94,17 +120,21 @@ activate_venv() {
   local venv_dir="$1"
   # Try Windows path first (Git Bash on Windows)
   if [ -f "$venv_dir/Scripts/activate" ]; then
+    echo "  → Activating venv (Windows path: $venv_dir/Scripts/activate)"
     source "$venv_dir/Scripts/activate" 2>/dev/null && return 0
   fi
   # Try Unix path (Linux/Mac)
   if [ -f "$venv_dir/bin/activate" ]; then
+    echo "  → Activating venv (Unix path: $venv_dir/bin/activate)"
     source "$venv_dir/bin/activate" 2>/dev/null && return 0
   fi
   return 1
 }
 
 # Start backend
-echo "Starting backend on port $BACKEND_PORT..."
+echo "Starting backend..."
+echo "  → Host: $BACKEND_HOST"
+echo "  → Port: $BACKEND_PORT"
 cd "$PROJECT_ROOT/backend"
 if [ ! -d "venv" ]; then
   echo "Error: Python virtual environment not found in backend/venv"
@@ -112,11 +142,16 @@ if [ ! -d "venv" ]; then
   exit 1
 fi
 
+echo "  → Activating Python virtual environment..."
 activate_venv "venv" || {
   echo "Error: Failed to activate Python virtual environment"
   echo "Tried: venv/Scripts/activate (Windows) and venv/bin/activate (Unix)"
   exit 1
 }
+
+# Log Python version
+PYTHON_VERSION=$(python --version 2>&1 || echo "unknown")
+echo "  → Python: $PYTHON_VERSION"
 
 # In production, we'll restart backend after building frontend
 # In development, start backend normally
@@ -148,6 +183,9 @@ if [ "$MODE" != "prod" ]; then
 fi
 
 # Start frontend
+echo ""
+echo "Starting frontend..."
+echo "  → Port: $FRONTEND_PORT"
 cd "$PROJECT_ROOT/frontend"
 # Find npm in PATH - use full path from shell environment
 if [ -z "$NPM_CMD" ]; then
@@ -165,6 +203,13 @@ if [ -z "$NPM_CMD" ]; then
     fi
   fi
 fi
+
+# Log npm and node versions
+NPM_VERSION=$(npm --version 2>&1 || echo "unknown")
+NODE_VERSION=$(node --version 2>&1 || echo "unknown")
+echo "  → npm: $NPM_VERSION"
+echo "  → node: $NODE_VERSION"
+echo "  → npm path: $NPM_CMD"
 
 if [ ! -d "node_modules" ]; then
   echo "Error: Node.js dependencies not found in frontend/node_modules"
