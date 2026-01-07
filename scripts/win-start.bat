@@ -141,15 +141,8 @@ if "%MODE%"=="prod" goto start_frontend
 
 start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host %BACKEND_HOST% --port %BACKEND_PORT% > \"%BACKEND_LOG%\" 2>&1"
 
-REM Wait for backend to start (uvicorn with reload needs more time)
-timeout /t 5 /nobreak >nul
-
-call :find_listening_pid %BACKEND_PORT% BACKEND_PID
-if not "%BACKEND_PID%"=="" goto backend_ok
-
-echo Warning: Could not detect backend PID immediately, retrying...
-timeout /t 2 /nobreak >nul
-call :find_listening_pid %BACKEND_PORT% BACKEND_PID
+REM Wait for backend to start (uvicorn with reload can take longer on Windows)
+call :wait_for_listening_pid %BACKEND_PORT% BACKEND_PID 20
 if not "%BACKEND_PID%"=="" goto backend_ok
 
 echo Error: Backend failed to start - no process listening on port %BACKEND_PORT%
@@ -182,9 +175,7 @@ echo Starting frontend in DEVELOPMENT mode on port %FRONTEND_PORT%...
 start /b cmd /c "set PORT=%FRONTEND_PORT% && call npm run dev > \"%FRONTEND_LOG%\" 2>&1"
 
 REM Wait for frontend to start (Next.js takes longer)
-timeout /t 5 /nobreak >nul
-
-call :find_listening_pid %FRONTEND_PORT% FRONTEND_PID
+call :wait_for_listening_pid %FRONTEND_PORT% FRONTEND_PID 30
 if "%FRONTEND_PID%"=="" (
     echo Error: Frontend failed to start - no process listening on port %FRONTEND_PORT%
     echo Check frontend logs: %FRONTEND_LOG%
@@ -235,9 +226,7 @@ cd /d "%PROJECT_ROOT%\backend"
 start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% > \"%BACKEND_LOG%\" 2>&1"
 
 REM Wait for backend to start
-timeout /t 5 /nobreak >nul
-
-call :find_listening_pid %BACKEND_PORT% BACKEND_PID
+call :wait_for_listening_pid %BACKEND_PORT% BACKEND_PID 20
 if "%BACKEND_PID%"=="" (
     echo Error: Backend failed to start in production mode - no process listening on port %BACKEND_PORT%
     echo Check backend logs: %BACKEND_LOG%
@@ -265,6 +254,31 @@ exit /b 0
 setlocal
 set "PORT=%~1"
 set "PID="
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%PORT% " ^| findstr "LISTENING" 2^>nul') do set "PID=%%a"
+REM Use a tolerant netstat filter (works for IPv4/IPv6 and variable spacing)
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr "LISTENING" ^| findstr ":%PORT%" 2^>nul') do (
+    set "PID=%%a"
+    goto :pid_done
+)
+:pid_done
+endlocal & set "%~2=%PID%"
+exit /b 0
+
+:wait_for_listening_pid
+REM Args: <port> <outVarName> <maxSeconds>
+setlocal enabledelayedexpansion
+set "PORT=%~1"
+set "OUTVAR=%~2"
+set "MAX=%~3"
+if "%MAX%"=="" set "MAX=15"
+set "PID="
+set /a "I=0"
+:wait_loop
+call :find_listening_pid %PORT% PID
+if not "!PID!"=="" goto wait_done
+set /a "I+=1"
+if !I! GEQ %MAX% goto wait_done
+timeout /t 1 /nobreak >nul
+goto wait_loop
+:wait_done
 endlocal & set "%~2=%PID%"
 exit /b 0
