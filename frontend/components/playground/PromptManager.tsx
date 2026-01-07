@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Save, Trash2, Plus } from "lucide-react";
 import { SavedPrompt, AISystemPrompts } from "@/lib/api-types";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/lib/i18n";
 
 const STORAGE_KEY = "lens_playground_prompts";
 
@@ -34,6 +35,7 @@ export function PromptManager({
   defaultPrompts,
 }: PromptManagerProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string>("summarize");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -86,10 +88,10 @@ export function PromptManager({
 
     if (value === "summarize" || value === "explain" || value === "recommend") {
       onSystemPromptChange(defaultPrompts[value]);
-      onUserPromptChange("Please analyze the filtered results above.");
+      onUserPromptChange(t("promptManager.analyzeFilteredResults"));
       toast({
-        title: "Preset loaded",
-        description: `Loaded "${value}" preset prompt`,
+        title: t("promptManager.presetLoaded"),
+        description: `${t("promptManager.presetLoaded")}: "${value}"`,
       });
     } else {
       // Load custom saved prompt
@@ -98,8 +100,8 @@ export function PromptManager({
         onSystemPromptChange(prompt.systemPrompt);
         onUserPromptChange(prompt.userPrompt);
         toast({
-          title: "Prompt loaded",
-          description: `Loaded "${prompt.name}"`,
+          title: t("promptManager.promptLoaded"),
+          description: `${t("promptManager.promptLoaded")}: "${prompt.name}"`,
         });
       }
     }
@@ -108,8 +110,8 @@ export function PromptManager({
   const handleSavePrompt = () => {
     if (!newPromptName.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a name for the prompt",
+        title: t("common.error"),
+        description: t("promptManager.enterPromptName"),
         variant: "destructive",
       });
       return;
@@ -130,8 +132,8 @@ export function PromptManager({
     setSelectedPromptId(newPrompt.id);
 
     toast({
-      title: "Prompt saved",
-      description: `Saved as "${newPrompt.name}"`,
+      title: t("promptManager.promptSaved"),
+      description: `${t("promptManager.promptSaved")}: "${newPrompt.name}"`,
     });
   };
 
@@ -142,8 +144,8 @@ export function PromptManager({
       setSelectedPromptId("none");
     }
     toast({
-      title: "Prompt deleted",
-      description: "Custom prompt removed",
+      title: t("promptManager.promptDeleted"),
+      description: t("promptManager.promptDeleted"),
     });
   };
 
@@ -152,20 +154,20 @@ export function PromptManager({
       {/* Preset selector */}
       <div className="flex items-end gap-2">
         <div className="flex-1">
-          <Label htmlFor="preset-select">Load Preset or Saved Prompt</Label>
+          <Label htmlFor="preset-select">{t("promptManager.loadPreset")}</Label>
           <Select value={selectedPromptId} onValueChange={handlePresetSelect}>
             <SelectTrigger id="preset-select">
-              <SelectValue placeholder="Select a preset..." />
+              <SelectValue placeholder={t("promptManager.loadPreset")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None (Custom)</SelectItem>
-              <SelectItem value="summarize">Summarize</SelectItem>
-              <SelectItem value="explain">Explain</SelectItem>
-              <SelectItem value="recommend">Recommend</SelectItem>
+              <SelectItem value="none">{t("promptManager.none")}</SelectItem>
+              <SelectItem value="summarize">{t("promptManager.summarize")}</SelectItem>
+              <SelectItem value="explain">{t("promptManager.explain")}</SelectItem>
+              <SelectItem value="recommend">{t("promptManager.recommend")}</SelectItem>
               {savedPrompts.length > 0 && (
                 <>
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                    Custom Saved Prompts
+                    {t("promptManager.customSavedPrompts")}
                   </div>
                   {savedPrompts.map((prompt) => (
                     <div key={prompt.id} className="flex items-center justify-between px-2 hover:bg-accent">
@@ -199,12 +201,12 @@ export function PromptManager({
             className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-900/30"
           >
             <Save className="h-4 w-4 mr-2" />
-            Save Current
+            {t("promptManager.saveCurrent")}
           </Button>
         ) : (
           <div className="flex gap-2">
             <Input
-              placeholder="Prompt name..."
+              placeholder={t("promptManager.promptName")}
               value={newPromptName}
               onChange={(e) => setNewPromptName(e.target.value)}
               className="w-40"
@@ -224,7 +226,7 @@ export function PromptManager({
                 setNewPromptName("");
               }}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         )}
@@ -232,31 +234,31 @@ export function PromptManager({
 
       {/* System prompt */}
       <div>
-        <Label htmlFor="system-prompt">System Prompt</Label>
+        <Label htmlFor="system-prompt">{t("promptManager.systemPrompt")}</Label>
         <Textarea
           id="system-prompt"
           value={systemPrompt}
           onChange={(e) => onSystemPromptChange(e.target.value)}
-          placeholder="Enter the system prompt that defines the AI's role..."
+          placeholder={t("promptManager.systemPromptPlaceholder")}
           className="font-mono text-sm min-h-32 resize-y"
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Defines how the AI should behave and what perspective it should take.
+          {t("promptManager.systemPromptHint")}
         </p>
       </div>
 
       {/* User prompt */}
       <div>
-        <Label htmlFor="user-prompt">User Prompt</Label>
+        <Label htmlFor="user-prompt">{t("promptManager.userPrompt")}</Label>
         <Textarea
           id="user-prompt"
           value={userPrompt}
           onChange={(e) => onUserPromptChange(e.target.value)}
-          placeholder="Enter your analysis request..."
+          placeholder={t("promptManager.userPromptPlaceholder")}
           className="font-mono text-sm min-h-24 resize-y"
         />
         <p className="text-xs text-muted-foreground mt-1">
-          The specific analysis or question you want answered about the filtered results.
+          {t("promptManager.userPromptHint")}
         </p>
       </div>
     </div>

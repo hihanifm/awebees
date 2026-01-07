@@ -10,6 +10,7 @@ import { analyzeWithAI, getAIConfig } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
 import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, Settings, AlertCircle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/lib/i18n";
 
 interface ResultsPanelProps {
   analysisResponse: AnalysisResponse;
@@ -25,6 +26,7 @@ interface AIAnalysisState {
 }
 
 export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: ResultsPanelProps) {
+  const { t } = useTranslation();
   const [aiStates, setAiStates] = useState<Record<string, AIAnalysisState>>({});
   const [promptTypes, setPromptTypes] = useState<Record<string, string>>({});
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
@@ -35,7 +37,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
 
   if (loading) {
     return (
-      <div className="text-center py-8 text-muted-foreground">Analyzing...</div>
+      <div className="text-center py-8 text-muted-foreground">{t("app.analyzing")}</div>
     );
   }
 
@@ -68,7 +70,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
         if (!enabled) {
           return {
             isValid: false,
-            message: "AI processing is not enabled. Please enable it in settings."
+            message: t("playground.enableAI") + ". " + t("playground.openSettings")
           };
         }
         
@@ -76,7 +78,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
         if (!baseUrl || baseUrl.trim() === "") {
           return {
             isValid: false,
-            message: "AI Base URL is not configured. Please set it in settings."
+            message: t("playground.setBaseURL") + ". " + t("playground.openSettings")
           };
         }
         
@@ -94,7 +96,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
       // Backend is not configured either
       return {
         isValid: false,
-        message: "AI is not configured. Please configure it in settings."
+        message: t("playground.aiNotConfigured")
       };
     } catch (error) {
       return {
@@ -225,25 +227,25 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Analysis Results</h2>
+      <h2 className="text-lg font-semibold">{t("results.analysisResults")}</h2>
       
       {/* Statistics Card */}
       <Card className="bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 dark:from-orange-950/30 dark:via-amber-950/20 dark:to-orange-950/30 border-2 border-orange-200 dark:border-orange-800/50">
         <CardHeader>
-          <CardTitle className="text-base text-orange-900 dark:text-orange-100">Analysis Statistics</CardTitle>
+          <CardTitle className="text-base text-orange-900 dark:text-orange-100">{t("results.analysisStatistics")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">Insights Run</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("results.insightsRun")}</span>
               <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">{insights_count}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">Total Time</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("results.totalTime")}</span>
               <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">{formatTime(total_time)}</span>
             </div>
             <div className="flex flex-col sm:col-span-1">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">Individual Times</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("results.individualTimes")}</span>
               <div className="text-xs space-y-1 mt-1">
                 {results.map((resultItem) => (
                   <div key={resultItem.insight_id} className="flex justify-between items-center">
@@ -267,7 +269,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
           <Card key={resultItem.insight_id}>
             <CardHeader>
               <CardTitle className="text-base flex justify-between items-center">
-                <span>Insight: {resultItem.insight_id}</span>
+                <span>{t("results.insight")}: {resultItem.insight_id}</span>
                 <span className="text-xs font-normal text-muted-foreground">
                   {formatTime(resultItem.execution_time)}
                 </span>
@@ -284,7 +286,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                         <div className="flex items-center gap-4 text-sm">
                           {resultItem.result.metadata.line_count !== undefined && (
                             <span className="text-foreground font-medium">
-                              {resultItem.result.metadata.line_count} {resultItem.result.metadata.line_count === 1 ? "line" : "lines"} found
+                              {resultItem.result.metadata.line_count} {resultItem.result.metadata.line_count === 1 ? t("results.lineFound") : t("results.linesFound")}
                             </span>
                           )}
                           <span className="text-muted-foreground">
@@ -300,12 +302,12 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                           {copiedStates[resultItem.insight_id] ? (
                             <>
                               <Check className="h-4 w-4 mr-2" />
-                              Copied!
+                              {t("common.copied")}
                             </>
                           ) : (
                             <>
                               <Copy className="h-4 w-4 mr-2" />
-                              Copy
+                              {t("common.copy")}
                             </>
                           )}
                         </Button>
@@ -352,12 +354,12 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                           {copiedStates[resultItem.insight_id] ? (
                             <>
                               <Check className="h-4 w-4 mr-2" />
-                              Copied!
+                              {t("common.copied")}
                             </>
                           ) : (
                             <>
                               <Copy className="h-4 w-4 mr-2" />
-                              Copy
+                              {t("common.copy")}
                             </>
                           )}
                         </Button>
@@ -374,7 +376,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-blue-500" />
-                          <span>AI Analysis (Auto)</span>
+                          <span>{t("playground.aiAnalysis")} (Auto)</span>
                           <span className="text-xs text-muted-foreground">
                             ({formatTime(resultItem.execution_time)})
                           </span>
@@ -402,7 +404,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                       >
                         <span className="flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-blue-500" />
-                          {resultItem.result.ai_analysis ? "Re-analyze with Different Prompt" : "Analyze with AI"}
+                          {resultItem.result.ai_analysis ? t("playground.analyzeWithAI") + " (Re-analyze)" : t("playground.analyzeWithAI")}
                         </span>
                         {showAI[resultItem.insight_id] ? (
                           <ChevronUp className="h-4 w-4" />
@@ -513,7 +515,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase">
-                                        AI Analysis
+                                        {t("playground.aiAnalysis")}
                                       </span>
                                       {aiStates[resultItem.insight_id].executionTime !== undefined ? (
                                         <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">

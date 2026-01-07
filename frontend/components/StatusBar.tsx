@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n";
 
 interface VersionResponse {
   version: string;
@@ -22,6 +23,7 @@ interface StatusBarProps {
 }
 
 export function StatusBar({ onOpenSettings }: StatusBarProps) {
+  const { t } = useTranslation();
   const [version, setVersion] = useState<string>("...");
   const [versionLoading, setVersionLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
@@ -89,10 +91,11 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 hover:bg-primary/10"
-              title="Playground - Experiment with filters and AI"
+              className="h-7 px-2 hover:bg-primary/10 flex items-center gap-1.5"
+              title={t("statusBar.playgroundTooltip")}
             >
               <FlaskRound className="h-3.5 w-3.5" />
+              <span className="text-xs">{t("playground.title")}</span>
             </Button>
           </Link>
 
@@ -102,10 +105,11 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
               variant="ghost"
               size="sm"
               onClick={onOpenSettings}
-              className="h-7 w-7 p-0 hover:bg-primary/10"
-              title="Settings"
+              className="h-7 px-2 hover:bg-primary/10 flex items-center gap-1.5"
+              title={t("statusBar.settingsTooltip")}
             >
               <Settings className="h-3.5 w-3.5" />
+              <span className="text-xs">{t("common.settings")}</span>
             </Button>
           )}
 
@@ -135,17 +139,17 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
             {apiStatus === "online" ? (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                <span className="text-green-600 dark:text-green-400">API Online</span>
+                <span className="text-green-600 dark:text-green-400">{t("statusBar.apiOnline")}</span>
               </>
             ) : apiStatus === "offline" ? (
               <>
                 <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                <span className="text-red-600 dark:text-red-400">API Offline</span>
+                <span className="text-red-600 dark:text-red-400">{t("statusBar.apiOffline")}</span>
               </>
             ) : (
               <>
                 <Info className="h-3.5 w-3.5 animate-pulse" />
-                <span>Checking...</span>
+                <span>{t("statusBar.checking")}</span>
               </>
             )}
           </div>
@@ -154,7 +158,7 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
           {profilingEnabled && (
             <div className="flex items-center gap-1.5">
               <Activity className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-              <span className="text-purple-600 dark:text-purple-400 font-medium">Profiling</span>
+              <span className="text-purple-600 dark:text-purple-400 font-medium">{t("statusBar.profiling")}</span>
             </div>
           )}
         </div>

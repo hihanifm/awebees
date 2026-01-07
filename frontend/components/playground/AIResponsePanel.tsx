@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { useTranslation } from "@/lib/i18n";
 
 interface AIResponsePanelProps {
   response: string;
@@ -13,6 +14,7 @@ interface AIResponsePanelProps {
 }
 
 export function AIResponsePanel({ response, streaming, error, executionTime }: AIResponsePanelProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -32,7 +34,7 @@ export function AIResponsePanel({ response, streaming, error, executionTime }: A
     return (
       <div className="border border-red-300 dark:border-red-800 rounded-lg p-6 bg-red-50 dark:bg-red-950/20">
         <div className="flex items-start gap-3">
-          <span className="text-red-600 dark:text-red-400 font-semibold">Error:</span>
+          <span className="text-red-600 dark:text-red-400 font-semibold">{t("common.error")}:</span>
           <p className="text-red-700 dark:text-red-300 flex-1">{error}</p>
         </div>
       </div>
@@ -44,7 +46,7 @@ export function AIResponsePanel({ response, streaming, error, executionTime }: A
       <div className="border border-orange-200 dark:border-orange-800 rounded-lg p-6">
         <div className="flex items-center justify-center text-orange-600 dark:text-orange-400">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-3">AI is analyzing...</span>
+          <span className="ml-3">{t("aiResponse.aiAnalyzing")}</span>
         </div>
       </div>
     );
@@ -54,14 +56,14 @@ export function AIResponsePanel({ response, streaming, error, executionTime }: A
     return (
       <div className="border border-dashed border-orange-200 dark:border-orange-800 rounded-lg p-8 text-center">
         <p className="text-muted-foreground mb-4">
-          No AI response yet. Configure prompts and click &quot;Analyze with AI&quot; above.
+          {t("aiResponse.noResponse")}
         </p>
         <div className="text-sm text-muted-foreground space-y-2">
-          <p className="font-semibold">AI will help you:</p>
+          <p className="font-semibold">{t("aiResponse.aiWillHelp")}</p>
           <ul className="text-left max-w-md mx-auto space-y-1">
-            <li>• Summarize filtered results</li>
-            <li>• Explain patterns and trends</li>
-            <li>• Provide actionable recommendations</li>
+            <li>• {t("aiResponse.summarizeResults")}</li>
+            <li>• {t("aiResponse.explainPatterns")}</li>
+            <li>• {t("aiResponse.provideRecommendations")}</li>
           </ul>
         </div>
       </div>
@@ -74,7 +76,7 @@ export function AIResponsePanel({ response, streaming, error, executionTime }: A
       <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/50 dark:to-amber-950/30 px-4 py-3 border-b border-orange-200 dark:border-orange-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-orange-900 dark:text-orange-200 font-medium">
-            AI Analysis
+            {t("aiResponse.aiAnalysis")}
           </span>
           {executionTime !== undefined && !streaming && (
             <span className="text-xs text-orange-700/80 dark:text-orange-300/80">
@@ -84,7 +86,7 @@ export function AIResponsePanel({ response, streaming, error, executionTime }: A
           {streaming && (
             <span className="flex items-center text-sm text-orange-700 dark:text-orange-300">
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              Streaming...
+              {t("aiResponse.streaming")}
             </span>
           )}
         </div>
@@ -98,12 +100,12 @@ export function AIResponsePanel({ response, streaming, error, executionTime }: A
             {copied ? (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Copied!
+                {t("common.copied")}
               </>
             ) : (
               <>
                 <Copy className="h-4 w-4 mr-2" />
-                Copy
+                {t("common.copy")}
               </>
             )}
           </Button>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 interface ProgressWidgetProps {
   events: ProgressEvent[];
@@ -13,6 +14,7 @@ interface ProgressWidgetProps {
 }
 
 export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidgetProps) {
+  const { t } = useTranslation();
   const latestEvent = events[events.length - 1];
   const isComplete = latestEvent?.type === "analysis_complete" || latestEvent?.type === "result";
   const isCancelled = latestEvent?.type === "cancelled";
@@ -30,15 +32,15 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
 
   const getStatusText = () => {
     if (isComplete) {
-      return "Complete";
+      return t("progress.complete");
     }
     if (isCancelled) {
-      return "Cancelled";
+      return t("progress.cancelled");
     }
     if (isError) {
-      return "Error";
+      return t("progress.error");
     }
-    return "In Progress";
+    return t("progress.inProgress");
   };
 
   // Get current insight being processed
@@ -53,7 +55,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             {getStatusIcon()}
-            Analysis Progress - {getStatusText()}
+            {t("progress.analysisProgress")} - {getStatusText()}
           </CardTitle>
           {!isComplete && !isCancelled && !isError && currentTaskId && (
             <Button
@@ -63,7 +65,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
               className="flex items-center gap-1"
             >
               <X className="h-4 w-4" />
-              Cancel
+              {t("common.cancel")}
             </Button>
           )}
         </div>
@@ -72,23 +74,23 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
         <div className="space-y-2">
           {/* Current Status */}
           <div className="font-medium text-sm">
-            {latestEvent?.message || "Starting analysis..."}
+            {latestEvent?.message || t("progress.startingAnalysis")}
           </div>
 
           {/* File Progress Info */}
           {latestEvent && (latestEvent.type === "file_open" || latestEvent.type === "insight_progress") && (
             <div className="text-xs text-muted-foreground space-y-1">
               {latestEvent.file_path && (
-                <div>File: {latestEvent.file_path.split("/").pop()}</div>
+                <div>{t("progress.file")}: {latestEvent.file_path.split("/").pop()}</div>
               )}
               {latestEvent.file_index && latestEvent.total_files && (
-                <div>Progress: File {latestEvent.file_index} of {latestEvent.total_files}</div>
+                <div>{t("progress.progress")}: {t("progress.file")} {latestEvent.file_index} {t("progress.of")} {latestEvent.total_files}</div>
               )}
               {latestEvent.lines_processed != null && (
-                <div>Lines processed: {latestEvent.lines_processed.toLocaleString()}</div>
+                <div>{t("progress.linesProcessed")}: {latestEvent.lines_processed.toLocaleString()}</div>
               )}
               {latestEvent.file_size_mb != null && (
-                <div>File size: {latestEvent.file_size_mb.toFixed(2)} MB</div>
+                <div>{t("progress.fileSize")}: {latestEvent.file_size_mb.toFixed(2)} MB</div>
               )}
             </div>
           )}
@@ -96,7 +98,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
           {/* Current Insight */}
           {currentInsightEvent && currentInsightEvent.type === "insight_start" && (
             <div className="text-sm text-muted-foreground">
-              Running: {currentInsightEvent.insight_id}
+              {t("progress.running")}: {currentInsightEvent.insight_id}
             </div>
           )}
 
@@ -104,7 +106,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
           {events.length > 0 && (
             <div className="mt-4 space-y-1">
               <div className="text-xs font-semibold text-muted-foreground mb-2">
-                Activity History ({events.length} events):
+                {t("progress.activityHistory")} ({events.length} {t("progress.events")}):
               </div>
               <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-4 bg-muted">
                 {events.map((event, index) => (

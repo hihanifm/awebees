@@ -11,10 +11,12 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AISettings, loadAISettings, saveAISettings } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, testAIConnection, apiClient } from "@/lib/api-client";
-import { Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette } from "lucide-react";
+import { Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette, Languages } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { themes } from "@/lib/themes";
 import { loadTheme, saveTheme } from "@/lib/theme-storage";
+import { loadLanguage, saveLanguage, type Language } from "@/lib/language-storage";
+import { useTranslation } from "@/lib/i18n";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -38,6 +40,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   // Theme state
   const [selectedTheme, setSelectedTheme] = useState<string>("warm");
+  
+  // Language state
+  const { t, language, setLanguage: setLanguageState } = useTranslation();
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>("en");
 
   // Insight paths state
   const [insightPaths, setInsightPaths] = useState<string[]>([]);
@@ -92,11 +98,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       const savedTheme = loadTheme();
       setSelectedTheme(savedTheme);
     };
+
+    const loadLanguageSettings = () => {
+      const savedLanguage = loadLanguage();
+      setSelectedLanguage(savedLanguage);
+    };
     
     if (open) {
       loadSettings();
       loadInsightPaths();
       loadThemeSettings();
+      loadLanguageSettings();
     }
   }, [open, toast]);
 
@@ -117,9 +129,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       });
       
       onOpenChange(false);
+      toast({
+        title: t("settings.saved"),
+        description: t("settings.saved"),
+      });
     } catch (error) {
       console.error("Failed to save settings:", error);
-      alert("Failed to save settings. Please try again.");
+      toast({
+        title: t("common.error"),
+        description: t("settings.saveFailed"),
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -127,21 +147,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const handleTest = async () => {
     setTestStatus("testing");
-    setTestMessage("Testing connection...");
+    setTestMessage(t("settings.testing"));
     
     try {
       const result = await testAIConnection();
       
       if (result.success) {
         setTestStatus("success");
-        setTestMessage(result.message);
+        setTestMessage(t("settings.connectionSuccess"));
       } else {
         setTestStatus("error");
-        setTestMessage(result.message);
+        setTestMessage(result.message || t("settings.connectionFailed"));
       }
     } catch (error) {
       setTestStatus("error");
-      setTestMessage("Connection test failed: " + String(error));
+      setTestMessage(t("settings.connectionFailed") + ": " + String(error));
     }
   };
 
@@ -228,33 +248,49 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     });
   };
 
+  const handleLanguageChange = (newLanguage: Language) => {
+    setSelectedLanguage(newLanguage);
+    saveLanguage(newLanguage);
+    setLanguageState(newLanguage);
+    
+    // Apply language immediately to html element
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = newLanguage;
+    }
+
+    toast({
+      title: "Language Updated",
+      description: `Switched to ${newLanguage === "ko" ? "한국어" : "English"}`,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Settings
+            {t("settings.title")}
           </DialogTitle>
           <DialogDescription>
-            Configure LensAI application settings
+            {t("settings.description")}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="ai" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="ai">AI Settings</TabsTrigger>
-            <TabsTrigger value="insights">External Insights</TabsTrigger>
-            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="ai">{t("settings.ai")}</TabsTrigger>
+            <TabsTrigger value="insights">{t("settings.insights")}</TabsTrigger>
+            <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="ai" className="space-y-4 mt-4">
             {/* AI Enabled Toggle */}
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="ai-enabled">Enable AI Processing</Label>
+                <Label htmlFor="ai-enabled">{t("settings.aiEnabled")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Use AI to analyze insight results
+                  {t("settings.aiEnabledHint")}
                 </p>
               </div>
               <Switch
@@ -268,7 +304,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
             {/* Base URL */}
             <div className="space-y-2">
-              <Label htmlFor="base-url">API Base URL</Label>
+              <Label htmlFor="base-url">{t("settings.baseURL")}</Label>
               <Input
                 id="base-url"
                 value={settings.baseUrl}
@@ -279,13 +315,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 disabled={!settings.enabled}
               />
               <p className="text-xs text-muted-foreground">
-                OpenAI-compatible API endpoint (e.g., Azure OpenAI, Ollama)
+                {t("settings.baseURLHint")}
               </p>
             </div>
 
             {/* API Key */}
             <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
+              <Label htmlFor="api-key">{t("settings.apiKey")}</Label>
               <Input
                 id="api-key"
                 type="password"
@@ -297,13 +333,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 disabled={!settings.enabled}
               />
               <p className="text-xs text-muted-foreground">
-                Your OpenAI API key (stored locally)
+                {t("settings.apiKeyHint")}
               </p>
             </div>
 
             {/* Model Selection */}
             <div className="space-y-2">
-              <Label htmlFor="model">Model</Label>
+              <Label htmlFor="model">{t("settings.model")}</Label>
               <Select
                 value={settings.model}
                 onValueChange={(value) =>
@@ -326,7 +362,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {/* Max Tokens */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="max-tokens">Max Tokens</Label>
+                <Label htmlFor="max-tokens">{t("settings.maxTokens")}</Label>
                 <span className="text-sm text-muted-foreground">
                   {settings.maxTokens}
                 </span>
@@ -347,7 +383,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {/* Temperature */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="temperature">Temperature</Label>
+                <Label htmlFor="temperature">{t("settings.temperature")}</Label>
                 <span className="text-sm text-muted-foreground">
                   {settings.temperature.toFixed(1)}
                 </span>
@@ -364,7 +400,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 disabled={!settings.enabled}
               />
               <p className="text-xs text-muted-foreground">
-                Higher values make output more random, lower more deterministic
+                {t("settings.temperatureHint")}
               </p>
             </div>
 
@@ -385,7 +421,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 {testStatus === "error" && (
                   <XCircle className="mr-2 h-4 w-4 text-red-500" />
                 )}
-                Test Connection
+                {t("settings.testConnection")}
               </Button>
               {testMessage && (
                 <p
@@ -401,9 +437,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           <TabsContent value="insights" className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label>External Insight Paths</Label>
+              <Label>{t("settings.insightPaths")}</Label>
               <p className="text-sm text-muted-foreground">
-                Add directories containing custom insights. Click Refresh to reload after making changes.
+                {t("settings.insightPathsHint")}
               </p>
               
               {/* List of paths */}
@@ -430,14 +466,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
               ) : (
                 <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
-                  No external insight paths configured
+                  {t("settings.noPaths")}
                 </div>
               )}
               
               {/* Add new path */}
               <div className="flex gap-2">
                 <Input
-                  placeholder="/path/to/insights"
+                  placeholder={t("settings.pathPlaceholder")}
                   value={newPath}
                   onChange={(e) => setNewPath(e.target.value)}
                   onKeyDown={(e) => {
@@ -448,7 +484,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   className="font-mono"
                 />
                 <Button onClick={handleAddPath} variant="secondary">
-                  Add
+                  {t("settings.addPath")}
                 </Button>
               </div>
               
@@ -464,16 +500,35 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 ) : (
                   <RefreshCw className="mr-2 h-4 w-4" />
                 )}
-                Refresh Insights
+                {isRefreshing ? t("settings.refreshing") : t("settings.refresh")}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Manually reload all insights from built-in and external paths
+                {t("settings.refreshInsightsHint")}
               </p>
             </div>
           </TabsContent>
 
           <TabsContent value="general" className="space-y-4 mt-4">
             <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Languages className="h-4 w-4" />
+                  <Label htmlFor="language">{t("settings.language")}</Label>
+                </div>
+                <Select value={selectedLanguage} onValueChange={(value) => handleLanguageChange(value as Language)}>
+                  <SelectTrigger id="language">
+                    <SelectValue placeholder={t("settings.language")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">{t("settings.english")}</SelectItem>
+                    <SelectItem value="ko">{t("settings.korean")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.language")} - {selectedLanguage === "ko" ? "한국어" : "English"}
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Palette className="h-4 w-4" />
@@ -498,7 +553,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Choose your preferred color scheme. Changes apply immediately.
+                  {t("settings.themeHint")}
                 </p>
               </div>
 
@@ -523,11 +578,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+            {isSaving ? t("settings.saving") : t("settings.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

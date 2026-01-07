@@ -10,6 +10,7 @@ import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatusBar } from "@/components/StatusBar";
 import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
+import { useTranslation } from "@/lib/i18n";
 
 const LAST_PATH_KEY = "lens_last_file_paths";
 
@@ -35,6 +36,7 @@ function stripQuotes(path: string): string {
 }
 
 export default function Home() {
+  const { t } = useTranslation();
   const [filePaths, setFilePaths] = useState<string>("");
   const [selectedInsightIds, setSelectedInsightIds] = useState<string[]>([]);
   const [analysisResponse, setAnalysisResponse] = useState<AnalysisResponse | null>(null);
@@ -175,9 +177,9 @@ export default function Home() {
       setAnalysisResponse(response);
     } catch (err) {
       if (err instanceof Error && err.message === "Analysis cancelled") {
-        setError("Analysis was cancelled");
+        setError(t("errors.analysisCancelled"));
       } else {
-        setError(err instanceof Error ? err.message : "Failed to analyze files");
+        setError(err instanceof Error ? err.message : t("errors.analysisFailed"));
       }
     } finally {
       setAnalyzing(false);
@@ -190,9 +192,9 @@ export default function Home() {
       <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
         <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            LensAI
+            {t("app.title")}
           </h1>
-          <p className="text-foreground/80 mt-2 font-medium">A modular engine for extracting insights from messy data!</p>
+          <p className="text-foreground/80 mt-2 font-medium">{t("app.tagline")}</p>
         </div>
 
         {/* Backend Errors Banner */}
@@ -205,20 +207,19 @@ export default function Home() {
         <div className="space-y-8">
               {/* File Selection */}
               <section>
-                <h2 className="text-lg font-semibold mb-4">Enter File or Folder Paths</h2>
+                <h2 className="text-lg font-semibold mb-4">{t("app.enterFilePaths")}</h2>
             <div className="space-y-2">
               <textarea
                 value={filePaths}
                 onChange={(e) => setFilePaths(e.target.value)}
-                placeholder="Enter file or folder paths (one per line)&#10;Example:&#10;/Users/username/logs/file.log&#10;/var/log/app.log"
+                placeholder={t("app.filePathsPlaceholder")}
                 className="w-full h-[3.5rem] rounded-md border border-input bg-muted px-4 py-2 font-mono text-sm resize-y"
                 rows={2}
                 disabled={analyzing}
               />
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Enter absolute paths to log files or folders on the server (e.g., /Users/username/logs/file.log or /var/log/app.log).
-                  Folders will be scanned recursively.
+                  {t("app.filePathsHint")}
                 </p>
                 <Button
                   onClick={handleLoadSample}
@@ -227,7 +228,7 @@ export default function Home() {
                   size="sm"
                   className="ml-4 whitespace-nowrap bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 text-foreground border border-primary/30"
                 >
-                  {loadingSample ? "Loading..." : "Load Sample File"}
+                  {loadingSample ? t("common.loading") : t("app.loadSampleFile")}
                 </Button>
               </div>
             </div>
@@ -235,6 +236,7 @@ export default function Home() {
 
           {/* Insight Selection */}
           <section>
+            <h2 className="text-lg font-semibold mb-4">{t("app.selectInsights")}</h2>
             <InsightList
               selectedInsightIds={selectedInsightIds}
               onSelectionChange={setSelectedInsightIds}
@@ -259,11 +261,11 @@ export default function Home() {
               disabled={analyzing || selectedInsightIds.length === 0 || !filePaths.trim()}
               className="w-full"
             >
-              {analyzing ? "Analyzing..." : "Analyze Files"}
+              {analyzing ? t("app.analyzing") : t("app.analyzeFiles")}
             </Button>
             {error && (
               <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950">
-                <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
+                <p className="text-sm text-red-600 dark:text-red-400">{t("common.error")}: {error}</p>
               </div>
             )}
           </section>

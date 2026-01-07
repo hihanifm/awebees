@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { useInsights } from "@/hooks/use-insights";
 import { InsightMetadata } from "@/lib/api-types";
+import { useTranslation } from "@/lib/i18n";
 
 interface InsightListProps {
   selectedInsightIds: string[];
@@ -19,6 +20,7 @@ interface InsightListProps {
 }
 
 export function InsightList({ selectedInsightIds, onSelectionChange, disabled }: InsightListProps) {
+  const { t } = useTranslation();
   const { insights, loading, error } = useInsights();
 
   const handleToggle = (insightId: string) => {
@@ -55,27 +57,27 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
 
   if (loading) {
     return (
-      <div className="text-center py-8 text-muted-foreground">Loading insights...</div>
+      <div className="text-center py-8 text-muted-foreground">{t("insights.loading")}</div>
     );
   }
 
   if (error) {
     return (
       <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950">
-        <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
+        <p className="text-sm text-red-600 dark:text-red-400">{t("common.error")}: {error}</p>
       </div>
     );
   }
 
   if (insights.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">No insights available</div>
+      <div className="text-center py-8 text-muted-foreground">{t("insights.noInsights")}</div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <h2 className="text-lg font-semibold">Available Insights</h2>
+      <h2 className="text-lg font-semibold">{t("insights.availableInsights")}</h2>
       <div className="overflow-y-auto max-h-[400px] pr-2 border rounded-md">
         <Accordion type="multiple" className="w-full" defaultValue={sortedFolders}>
           {sortedFolders.map((folder) => (

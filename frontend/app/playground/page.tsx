@@ -16,6 +16,7 @@ import { FilterResult, AISystemPrompts } from "@/lib/api-types";
 import { Play, Sparkles, ArrowLeft, Settings, AlertCircle, Search, FileText, X } from "lucide-react";
 import Link from "next/link";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { useTranslation } from "@/lib/i18n";
 
 const STORAGE_KEYS = {
   FILE_PATH: "lens_playground_file_path",
@@ -31,6 +32,7 @@ const STORAGE_KEYS = {
 };
 
 export default function PlaygroundPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"filter" | "text">("filter");
 
   // Filter mode state
@@ -162,7 +164,7 @@ export default function PlaygroundPage() {
 
   const handleFilter = async () => {
     if (!filePath.trim() || !pattern.trim()) {
-      setFilterError("Please enter both file path and pattern");
+      setFilterError(t("errors.filePathRequired"));
       return;
     }
 
@@ -181,7 +183,7 @@ export default function PlaygroundPage() {
       });
       setFilterResult(result);
     } catch (err) {
-      setFilterError(err instanceof Error ? err.message : "Failed to filter file");
+      setFilterError(err instanceof Error ? err.message : t("errors.filterFailed"));
     } finally {
       setFiltering(false);
     }
@@ -241,19 +243,19 @@ export default function PlaygroundPage() {
 
   const handleFilterAIAnalyze = async () => {
     if (!filterResult || filterResult.lines.length === 0) {
-      setAiError("No filtered results to analyze. Run a filter first.");
+      setAiError(t("playground.noFilteredResults"));
       return;
     }
 
     if (!systemPrompt.trim() || !userPrompt.trim()) {
-      setAiError("Please enter both system and user prompts");
+      setAiError(t("playground.enterPrompts"));
       return;
     }
 
     // Check AI configuration before proceeding
     const configCheck = await checkAIConfiguration();
     if (!configCheck.isValid) {
-      setConfigError(configCheck.message || "AI is not properly configured. Please configure AI settings.");
+      setConfigError(configCheck.message || t("playground.aiNotConfigured"));
       setAiError(null);
       return;
     }
@@ -286,26 +288,26 @@ export default function PlaygroundPage() {
     } catch (err) {
       const executionTime = (Date.now() - startTime) / 1000;
       setAiExecutionTime(executionTime);
-      setAiError(err instanceof Error ? err.message : "Failed to analyze with AI");
+      setAiError(err instanceof Error ? err.message : t("aiResponse.failedToAnalyze"));
       setAiStreaming(false);
     }
   };
 
   const handleTextAIAnalyze = async () => {
     if (!textInput.trim()) {
-      setAiError("Please enter some text to analyze.");
+      setAiError(t("playground.enterText"));
       return;
     }
 
     if (!systemPrompt.trim() || !userPrompt.trim()) {
-      setAiError("Please enter both system and user prompts");
+      setAiError(t("playground.enterPrompts"));
       return;
     }
 
     // Check AI configuration before proceeding
     const configCheck = await checkAIConfiguration();
     if (!configCheck.isValid) {
-      setConfigError(configCheck.message || "AI is not properly configured. Please configure AI settings.");
+      setConfigError(configCheck.message || t("playground.aiNotConfigured"));
       setAiError(null);
       return;
     }
@@ -337,7 +339,7 @@ export default function PlaygroundPage() {
     } catch (err) {
       const executionTime = (Date.now() - startTime) / 1000;
       setAiExecutionTime(executionTime);
-      setAiError(err instanceof Error ? err.message : "Failed to analyze with AI");
+      setAiError(err instanceof Error ? err.message : t("aiResponse.failedToAnalyze"));
       setAiStreaming(false);
     }
   };
@@ -360,13 +362,13 @@ export default function PlaygroundPage() {
             className="inline-flex items-center text-sm text-primary hover:text-primary/80 mb-2"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Analysis
+            {t("app.backToAnalysis")}
           </Link>
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            Playground
+            {t("playground.title")}
           </h1>
           <p className="text-foreground/80 mt-2 font-medium">
-            Experiment with filters and AI prompts, or analyze text directly
+            {t("playground.description")}
           </p>
         </div>
 
@@ -375,11 +377,11 @@ export default function PlaygroundPage() {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="filter" className="flex items-center gap-2">
               <Search className="h-4 w-4" />
-              Filter Mode
+              {t("playground.filterMode")}
             </TabsTrigger>
             <TabsTrigger value="text" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Quick Text
+              {t("playground.quickText")}
             </TabsTrigger>
           </TabsList>
 
@@ -388,19 +390,19 @@ export default function PlaygroundPage() {
             {/* Step 1: File Input */}
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-foreground">
-                1. Select File
+                1. {t("playground.selectFile")}
               </h2>
               <div>
-                <Label htmlFor="file-path">File Path</Label>
+                <Label htmlFor="file-path">{t("playground.filePath")}</Label>
                 <Input
                   id="file-path"
                   value={filePath}
                   onChange={(e) => setFilePath(e.target.value)}
-                  placeholder="/path/to/your/log/file.txt"
+                  placeholder={t("playground.filePathPlaceholder")}
                   className="font-mono"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Enter the absolute path to a file on the server
+                  {t("playground.filePathHint")}
                 </p>
               </div>
             </section>
@@ -408,34 +410,34 @@ export default function PlaygroundPage() {
             {/* Step 2: Ripgrep Filter */}
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-foreground">
-                2. Configure Ripgrep Filter
+                2. {t("playground.configureRipgrep")}
               </h2>
               <div>
-                <Label htmlFor="pattern">Pattern (Regex)</Label>
+                <Label htmlFor="pattern">{t("playground.pattern")}</Label>
                 <Input
                   id="pattern"
                   value={pattern}
                   onChange={(e) => setPattern(e.target.value)}
-                  placeholder="ERROR|FATAL|Exception"
+                  placeholder={t("playground.patternPlaceholder")}
                   className="font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Enter a ripgrep-compatible regex pattern
+                  {t("playground.patternHint")}
                 </p>
               </div>
 
               {/* Custom Flags */}
               <div>
-                <Label htmlFor="custom-flags">Custom Flags (Optional)</Label>
+                <Label htmlFor="custom-flags">{t("playground.customFlags")}</Label>
                 <Input
                   id="custom-flags"
                   value={customFlags}
                   onChange={(e) => setCustomFlags(e.target.value)}
-                  placeholder="--multiline --pcre2 --max-count 500"
+                  placeholder={t("playground.customFlagsPlaceholder")}
                   className="font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Advanced: Add custom ripgrep flags (e.g., <code className="bg-muted px-1 rounded">--multiline</code>, <code className="bg-muted px-1 rounded">--pcre2</code>)
+                  {t("playground.customFlagsHint")}
                 </p>
               </div>
 
@@ -450,12 +452,12 @@ export default function PlaygroundPage() {
                     className="rounded"
                   />
                   <Label htmlFor="case-insensitive" className="text-sm cursor-pointer">
-                    Case insensitive
+                    {t("playground.caseInsensitive")}
                   </Label>
                 </div>
                 <div>
                   <Label htmlFor="context-before" className="text-sm">
-                    Lines before
+                    {t("playground.linesBefore")}
                   </Label>
                   <Input
                     id="context-before"
@@ -469,7 +471,7 @@ export default function PlaygroundPage() {
                 </div>
                 <div>
                   <Label htmlFor="context-after" className="text-sm">
-                    Lines after
+                    {t("playground.linesAfter")}
                   </Label>
                   <Input
                     id="context-after"
@@ -489,7 +491,7 @@ export default function PlaygroundPage() {
                 className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
               >
                 <Play className="h-4 w-4 mr-2" />
-                {filtering ? "Filtering..." : "Run Filter"}
+                {filtering ? t("playground.filtering") : t("playground.runFilter")}
               </Button>
 
               {filterError && (
@@ -502,7 +504,7 @@ export default function PlaygroundPage() {
             {/* Step 3: Filtered Results */}
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-foreground">
-                3. Filtered Results
+                3. {t("playground.filteredResults")}
               </h2>
               <FilteredResults result={filterResult} loading={filtering} />
             </section>
@@ -511,7 +513,7 @@ export default function PlaygroundPage() {
             {filterResult && filterResult.lines.length > 0 && (
               <section className="space-y-4">
                 <h2 className="text-xl font-semibold text-foreground">
-                  4. Configure AI Prompts
+                  4. {t("playground.configureAIPrompts")}
                 </h2>
                 <PromptManager
                   systemPrompt={systemPrompt}
@@ -526,7 +528,7 @@ export default function PlaygroundPage() {
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  {aiStreaming ? "Analyzing..." : "Analyze with AI"}
+                  {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
                 </Button>
                 {configError && (
                   <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
@@ -567,7 +569,7 @@ export default function PlaygroundPage() {
             {(aiResponse || aiStreaming || aiError) && (
               <section className="space-y-4">
                 <h2 className="text-xl font-semibold text-foreground">
-                  5. AI Analysis
+                  5. {t("playground.aiAnalysis")}
                 </h2>
                 <AIResponsePanel
                   response={aiResponse}
@@ -585,7 +587,7 @@ export default function PlaygroundPage() {
             <section className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-foreground">
-                  1. Paste Text
+                  1. {t("playground.pasteText")}
                 </h2>
                 {textInput && (
                   <Button
@@ -595,26 +597,26 @@ export default function PlaygroundPage() {
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4 mr-1" />
-                    Clear
+                    {t("common.clear")}
                   </Button>
                 )}
               </div>
               <div>
-                <Label htmlFor="text-input">Text Content</Label>
+                <Label htmlFor="text-input">{t("playground.textContent")}</Label>
                 <Textarea
                   id="text-input"
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Paste or type your text here..."
+                  placeholder={t("playground.textPlaceholder")}
                   className="font-mono text-sm min-h-64 resize-y"
                 />
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-muted-foreground">
-                    Enter or paste the text you want to analyze
+                    {t("playground.textHint")}
                   </p>
                   {textInput && (
                     <p className="text-xs text-muted-foreground">
-                      {textLines} line{textLines !== 1 ? "s" : ""} • {textChars.toLocaleString()} character{textChars !== 1 ? "s" : ""}
+                      {textLines} {textLines !== 1 ? t("playground.linesPlural") : t("playground.lines")} • {textChars.toLocaleString()} {textChars !== 1 ? t("playground.charactersPlural") : t("playground.characters")}
                     </p>
                   )}
                 </div>
@@ -624,7 +626,7 @@ export default function PlaygroundPage() {
             {/* Step 2: AI Prompts */}
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-foreground">
-                2. Configure AI Prompts
+                2. {t("playground.configureAIPrompts")}
               </h2>
               <PromptManager
                 systemPrompt={systemPrompt}
@@ -639,7 +641,7 @@ export default function PlaygroundPage() {
                 className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
-                {aiStreaming ? "Analyzing..." : "Analyze with AI"}
+                {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
               </Button>
               {configError && (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
@@ -647,17 +649,17 @@ export default function PlaygroundPage() {
                     <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                     <div className="flex-1 space-y-2">
                       <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                        AI Configuration Required
+                        {t("playground.aiConfigRequired")}
                       </p>
                       <p className="text-sm text-amber-800 dark:text-amber-200">
                         {configError}
                       </p>
                       <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                        <p>To use AI analysis, please configure:</p>
+                        <p>{t("playground.aiConfigMessage")}</p>
                         <ul className="list-disc list-inside space-y-0.5 ml-2">
-                          <li>Enable AI processing</li>
-                          <li>Set the AI Base URL (e.g., https://api.openai.com/v1)</li>
-                          <li>Provide your API Key</li>
+                          <li>{t("playground.enableAI")}</li>
+                          <li>{t("playground.setBaseURL")}</li>
+                          <li>{t("playground.provideAPIKey")}</li>
                         </ul>
                       </div>
                       <Button
@@ -667,7 +669,7 @@ export default function PlaygroundPage() {
                         className="mt-2 border-amber-300 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
                       >
                         <Settings className="mr-2 h-4 w-4" />
-                        Open Settings
+                        {t("playground.openSettings")}
                       </Button>
                     </div>
                   </div>
@@ -679,7 +681,7 @@ export default function PlaygroundPage() {
             {(aiResponse || aiStreaming || aiError) && (
               <section className="space-y-4">
                 <h2 className="text-xl font-semibold text-foreground">
-                  3. AI Analysis
+                  3. {t("playground.aiAnalysis")}
                 </h2>
                 <AIResponsePanel
                   response={aiResponse}
