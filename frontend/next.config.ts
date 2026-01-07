@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Fix for multiple lockfiles - set correct workspace root
+  experimental: {
+    turbo: {
+      root: __dirname,
+    },
+  },
 };
 
 export default nextConfig;

@@ -16,6 +16,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 package-lock.json.bak
+# Ignore package-lock.json in root and scripts (keep frontend's)
+/package-lock.json
+/scripts/package-lock.json
 
 # Next.js
 .next/
