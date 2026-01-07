@@ -292,13 +292,28 @@ if not exist "out" (
 echo Frontend built successfully
 
 REM Start backend with SERVE_FRONTEND enabled
+echo.
+echo Starting backend on port %BACKEND_PORT%...
 cd /d "%PROJECT_ROOT%\backend"
+
+if not exist "venv" (
+    echo Error: Python virtual environment not found in backend\venv
+    echo Please run scripts\win-setup.bat first to set up the project
+    pause
+    exit /b 1
+)
+
 start "" /b cmd /v:on /c "call venv\Scripts\activate.bat ^&^& set SERVE_FRONTEND=true ^&^& uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% ^>^> ^\"%BACKEND_LOG%^\" 2^>^&1"
 
-REM Wait for backend to start
-call :wait_for_listening_pid %BACKEND_PORT% BACKEND_PID 20
+REM Give backend a moment to initialize
+timeout /t 2 /nobreak >nul
+
+REM Wait for backend to start (with progress output)
+echo Waiting for backend to start...
+call :wait_for_listening_pid_with_progress %BACKEND_PORT% BACKEND_PID 20
 if "%BACKEND_PID%"=="" (
     REM PID detection failed, but check if port is actually listening
+    echo.
     echo Warning: Could not detect backend PID, checking if port is listening...
     call :check_port_listening %BACKEND_PORT% PORT_LISTENING
     if "%PORT_LISTENING%"=="1" (
@@ -312,9 +327,26 @@ if "%BACKEND_PID%"=="" (
         set "BACKEND_PID=0"
         goto prod_backend_ok
     )
+    echo.
     echo Error: Backend failed to start in production mode - no process listening on port %BACKEND_PORT%
-    echo Check backend logs: %BACKEND_LOG%
-    type "%BACKEND_LOG%" 2>nul | more
+    echo.
+    echo Checking backend logs for errors...
+    if exist "%BACKEND_LOG%" (
+        echo.
+        echo Last 20 lines of backend log:
+        echo ========================================
+        powershell -Command "Get-Content '%BACKEND_LOG%' -Tail 20"
+        echo ========================================
+    ) else (
+        echo Backend log file not found: %BACKEND_LOG%
+        echo This suggests the backend process may not have started at all.
+    )
+    echo.
+    echo Troubleshooting:
+    echo 1. Check if Python is installed and accessible
+    echo 2. Check if the virtual environment is set up correctly
+    echo 3. Check if uvicorn is installed in the virtual environment
+    echo 4. Try running the backend manually: cd backend ^&^& venv\Scripts\activate.bat ^&^& uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT%
     pause
     exit /b 1
 )
@@ -380,5 +412,33 @@ if !I! GEQ %MAX% goto wait_done
 timeout /t 1 /nobreak >nul
 goto wait_loop
 :wait_done
+endlocal & set "%~2=%PID%"
+exit /b 0
+
+:wait_for_listening_pid_with_progress
+REM Args: <port> <outVarName> <maxSeconds>
+REM Same as wait_for_listening_pid but shows progress dots
+setlocal enabledelayedexpansion
+set "PORT=%~1"
+set "OUTVAR=%~2"
+set "MAX=%~3"
+if "%MAX%"=="" set "MAX=15"
+set "PID="
+set /a "I=0"
+:wait_loop_progress
+call :find_listening_pid %PORT% PID
+if not "!PID!"=="" (
+    echo.
+    goto wait_done_progress
+)
+set /a "I+=1"
+if !I! GEQ %MAX% (
+    echo.
+    goto wait_done_progress
+)
+set /p "=." <nul
+timeout /t 1 /nobreak >nul
+goto wait_loop_progress
+:wait_done_progress
 endlocal & set "%~2=%PID%"
 exit /b 0
