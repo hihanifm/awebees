@@ -389,6 +389,16 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
             detail="AI service is not configured. Please set OPENAI_API_KEY and enable AI_ENABLED=true"
         )
     
+    # Limit content to 300 lines to control API costs and token usage
+    MAX_LINES = 300
+    lines = request.content.split('\n')
+    if len(lines) > MAX_LINES:
+        logger.info(f"AI Analyze API: Limiting content from {len(lines)} to {MAX_LINES} lines")
+        limited_content = '\n'.join(lines[:MAX_LINES])
+        limited_content += f"\n\n[... {len(lines) - MAX_LINES} more lines truncated ...]"
+    else:
+        limited_content = request.content
+    
     async def stream_ai_response() -> AsyncGenerator[str, None]:
         """Generate SSE stream from AI service."""
         try:
@@ -403,7 +413,7 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
             # Stream AI response
             full_response = []
             async for chunk in ai_service.analyze_stream(
-                content=request.content,
+                content=limited_content,
                 prompt_type=request.prompt_type,
                 custom_prompt=request.custom_prompt,
                 variables=request.variables
