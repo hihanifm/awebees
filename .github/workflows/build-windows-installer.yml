@@ -36,10 +36,10 @@ jobs:
           $packageRequiresPython = "lens-package-requires-python-${{ steps.version.outputs.version }}.zip"
           
           # Try to download from release assets
-          gh release download ${{ github.event.release.tag_name }} --pattern "$packageWithPython" --pattern "$packageRequiresPython"
+          $ErrorActionPreference = "Continue"
+          gh release download ${{ github.event.release.tag_name }} --pattern "$packageWithPython" --pattern "$packageRequiresPython" 2>&1 | Out-Null
           if ($LASTEXITCODE -ne 0) {
             Write-Warning "Packages not found in release, will use packages from repository"
-            exit 0
           }
       
       - name: Verify or build packages
