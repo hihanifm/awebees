@@ -15,6 +15,47 @@ This guide explains how to set up Lens on Windows, including automatic installat
    scripts\win-setup.bat
    ```
 
+## Alternative: Using Git Bash (Recommended)
+
+If you have **Git Bash** installed (comes with Git for Windows), you can use the Linux/Mac shell scripts instead of the Windows batch scripts. The shell scripts now automatically detect Windows and use the correct paths.
+
+### Why Use Git Bash?
+
+- ✅ More reliable than batch scripts
+- ✅ Better error handling
+- ✅ Same scripts work on Linux, Mac, and Windows
+- ✅ Better support for complex commands
+
+### Setup with Git Bash
+
+1. **Open Git Bash** (right-click in the project folder → "Git Bash Here")
+
+2. **Run the setup script:**
+   ```bash
+   ./scripts/setup.sh
+   ```
+
+3. **Start the services:**
+   ```bash
+   # Development mode (default)
+   ./scripts/start.sh
+   
+   # Production mode
+   ./scripts/start.sh -p
+   ```
+
+4. **Check status:**
+   ```bash
+   ./scripts/status.sh
+   ```
+
+5. **Stop services:**
+   ```bash
+   ./scripts/stop.sh
+   ```
+
+The scripts automatically detect Windows and use `venv/Scripts/activate` instead of `venv/bin/activate`.
+
 ## Automatic Installation
 
 The `win-setup.bat` script now includes **automatic installation** for Python and Node.js!
