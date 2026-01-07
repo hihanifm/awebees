@@ -597,9 +597,9 @@ External insights can use:
     └── anr_detector.py
 ```
 
-### Hot Reload
+### Manual Refresh
 
-Lens automatically watches external insight directories for changes. When you add, modify, or delete an insight file, the changes are detected and applied within 2 seconds (no restart needed).
+After adding, modifying, or deleting insight files in external directories, click the "Refresh" button in Settings → External Insights to reload them. This ensures you have full control over when insights are reloaded without automatic file watching overhead.
 
 ### Testing External Insights
 

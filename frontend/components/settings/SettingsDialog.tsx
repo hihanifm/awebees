@@ -375,7 +375,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <div className="space-y-2">
               <Label>External Insight Paths</Label>
               <p className="text-sm text-muted-foreground">
-                Add directories containing custom insights. Changes are detected automatically.
+                Add directories containing custom insights. Click Refresh to reload after making changes.
               </p>
               
               {/* List of paths */}

@@ -168,7 +168,13 @@ Be specific and practical."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
-                    response.raise_for_status()
+                    # Check status before processing stream
+                    if response.status_code >= 400:
+                        # Read error response content
+                        error_content = await response.aread()
+                        error_text = error_content.decode('utf-8', errors='ignore') if error_content else ""
+                        logger.error(f"AI Service: HTTP error {response.status_code}: {error_text}")
+                        raise Exception(f"AI API error: {response.status_code} - {error_text}")
                     
                     async for line in response.aiter_lines():
                         if not line.strip():
@@ -198,8 +204,17 @@ Be specific and practical."""
             logger.info("AI Service: Streaming analysis complete")
         
         except httpx.HTTPStatusError as e:
-            logger.error(f"AI Service: HTTP error {e.response.status_code}: {e.response.text}")
-            raise Exception(f"AI API error: {e.response.status_code} - {e.response.text}")
+            # This shouldn't happen now since we check status before raise_for_status
+            # But keep it as a fallback
+            error_message = f"HTTP {e.response.status_code}"
+            try:
+                # Try to get error details if available
+                if hasattr(e.response, 'text') and not hasattr(e.response, 'aread'):
+                    error_message += f": {e.response.text}"
+            except Exception:
+                pass
+            logger.error(f"AI Service: HTTP error {error_message}")
+            raise Exception(f"AI API error: {error_message}")
         
         except httpx.RequestError as e:
             logger.error(f"AI Service: Request error: {e}")

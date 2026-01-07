@@ -5,7 +5,6 @@ import importlib.util
 import inspect
 import os
 import sys
-import time
 from pathlib import Path
 from typing import Dict, List, Optional
 import logging
@@ -26,7 +25,6 @@ class PluginManager:
         self._insight_sources: Dict[str, str] = {}  # Maps insight_id to source path
         self._errors: List[ErrorEvent] = []  # Track errors during discovery
         self._external_paths: List[str] = []  # External insight paths
-        self._file_watcher: Optional[object] = None  # File watcher instance
     
     def discover_insights(self, insights_dir: str = None) -> None:
         """
@@ -423,69 +421,6 @@ class PluginManager:
     def clear_errors(self) -> None:
         """Clear all tracked errors."""
         self._errors.clear()
-    
-    def start_watching(self) -> None:
-        """Start watching external paths for changes."""
-        if self._file_watcher is not None:
-            logger.warning("File watcher is already running")
-            return
-        
-        if not self._external_paths:
-            logger.info("No external paths to watch")
-            return
-        
-        try:
-            from watchdog.observers import Observer
-            from watchdog.events import FileSystemEventHandler
-            
-            class InsightFileHandler(FileSystemEventHandler):
-                """Handle file system events for insight files."""
-                
-                def __init__(self, plugin_manager):
-                    self.plugin_manager = plugin_manager
-                    self.last_reload = 0
-                    self.debounce_seconds = 2  # Debounce rapid changes
-                
-                def on_any_event(self, event):
-                    """Handle any file system event."""
-                    if event.is_directory:
-                        return
-                    
-                    if event.src_path.endswith('.py'):
-                        # Debounce rapid changes
-                        current_time = time.time()
-                        if current_time - self.last_reload > self.debounce_seconds:
-                            logger.info(f"Detected change in {event.src_path}, reloading insights...")
-                            self.plugin_manager.discover_all_insights()
-                            self.last_reload = current_time
-            
-            self._file_watcher = Observer()
-            handler = InsightFileHandler(self)
-            
-            # Watch each external path
-            for external_path in self._external_paths:
-                path = Path(external_path)
-                if path.exists():
-                    self._file_watcher.schedule(handler, str(path), recursive=True)
-                    logger.info(f"Watching for changes: {external_path}")
-            
-            self._file_watcher.start()
-            logger.info(f"File watcher started for {len(self._external_paths)} external path(s)")
-        except ImportError:
-            logger.warning("watchdog package not installed, file watching disabled")
-        except Exception as e:
-            logger.error(f"Failed to start file watcher: {e}")
-    
-    def stop_watching(self) -> None:
-        """Stop watching for file changes."""
-        if self._file_watcher:
-            try:
-                self._file_watcher.stop()
-                self._file_watcher.join(timeout=5)
-                self._file_watcher = None
-                logger.info("File watcher stopped")
-            except Exception as e:
-                logger.error(f"Error stopping file watcher: {e}")
 
 
 # Global plugin manager instance

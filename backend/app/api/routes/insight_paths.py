@@ -79,10 +79,6 @@ async def add_insight_path(request: InsightPathRequest):
         plugin_manager = get_plugin_manager()
         plugin_manager.discover_all_insights()
         
-        # Restart file watcher with updated paths
-        plugin_manager.stop_watching()
-        plugin_manager.start_watching()
-        
         insights_count = len(plugin_manager.get_all_insights())
         logger.info(f"Added external insight path: {request.path} (total insights: {insights_count})")
         
@@ -117,10 +113,6 @@ async def remove_insight_path(request: InsightPathRequest):
         # Reload insights from remaining sources
         plugin_manager = get_plugin_manager()
         plugin_manager.discover_all_insights()
-        
-        # Restart file watcher with updated paths
-        plugin_manager.stop_watching()
-        plugin_manager.start_watching()
         
         insights_count = len(plugin_manager.get_all_insights())
         logger.info(f"Removed external insight path: {request.path} (total insights: {insights_count})")

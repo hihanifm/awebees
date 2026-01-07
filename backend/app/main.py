@@ -117,9 +117,6 @@ async def startup_event():
     # Discover insights from all sources (built-in + external)
     plugin_manager.discover_all_insights()
     
-    # Start watching external paths for changes
-    plugin_manager.start_watching()
-    
     logger.info(f"Discovered {len(plugin_manager.get_all_insights())} insights")
     
     # Check ripgrep availability
@@ -139,10 +136,8 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Stop file watching on shutdown."""
+    """Cleanup on shutdown."""
     logger.info("Shutting down...")
-    plugin_manager = get_plugin_manager()
-    plugin_manager.stop_watching()
     logger.info("Shutdown complete")
 
 
