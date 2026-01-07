@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AnalysisResponse } from "@/lib/api-types";
 import { analyzeWithAI, getAIConfig } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
-import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, Settings, AlertCircle } from "lucide-react";
+import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, Settings, AlertCircle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface ResultsPanelProps {
@@ -31,6 +31,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
   const [showAI, setShowAI] = useState<Record<string, boolean>>({});
   const [showCustomPrompt, setShowCustomPrompt] = useState<Record<string, boolean>>({});
   const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
+  const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
 
   if (loading) {
     return (
@@ -205,6 +206,14 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
     navigator.clipboard.writeText(response);
   };
 
+  const handleCopyResult = (insightId: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedStates(prev => ({ ...prev, [insightId]: true }));
+    setTimeout(() => {
+      setCopiedStates(prev => ({ ...prev, [insightId]: false }));
+    }, 2000);
+  };
+
   const handleToggleAI = (insightId: string) => {
     setShowAI(prev => ({ ...prev, [insightId]: !prev[insightId] }));
   };
@@ -267,9 +276,97 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
             <CardContent>
               {resultItem.result.result_type === "text" && (
                 <div className="space-y-4">
-                  <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted p-4 font-mono text-sm overflow-x-auto overflow-y-auto max-h-[600px]">
-                    {resultItem.result.content}
-                  </pre>
+                  {/* Header with metadata and copy button */}
+                  {resultItem.result.metadata && (
+                    <div className="border border-primary/20 rounded-lg overflow-hidden">
+                      {/* Header bar */}
+                      <div className="bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-3 border-b border-primary/20 flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-sm">
+                          {resultItem.result.metadata.line_count !== undefined && (
+                            <span className="text-foreground font-medium">
+                              {resultItem.result.metadata.line_count} {resultItem.result.metadata.line_count === 1 ? "line" : "lines"} found
+                            </span>
+                          )}
+                          <span className="text-muted-foreground">
+                            {formatTime(resultItem.execution_time)}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyResult(resultItem.insight_id, resultItem.result.content)}
+                          className="text-primary hover:bg-primary/10"
+                        >
+                          {copiedStates[resultItem.insight_id] ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Command display */}
+                      {resultItem.result.metadata.execution_command && (
+                        <div className="bg-muted px-4 py-2 border-b border-primary/20">
+                          <code className="text-xs text-muted-foreground font-mono">
+                            $ {resultItem.result.metadata.execution_command}
+                          </code>
+                        </div>
+                      )}
+
+                      {/* Results */}
+                      <div className="bg-primary/5 overflow-auto max-h-[600px] border-t border-primary/20">
+                        <pre className="p-4 text-sm font-mono text-foreground whitespace-pre-wrap">
+                          {resultItem.result.content.split('\n').map((line, index) => (
+                            <div key={index} className="flex hover:bg-primary/10">
+                              <span className="text-primary select-none mr-4 text-right w-12 flex-shrink-0 font-semibold">
+                                {index + 1}
+                              </span>
+                              <span className="flex-1">{line || ' '}</span>
+                            </div>
+                          ))}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback: Simple display if no metadata */}
+                  {!resultItem.result.metadata && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          {formatTime(resultItem.execution_time)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyResult(resultItem.insight_id, resultItem.result.content)}
+                          className="text-primary hover:bg-primary/10"
+                        >
+                          {copiedStates[resultItem.insight_id] ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted p-4 font-mono text-sm overflow-x-auto overflow-y-auto max-h-[600px]">
+                        {resultItem.result.content}
+                      </pre>
+                    </div>
+                  )}
 
                   {/* Auto-triggered AI Analysis Card */}
                   {resultItem.result.ai_analysis && (

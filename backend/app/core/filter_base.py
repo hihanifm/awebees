@@ -10,7 +10,7 @@ from pathlib import Path
 from app.core.insight_base import Insight
 from app.core.models import InsightResult, ProgressEvent
 from app.services.file_handler import read_file_lines, read_file_chunks, CancelledError
-from app.utils.ripgrep import is_ripgrep_available, ripgrep_search
+from app.utils.ripgrep import is_ripgrep_available, ripgrep_search, build_ripgrep_command
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +28,34 @@ class FilterResult:
     def __init__(self):
         """Initialize empty filter result."""
         self._lines_by_file: Dict[str, List[str]] = {}
+        self._commands_by_file: Dict[str, str] = {}  # Store execution command per file
+        self._execution_method: Optional[str] = None  # Store execution method used
     
     def add_line(self, file_path: str, line: str) -> None:
         """Add a filtered line for a file."""
         if file_path not in self._lines_by_file:
             self._lines_by_file[file_path] = []
         self._lines_by_file[file_path].append(line)
+    
+    def set_command(self, file_path: str, command: str) -> None:
+        """Set the execution command for a file."""
+        self._commands_by_file[file_path] = command
+    
+    def set_execution_method(self, method: str) -> None:
+        """Set the execution method used (ripgrep, python_lines, python_chunks, custom)."""
+        self._execution_method = method
+    
+    def get_command(self, file_path: str) -> Optional[str]:
+        """Get the execution command for a file."""
+        return self._commands_by_file.get(file_path)
+    
+    def get_commands(self) -> Dict[str, str]:
+        """Get all execution commands grouped by file path."""
+        return self._commands_by_file.copy()
+    
+    def get_execution_method(self) -> Optional[str]:
+        """Get the execution method used."""
+        return self._execution_method
     
     def get_lines(self) -> List[str]:
         """Get all filtered lines as a flat list."""
@@ -269,23 +291,37 @@ class LineFilter:
             
             try:
                 file_lines = []
+                execution_method = None
+                command = None
                 
                 if self.reading_mode == ReadingMode.LINES:
                     # Line-by-line reading mode
                     logger.debug(f"LineFilter: Using line-by-line reading mode for {file_path}")
-                    file_lines = await self._filter_lines_mode(file_path, cancellation_event)
+                    file_lines, command = await self._filter_lines_mode(file_path, cancellation_event)
+                    execution_method = "python_lines"
                 elif self.reading_mode == ReadingMode.CHUNKS:
                     # Chunk-based reading mode
                     logger.debug(f"LineFilter: Using chunk-based reading mode (chunk_size: {self.chunk_size:,} bytes) for {file_path}")
-                    file_lines = await self._filter_chunks_mode(file_path, cancellation_event)
+                    file_lines, command = await self._filter_chunks_mode(file_path, cancellation_event)
+                    execution_method = "python_chunks"
                 elif self.reading_mode == ReadingMode.RIPGREP:
                     # Ripgrep mode - ultra-fast pattern matching
                     if not is_ripgrep_available():
                         logger.warning(f"LineFilter: Ripgrep not available, falling back to line-by-line mode")
-                        file_lines = await self._filter_lines_mode(file_path, cancellation_event)
+                        file_lines, command = await self._filter_lines_mode(file_path, cancellation_event)
+                        execution_method = "python_lines"
                     else:
                         logger.debug(f"LineFilter: Using ripgrep mode (10-100x faster) for {file_path}")
-                        file_lines = await self._filter_ripgrep_mode(file_path, cancellation_event, progress_callback)
+                        file_lines, command = await self._filter_ripgrep_mode(file_path, cancellation_event, progress_callback)
+                        execution_method = "ripgrep"
+                
+                # Store execution method (use first file's method as representative)
+                if result.get_execution_method() is None:
+                    result.set_execution_method(execution_method)
+                
+                # Store command for this file
+                if command:
+                    result.set_command(file_path, command)
                 
                 # Store filtered lines
                 for line in file_lines:
@@ -328,7 +364,7 @@ class LineFilter:
         self,
         file_path: str,
         cancellation_event: Optional[asyncio.Event] = None
-    ) -> List[str]:
+    ) -> tuple[List[str], str]:
         """Filter lines using line-by-line reading mode."""
         matching_lines = []
         total_lines_checked = 0
@@ -339,13 +375,21 @@ class LineFilter:
             if self._compiled_pattern.search(line):
                 matching_lines.append(line)
         logger.debug(f"LineFilter: Line-by-line filtering complete - {len(matching_lines)} matches from {total_lines_checked:,} lines checked")
-        return matching_lines
+        
+        # Build command representation
+        import re
+        flags_str = ""
+        if self.flags & re.IGNORECASE:
+            flags_str = " --ignore-case"
+        command = f"python line-by-line search: {self.pattern}{flags_str} {file_path}"
+        
+        return matching_lines, command
     
     async def _filter_chunks_mode(
         self,
         file_path: str,
         cancellation_event: Optional[asyncio.Event] = None
-    ) -> List[str]:
+    ) -> tuple[List[str], str]:
         """Filter lines using chunk-based reading mode."""
         matching_lines = []
         chunk_buffer = ""  # Buffer for incomplete lines at chunk boundaries
@@ -390,14 +434,22 @@ class LineFilter:
                 matching_lines.append(chunk_buffer)
         
         logger.debug(f"LineFilter: Chunk-based filtering complete - {len(matching_lines)} matches from {total_lines_checked:,} lines checked across {chunk_count} chunk(s)")
-        return matching_lines
+        
+        # Build command representation
+        import re
+        flags_str = ""
+        if self.flags & re.IGNORECASE:
+            flags_str = " --ignore-case"
+        command = f"python chunk-based search: {self.pattern}{flags_str} {file_path}"
+        
+        return matching_lines, command
     
     async def _filter_ripgrep_mode(
         self,
         file_path: str,
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
-    ) -> List[str]:
+    ) -> tuple[List[str], str]:
         """Filter lines using ripgrep for ultra-fast pattern matching."""
         matching_lines = []
         
@@ -407,6 +459,18 @@ class LineFilter:
             if cancellation_event and cancellation_event.is_set():
                 raise CancelledError("Analysis cancelled")
             
+            # Build ripgrep command for display
+            import re
+            case_insensitive = bool(self.flags & re.IGNORECASE)
+            command = build_ripgrep_command(
+                pattern=self.pattern,
+                file_path=file_path,
+                case_insensitive=case_insensitive,
+                max_count=None,
+                context_before=self.context_before,
+                context_after=self.context_after
+            )
+            
             # Run ripgrep in executor to avoid blocking
             loop = asyncio.get_event_loop()
             
@@ -414,10 +478,6 @@ class LineFilter:
                 """Run ripgrep search and collect results."""
                 results = []
                 try:
-                    # Check if case-insensitive flag is set
-                    import re
-                    case_insensitive = bool(self.flags & re.IGNORECASE)
-                    
                     for line in ripgrep_search(
                         file_path,
                         self.pattern,
@@ -439,15 +499,16 @@ class LineFilter:
             
             logger.debug(f"LineFilter: Ripgrep filtering complete - {len(matching_lines)} matches found")
             
+            return matching_lines, command
+            
         except CancelledError:
             logger.info(f"LineFilter: Ripgrep filtering cancelled for {file_path}")
             raise
         except Exception as e:
             logger.error(f"LineFilter: Ripgrep failed for {file_path}: {e}, falling back to line-by-line mode")
             # Fall back to line-by-line mode on error
-            matching_lines = await self._filter_lines_mode(file_path, cancellation_event)
-        
-        return matching_lines
+            matching_lines, command = await self._filter_lines_mode(file_path, cancellation_event)
+            return matching_lines, command
 
 
 class FilterBasedInsight(Insight):

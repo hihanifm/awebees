@@ -295,6 +295,30 @@ class ConfigBasedInsight(Insight):
             logger.debug(f"{self._module_name}: Using default formatting")
             content, metadata = self._default_format(filter_result)
         
+        # Add execution command and method to metadata
+        commands_by_file = filter_result.get_commands()
+        execution_method = filter_result.get_execution_method()
+        total_line_count = filter_result.get_total_line_count()
+        
+        # Get the first command as representative (or combine if multiple files)
+        if commands_by_file:
+            # If multiple files, show first file's command (or could combine)
+            first_file = list(commands_by_file.keys())[0]
+            execution_command = commands_by_file[first_file]
+            # If multiple files, append note
+            if len(commands_by_file) > 1:
+                execution_command += f" (+ {len(commands_by_file) - 1} more file(s))"
+        else:
+            # Fallback: construct command from insight info
+            execution_command = f"{self._name}: {self._description or 'Custom insight'}"
+        
+        # Add to metadata
+        metadata["execution_command"] = execution_command
+        if execution_method:
+            metadata["execution_method"] = execution_method
+        metadata["line_count"] = total_line_count
+        metadata["pattern"] = self._line_pattern
+        
         total_elapsed = time.time() - start_time
         logger.info(f"{self._module_name}: Analysis complete in {total_elapsed:.2f}s")
         

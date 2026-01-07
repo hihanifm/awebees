@@ -15,6 +15,44 @@ def is_ripgrep_available() -> bool:
     """Check if ripgrep is installed and available."""
     return shutil.which("rg") is not None
 
+def build_ripgrep_command(
+    pattern: str,
+    file_path: str,
+    case_insensitive: bool = True,
+    max_count: Optional[int] = None,
+    context_before: int = 0,
+    context_after: int = 0
+) -> str:
+    """
+    Build a ripgrep command string for display purposes.
+    
+    Args:
+        pattern: Regex pattern to search for
+        file_path: Path to the file to search
+        case_insensitive: If True, use case-insensitive matching
+        max_count: Maximum number of matches
+        context_before: Number of lines to show before match
+        context_after: Number of lines to show after match
+        
+    Returns:
+        Command string that can be displayed to users
+    """
+    cmd_parts = ["rg", pattern, file_path, "--no-heading", "--no-line-number", "--text"]
+    
+    if case_insensitive:
+        cmd_parts.append("--ignore-case")
+    
+    if max_count:
+        cmd_parts.extend(["--max-count", str(max_count)])
+    
+    if context_before > 0:
+        cmd_parts.extend(["--before-context", str(context_before)])
+    
+    if context_after > 0:
+        cmd_parts.extend(["--after-context", str(context_after)])
+    
+    return " ".join(cmd_parts)
+
 def ripgrep_search(
     file_path: str,
     pattern: str,
