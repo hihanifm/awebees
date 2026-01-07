@@ -253,6 +253,28 @@ exit /b 0
 :prod_mode
 REM Production mode: Build frontend and serve from backend
 echo Building frontend for production...
+
+REM Change to frontend directory
+cd /d "%PROJECT_ROOT%\frontend"
+if not exist "package.json" (
+    echo Error: Frontend directory not found at %PROJECT_ROOT%\frontend
+    pause
+    exit /b 1
+)
+
+REM Check if node_modules exists, if not, install dependencies
+if not exist "node_modules" (
+    echo Installing frontend dependencies...
+    call npm install
+    if errorlevel 1 (
+        echo Error: Failed to install frontend dependencies
+        pause
+        exit /b 1
+    )
+)
+
+REM Build frontend
+echo Running npm run build...
 call npm run build
 if errorlevel 1 (
     echo Error: Frontend build failed
@@ -260,6 +282,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Check if build output exists
 if not exist "out" (
     echo Error: Frontend build output not found. Expected 'out' directory.
     pause
