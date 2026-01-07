@@ -301,7 +301,9 @@ if not exist ".env.local" (
 )
 
 echo.
+echo ========================================
 echo === Setup Complete ===
+echo ========================================
 echo.
 echo You can now start the services with:
 echo   scripts\win-start.bat
@@ -309,5 +311,28 @@ echo.
 echo Or check status with:
 echo   scripts\win-status.bat
 echo.
-pause
+echo ========================================
+echo.
+echo Would you like to start Lens now? [Y/N]
+set /p LAUNCH_LENS="Enter choice: "
+
+if /i "!LAUNCH_LENS!"=="Y" (
+    echo.
+    echo ========================================
+    echo Launching Lens...
+    echo ========================================
+    echo.
+    REM Change to script directory and launch
+    cd /d "%SCRIPT_DIR%"
+    call win-start.bat
+    REM Exit after launching (win-start.bat handles its own flow)
+    exit /b 0
+) else (
+    echo.
+    echo Setup complete. You can start Lens later with:
+    echo   scripts\win-start.bat
+    echo.
+    pause
+    exit /b 0
+)
 
