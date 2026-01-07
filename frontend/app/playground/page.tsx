@@ -118,7 +118,36 @@ export default function PlaygroundPage() {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Check backend config first - backend is the source of truth
+      // Frontend localStorage is the source of truth once user saves valid settings
+      const localSettings = loadAISettings();
+      
+      // Check if localStorage has valid settings (user has explicitly configured)
+      if (localSettings && localSettings.apiKey && localSettings.apiKey.trim() !== "") {
+        // User has saved settings - localStorage is source of truth
+        const enabled = localSettings.enabled;
+        const baseUrl = localSettings.baseUrl;
+        const apiKey = localSettings.apiKey;
+        
+        // Check if AI is enabled
+        if (!enabled) {
+          return {
+            isValid: false,
+            message: "AI processing is not enabled. Please enable it in settings."
+          };
+        }
+        
+        // Check if base URL is configured
+        if (!baseUrl || baseUrl.trim() === "") {
+          return {
+            isValid: false,
+            message: "AI Base URL is not configured. Please set it in settings."
+          };
+        }
+        
+        return { isValid: true };
+      }
+      
+      // No valid localStorage settings - check backend config (initial load or backend .env)
       const backendConfig = await getAIConfig();
       
       // If backend says it's configured, trust it (backend uses .env file)
@@ -126,39 +155,11 @@ export default function PlaygroundPage() {
         return { isValid: true };
       }
       
-      // If backend is not configured, check if user has local overrides
-      const localSettings = loadAISettings();
-      
-      // Merge settings (local takes precedence for user overrides)
-      const enabled = localSettings?.enabled ?? backendConfig.enabled ?? false;
-      const baseUrl = localSettings?.baseUrl ?? backendConfig.base_url ?? "";
-      const apiKey = localSettings?.apiKey ?? "";
-      
-      // Check if AI is enabled
-      if (!enabled) {
-        return {
-          isValid: false,
-          message: "AI processing is not enabled. Please enable it in settings."
-        };
-      }
-      
-      // Check if base URL is configured
-      if (!baseUrl || baseUrl.trim() === "") {
-        return {
-          isValid: false,
-          message: "AI Base URL is not configured. Please set it in settings."
-        };
-      }
-      
-      // Check if API key is configured (only check local, backend key is not exposed)
-      if (!apiKey || apiKey.trim() === "") {
-        return {
-          isValid: false,
-          message: "AI API Key is not configured. Please set it in settings."
-        };
-      }
-      
-      return { isValid: true };
+      // Backend is not configured either
+      return {
+        isValid: false,
+        message: "AI is not configured. Please configure it in settings."
+      };
     } catch (error) {
       return {
         isValid: false,
