@@ -7,7 +7,7 @@ import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { apiClient } from "@/lib/api-client";
-import { AnalysisResultItem, ProgressEvent, ErrorEvent } from "@/lib/api-types";
+import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 
 const LAST_PATH_KEY = "lens_last_file_paths";
 
@@ -35,7 +35,7 @@ function stripQuotes(path: string): string {
 export default function Home() {
   const [filePaths, setFilePaths] = useState<string>("");
   const [selectedInsightIds, setSelectedInsightIds] = useState<string[]>([]);
-  const [results, setResults] = useState<AnalysisResultItem[]>([]);
+  const [analysisResponse, setAnalysisResponse] = useState<AnalysisResponse | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
@@ -128,7 +128,7 @@ export default function Home() {
 
     setAnalyzing(true);
     setError(null);
-    setResults([]);
+    setAnalysisResponse(null);
     setProgressEvents([]);
     setCurrentTaskId(null);
 
@@ -169,7 +169,7 @@ export default function Home() {
         }
       );
 
-      setResults(response.results);
+      setAnalysisResponse(response);
     } catch (err) {
       if (err instanceof Error && err.message === "Analysis cancelled") {
         setError("Analysis was cancelled");
@@ -266,9 +266,9 @@ export default function Home() {
           </section>
 
           {/* Results */}
-          {results.length > 0 && (
+          {analysisResponse && (
             <section>
-              <ResultsPanel results={results} loading={analyzing} />
+              <ResultsPanel analysisResponse={analysisResponse} loading={analyzing} />
             </section>
           )}
         </div>

@@ -36,10 +36,13 @@ export interface AnalysisRequest {
 export interface AnalysisResultItem {
   insight_id: string;
   result: InsightResult;
+  execution_time: number; // Execution time in seconds
 }
 
 export interface AnalysisResponse {
   results: AnalysisResultItem[];
+  total_time: number; // Total execution time in seconds
+  insights_count: number; // Number of insights executed
 }
 
 export type ProgressEventType =

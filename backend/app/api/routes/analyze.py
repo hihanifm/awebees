@@ -30,11 +30,14 @@ class AnalysisResultItem(BaseModel):
     """Result item for a single insight."""
     insight_id: str
     result: InsightResult
+    execution_time: float = 0.0  # Execution time in seconds
 
 
 class AnalysisResponse(BaseModel):
     """Response with analysis results."""
     results: List[AnalysisResultItem]
+    total_time: float = 0.0  # Total execution time in seconds
+    insights_count: int = 0  # Number of insights executed
 
 
 def _format_sse_event(data: dict) -> str:
@@ -62,6 +65,7 @@ async def _run_analysis_with_progress(
     
     plugin_manager = get_plugin_manager()
     results = []
+    start_time = time.time()
     
     try:
         # Emit file verification event
@@ -109,20 +113,23 @@ async def _run_analysis_with_progress(
                 await progress_queue.put(event)
             
             try:
+                insight_start_time = time.time()
                 result = await insight.analyze(
                     request.file_paths,
                     cancellation_event=task.cancellation_event,
                     progress_callback=progress_callback
                 )
+                insight_elapsed = time.time() - insight_start_time
                 results.append(AnalysisResultItem(
                     insight_id=insight_id,
-                    result=result
+                    result=result,
+                    execution_time=insight_elapsed
                 ))
                 
                 # Emit insight complete event
                 await progress_queue.put(ProgressEvent(
                     type="insight_complete",
-                    message=f"{insight.name} completed",
+                    message=f"{insight.name} completed in {insight_elapsed:.2f}s",
                     task_id=task_id,
                     insight_id=insight_id
                 ))
@@ -145,14 +152,19 @@ async def _run_analysis_with_progress(
                 ))
         
         # Emit analysis complete event
+        total_elapsed = time.time() - start_time
         await progress_queue.put(ProgressEvent(
             type="analysis_complete",
-            message="Analysis complete",
+            message=f"Analysis complete in {total_elapsed:.2f}s",
             task_id=task_id
         ))
         task_manager.update_task_status(task_id, "completed")
         
-        return AnalysisResponse(results=results)
+        return AnalysisResponse(
+            results=results,
+            total_time=total_elapsed,
+            insights_count=len(request.insight_ids)
+        )
         
     except CancelledError:
         task_manager.update_task_status(task_id, "cancelled")
@@ -316,7 +328,8 @@ async def analyze(request: AnalysisRequest):
             
             results.append(AnalysisResultItem(
                 insight_id=insight_id,
-                result=result
+                result=result,
+                execution_time=insight_elapsed
             ))
         except HTTPException:
             raise
@@ -330,4 +343,8 @@ async def analyze(request: AnalysisRequest):
     
     total_elapsed = time.time() - start_time
     logger.info(f"Analyze API: Request complete - {len(results)} result(s) in {total_elapsed:.2f}s")
-    return AnalysisResponse(results=results)
+    return AnalysisResponse(
+        results=results,
+        total_time=total_elapsed,
+        insights_count=len(request.insight_ids)
+    )
