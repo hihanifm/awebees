@@ -146,6 +146,21 @@ REM Wait for backend to start (uvicorn with reload can take longer on Windows)
 call :wait_for_listening_pid %BACKEND_PORT% BACKEND_PID 20
 if not "%BACKEND_PID%"=="" goto backend_ok
 
+REM PID detection failed, but check if port is actually listening
+echo Warning: Could not detect backend PID, checking if port is listening...
+call :check_port_listening %BACKEND_PORT% PORT_LISTENING
+if "%PORT_LISTENING%"=="1" (
+    echo Backend appears to be running on port %BACKEND_PORT% ^(PID detection failed, but port is active^)
+    REM Try to find any python process as fallback PID
+    for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO LIST ^| findstr "PID:"') do (
+        set "BACKEND_PID=%%a"
+        goto backend_ok
+    )
+    REM If still no PID, use 0 as placeholder (won't affect stop script much)
+    set "BACKEND_PID=0"
+    goto backend_ok
+)
+
 echo Error: Backend failed to start - no process listening on port %BACKEND_PORT%
 echo Check backend logs: %BACKEND_LOG%
 type "%BACKEND_LOG%" 2>nul | more
@@ -153,7 +168,11 @@ pause
 exit /b 1
 
 :backend_ok
-echo Backend started ^(PID: %BACKEND_PID%, Port: %BACKEND_PORT%^)
+if not "%BACKEND_PID%"=="0" (
+    echo Backend started ^(PID: %BACKEND_PID%, Port: %BACKEND_PORT%^)
+) else (
+    echo Backend started ^(Port: %BACKEND_PORT%, PID: unknown^)
+)
 
 REM ===================================
 REM Start Frontend
@@ -164,7 +183,9 @@ cd /d "%PROJECT_ROOT%\frontend"
 if not exist "node_modules" (
     echo Error: Node.js dependencies not found in frontend\node_modules
     echo Please run scripts\win-setup.bat first to install dependencies
-    if not "%MODE%"=="prod" taskkill /PID !BACKEND_PID! /F >nul 2>&1
+    if not "%MODE%"=="prod" (
+        if not "!BACKEND_PID!"=="0" taskkill /PID !BACKEND_PID! /F >nul 2>&1
+    )
     pause
     exit /b 1
 )
@@ -178,13 +199,30 @@ start "" /b cmd /v:on /c "set PORT=%FRONTEND_PORT% ^&^& call npm run dev ^>^> ^\
 REM Wait for frontend to start (Next.js takes longer)
 call :wait_for_listening_pid %FRONTEND_PORT% FRONTEND_PID 30
 if "%FRONTEND_PID%"=="" (
+    REM PID detection failed, but check if port is actually listening
+    echo Warning: Could not detect frontend PID, checking if port is listening...
+    call :check_port_listening %FRONTEND_PORT% PORT_LISTENING
+    if "%PORT_LISTENING%"=="1" (
+        echo Frontend appears to be running on port %FRONTEND_PORT% ^(PID detection failed, but port is active^)
+        REM Try to find any node process as fallback PID
+        for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq node.exe" /FO LIST ^| findstr "PID:"') do (
+            set "FRONTEND_PID=%%a"
+            goto frontend_ok
+        )
+        REM If still no PID, use 0 as placeholder
+        set "FRONTEND_PID=0"
+        goto frontend_ok
+    )
     echo Error: Frontend failed to start - no process listening on port %FRONTEND_PORT%
     echo Check frontend logs: %FRONTEND_LOG%
     type "%FRONTEND_LOG%" | more
-    if not "%MODE%"=="prod" taskkill /PID %BACKEND_PID% /F >nul 2>&1
+    if not "%MODE%"=="prod" (
+        if not "%BACKEND_PID%"=="0" taskkill /PID %BACKEND_PID% /F >nul 2>&1
+    )
     pause
     exit /b 1
 )
+:frontend_ok
 
 REM Save PIDs
 echo backend %BACKEND_PID% > "%PID_FILE%"
@@ -192,8 +230,16 @@ echo frontend %FRONTEND_PID% >> "%PID_FILE%"
 
 echo.
 echo Services started successfully in DEVELOPMENT mode!
-echo Backend: http://localhost:%BACKEND_PORT% ^(PID: %BACKEND_PID%^)
-echo Frontend: http://localhost:%FRONTEND_PORT% ^(PID: %FRONTEND_PID%^)
+if not "%BACKEND_PID%"=="0" (
+    echo Backend: http://localhost:%BACKEND_PORT% ^(PID: %BACKEND_PID%^)
+) else (
+    echo Backend: http://localhost:%BACKEND_PORT% ^(PID: unknown^)
+)
+if not "%FRONTEND_PID%"=="0" (
+    echo Frontend: http://localhost:%FRONTEND_PORT% ^(PID: %FRONTEND_PID%^)
+) else (
+    echo Frontend: http://localhost:%FRONTEND_PORT% ^(PID: unknown^)
+)
 echo.
 echo Logs:
 echo   Backend: %BACKEND_LOG%
@@ -229,19 +275,38 @@ start "" /b cmd /v:on /c "call venv\Scripts\activate.bat ^&^& set SERVE_FRONTEND
 REM Wait for backend to start
 call :wait_for_listening_pid %BACKEND_PORT% BACKEND_PID 20
 if "%BACKEND_PID%"=="" (
+    REM PID detection failed, but check if port is actually listening
+    echo Warning: Could not detect backend PID, checking if port is listening...
+    call :check_port_listening %BACKEND_PORT% PORT_LISTENING
+    if "%PORT_LISTENING%"=="1" (
+        echo Backend appears to be running on port %BACKEND_PORT% ^(PID detection failed, but port is active^)
+        REM Try to find any python process as fallback PID
+        for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO LIST ^| findstr "PID:"') do (
+            set "BACKEND_PID=%%a"
+            goto prod_backend_ok
+        )
+        REM If still no PID, use 0 as placeholder
+        set "BACKEND_PID=0"
+        goto prod_backend_ok
+    )
     echo Error: Backend failed to start in production mode - no process listening on port %BACKEND_PORT%
     echo Check backend logs: %BACKEND_LOG%
     type "%BACKEND_LOG%" 2>nul | more
     pause
     exit /b 1
 )
+:prod_backend_ok
 
 REM Save PID (only backend in production)
 echo backend %BACKEND_PID% > "%PID_FILE%"
 
 echo.
 echo Services started successfully in PRODUCTION mode!
-echo Backend ^(serving API + Frontend^): http://localhost:%BACKEND_PORT% ^(PID: %BACKEND_PID%^)
+if not "%BACKEND_PID%"=="0" (
+    echo Backend ^(serving API + Frontend^): http://localhost:%BACKEND_PORT% ^(PID: %BACKEND_PID%^)
+) else (
+    echo Backend ^(serving API + Frontend^): http://localhost:%BACKEND_PORT% ^(PID: unknown^)
+)
 echo.
 echo Logs:
 echo   Backend: %BACKEND_LOG%
@@ -262,6 +327,17 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr "LISTENING" ^| findstr ":%POR
 )
 :pid_done
 endlocal & set "%~2=%PID%"
+exit /b 0
+
+:check_port_listening
+REM Args: <port> <outVarName>
+REM Returns: 1 if port is listening, 0 if not
+setlocal
+set "PORT=%~1"
+set "LISTENING=0"
+netstat -ano | findstr "LISTENING" | findstr ":%PORT%" >nul 2>&1
+if not errorlevel 1 set "LISTENING=1"
+endlocal & set "%~2=%LISTENING%"
 exit /b 0
 
 :wait_for_listening_pid
