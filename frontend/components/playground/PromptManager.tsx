@@ -35,7 +35,7 @@ export function PromptManager({
 }: PromptManagerProps) {
   const { toast } = useToast();
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
-  const [selectedPromptId, setSelectedPromptId] = useState<string>("none");
+  const [selectedPromptId, setSelectedPromptId] = useState<string>("summarize");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [newPromptName, setNewPromptName] = useState("");
 
@@ -50,6 +50,26 @@ export function PromptManager({
       }
     }
   }, []);
+
+  // Auto-load summarize preset if no system prompt is set and defaultPrompts are available
+  useEffect(() => {
+    if (!systemPrompt.trim() && defaultPrompts.summarize && defaultPrompts.summarize.trim()) {
+      onSystemPromptChange(defaultPrompts.summarize);
+      // Only update userPrompt if it's empty or matches a default message
+      if (!userPrompt.trim() || 
+          userPrompt === "Please analyze the filtered results above." ||
+          userPrompt === "Please analyze the text above.") {
+        // Preserve the existing userPrompt pattern (filter vs text mode)
+        if (userPrompt === "Please analyze the text above.") {
+          onUserPromptChange("Please analyze the text above.");
+        } else {
+          onUserPromptChange("Please analyze the filtered results above.");
+        }
+      }
+      setSelectedPromptId("summarize");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultPrompts.summarize]); // Only run when defaultPrompts.summarize becomes available
 
   // Save prompts to localStorage
   const saveToStorage = (prompts: SavedPrompt[]) => {

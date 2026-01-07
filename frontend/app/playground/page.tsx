@@ -23,6 +23,8 @@ const STORAGE_KEYS = {
   CASE_SENSITIVE: "lens_playground_case_sensitive",
   CONTEXT_BEFORE: "lens_playground_context_before",
   CONTEXT_AFTER: "lens_playground_context_after",
+  SYSTEM_PROMPT: "lens_playground_system_prompt",
+  USER_PROMPT: "lens_playground_user_prompt",
 };
 
 export default function PlaygroundPage() {
@@ -60,6 +62,10 @@ export default function PlaygroundPage() {
     setCaseInsensitive(localStorage.getItem(STORAGE_KEYS.CASE_SENSITIVE) !== "false");
     setContextBefore(parseInt(localStorage.getItem(STORAGE_KEYS.CONTEXT_BEFORE) || "0"));
     setContextAfter(parseInt(localStorage.getItem(STORAGE_KEYS.CONTEXT_AFTER) || "0"));
+    
+    // Load shared prompts from localStorage
+    setSystemPrompt(localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT) || "");
+    setUserPrompt(localStorage.getItem(STORAGE_KEYS.USER_PROMPT) || "Please analyze the filtered results above.");
 
     // Load default prompts
     apiClient.getAISystemPrompts().then(setDefaultPrompts).catch(console.error);
@@ -89,6 +95,19 @@ export default function PlaygroundPage() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CONTEXT_AFTER, String(contextAfter));
   }, [contextAfter]);
+
+  // Save shared prompts to localStorage
+  useEffect(() => {
+    if (systemPrompt) {
+      localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, systemPrompt);
+    }
+  }, [systemPrompt]);
+
+  useEffect(() => {
+    if (userPrompt) {
+      localStorage.setItem(STORAGE_KEYS.USER_PROMPT, userPrompt);
+    }
+  }, [userPrompt]);
 
   const handleFilter = async () => {
     if (!filePath.trim() || !pattern.trim()) {
@@ -231,15 +250,23 @@ export default function PlaygroundPage() {
       <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-6 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
-          <Link 
-            href="/"
-            className="inline-flex items-center text-sm text-primary hover:text-primary/80 mb-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Analysis
-          </Link>
+          <div className="flex items-center justify-between mb-2">
+            <Link 
+              href="/"
+              className="inline-flex items-center text-sm text-primary hover:text-primary/80"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Analysis
+            </Link>
+            <Link 
+              href="/playground/text"
+              className="inline-flex items-center text-sm text-primary hover:text-primary/80"
+            >
+              Text Input Mode
+            </Link>
+          </div>
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            Playground
+            Playground - Filter Mode
           </h1>
           <p className="text-foreground/80 mt-2 font-medium">
             Experiment with ripgrep filters and AI prompts in real-time
