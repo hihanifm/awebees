@@ -106,6 +106,60 @@ scripts\win-logs.bat -b       REM Show backend logs
 
 Shows the last 20 lines of frontend or backend logs with the file path. Defaults to frontend logs.
 
+### Test AI Configuration
+
+**Linux/Mac:**
+```bash
+./scripts/test-ai-key.sh
+```
+
+**Windows:**
+```cmd
+scripts\win-test-ai-key.bat
+```
+
+Validates the OpenAI API configuration and connection:
+- Tests if the API key is valid
+- Checks if the configured model is available
+- Displays configuration details
+- Shows recommended models for log analysis
+
+**What it checks:**
+- `AI_ENABLED` setting
+- OpenAI API key validity
+- API connection and availability
+- Configured model (`OPENAI_MODEL`) availability
+- Lists recommended models for Lens
+
+**Example output:**
+```
+🔍 Lens AI Configuration Validator
+============================================================
+
+📋 Configuration:
+  AI Enabled:    True
+  Base URL:      https://api.openai.com/v1
+  API Key:       sk-proj-EB...k_2cdf8A
+  Model:         gpt-4o-mini
+  Max Tokens:    4000
+  Temperature:   0.5
+
+🔑 Testing API Key...
+✅ API Key is valid!
+
+🤖 Checking Configured Model...
+✅ Model 'gpt-4o-mini' is available!
+
+💡 Recommended Models for Lens:
+  [✓] gpt-4o-mini          - Fast, cost-effective, great for log analysis
+  [ ] gpt-4o               - More capable, higher quality, more expensive
+  [ ] gpt-4-turbo          - Good balance of speed and capability
+
+============================================================
+✅ All checks passed! AI features are ready to use.
+============================================================
+```
+
 ### Version Management
 
 **Linux/Mac:**
@@ -254,4 +308,5 @@ If you get errors about ports being in use:
 | Status | `./scripts/status.sh` | `scripts\win-status.bat` |
 | Logs (Frontend) | `./scripts/logs.sh` | `scripts\win-logs.bat` |
 | Logs (Backend) | `./scripts/logs.sh -b` | `scripts\win-logs.bat -b` |
+| Test AI Key | `./scripts/test-ai-key.sh` | `scripts\win-test-ai-key.bat` |
 | Version | `./scripts/version.sh` | `scripts\win-version.bat` |
