@@ -10,6 +10,8 @@ class InsightResult(BaseModel):
     result_type: Literal["text", "file", "chart_data"]
     content: str  # Text content, file path, or JSON string for charts
     metadata: Optional[Dict[str, Any]] = None
+    ai_enabled: bool = False  # Whether AI processing is enabled for this insight
+    ai_summary: Optional[str] = None  # AI-generated summary (populated after AI analysis)
 
 
 class InsightMetadata(BaseModel):
@@ -18,6 +20,9 @@ class InsightMetadata(BaseModel):
     name: str
     description: str
     folder: Optional[str] = None  # Folder name where insight is located (None for root-level)
+    ai_enabled: bool = True  # Whether insight supports AI analysis (default: True)
+    ai_auto: bool = False  # Whether to automatically trigger AI after analysis (default: False)
+    ai_prompt_type: str = "explain"  # Default AI prompt type: summarize, explain, recommend, custom
 
 
 class ProgressEvent(BaseModel):

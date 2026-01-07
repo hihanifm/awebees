@@ -6,6 +6,8 @@ import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { StatusBar } from "@/components/StatusBar";
 import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 
@@ -42,6 +44,7 @@ export default function Home() {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
   const [loadingSample, setLoadingSample] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Stream backend errors on mount
   useEffect(() => {
@@ -273,6 +276,12 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* Settings Dialog */}
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+      {/* Status Bar with Settings Button */}
+      <StatusBar onOpenSettings={() => setSettingsOpen(true)} />
     </div>
   );
 }

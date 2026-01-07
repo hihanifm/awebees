@@ -80,6 +80,16 @@ class ConfigBasedInsight(Insight):
         self._reading_mode_str = filters.get("reading_mode", "ripgrep")  # Default to ripgrep for best performance
         self._chunk_size = filters.get("chunk_size", 1048576)
         
+        # Extract AI configuration
+        ai_config = config.get("ai", {})
+        self._ai_enabled = ai_config.get("enabled", True)  # Default: AI enabled
+        self._ai_auto = ai_config.get("auto", False)  # Default: manual trigger
+        self._ai_prompt_type = ai_config.get("prompt_type", "explain")  # Default: explain
+        self._ai_custom_prompt = ai_config.get("prompt")  # Optional custom prompt
+        self._ai_model = ai_config.get("model")  # Optional model override
+        self._ai_max_tokens = ai_config.get("max_tokens")  # Optional max_tokens override
+        self._ai_temperature = ai_config.get("temperature")  # Optional temperature override
+        
         # Parse regex flags
         self._regex_flags = self._parse_regex_flags(self._regex_flags_str)
         
@@ -87,6 +97,8 @@ class ConfigBasedInsight(Insight):
         self._reading_mode = self._parse_reading_mode(self._reading_mode_str)
         
         logger.info(f"ConfigBasedInsight initialized: {self._id} from {self._module_name}")
+        if self._ai_enabled:
+            logger.debug(f"ConfigBasedInsight AI: enabled={self._ai_enabled}, auto={self._ai_auto}, prompt_type={self._ai_prompt_type}")
     
     def _validate_config(self) -> None:
         """Validate config structure and required fields."""
@@ -172,6 +184,40 @@ class ConfigBasedInsight(Insight):
     def folder(self) -> Optional[str]:
         """Return insight folder from config."""
         return self._folder
+    
+    @property
+    def ai_enabled(self) -> bool:
+        """Whether AI processing is supported for this insight."""
+        return self._ai_enabled
+    
+    @property
+    def ai_auto(self) -> bool:
+        """Whether to automatically trigger AI after analysis."""
+        return self._ai_auto
+    
+    @property
+    def ai_prompt_type(self) -> str:
+        """Default AI prompt type for this insight."""
+        return self._ai_prompt_type
+    
+    @property
+    def ai_custom_prompt(self) -> Optional[str]:
+        """Custom AI prompt for this insight (if ai_prompt_type is "custom")."""
+        return self._ai_custom_prompt
+    
+    @property
+    def ai_prompt_variables(self) -> Optional[dict]:
+        """
+        Variables for AI prompt substitution.
+        
+        Returns:
+            Dictionary of variables including result metadata and insight info
+        """
+        # These will be populated at runtime from the analysis result
+        return {
+            "insight_name": self._name,
+            "insight_description": self._description
+        }
     
     async def analyze(
         self,

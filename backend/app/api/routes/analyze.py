@@ -1,6 +1,6 @@
 """API routes for analysis execution."""
 
-from typing import List, AsyncGenerator
+from typing import List, AsyncGenerator, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -14,6 +14,8 @@ from app.core.plugin_manager import get_plugin_manager
 from app.core.models import InsightResult, ProgressEvent
 from app.core.task_manager import get_task_manager
 from app.services.file_handler import CancelledError
+from app.services.ai_service import get_ai_service
+from app.core.config import AIConfig
 
 logger = logging.getLogger(__name__)
 
@@ -348,3 +350,170 @@ async def analyze(request: AnalysisRequest):
         total_time=total_elapsed,
         insights_count=len(request.insight_ids)
     )
+
+
+# ============================================================================
+# AI Analysis Endpoints
+# ============================================================================
+
+class AIAnalyzeRequest(BaseModel):
+    """Request for AI analysis."""
+    content: str
+    prompt_type: str = "explain"  # summarize, explain, recommend, custom
+    custom_prompt: Optional[str] = None
+    variables: Optional[dict] = None
+
+
+class AIConfigUpdate(BaseModel):
+    """Request to update AI configuration."""
+    enabled: Optional[bool] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    model: Optional[str] = None
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+
+
+@router.post("/ai/analyze")
+async def ai_analyze_result(request: AIAnalyzeRequest):
+    """
+    Analyze content with AI and stream the response.
+    
+    Returns SSE stream of AI analysis.
+    """
+    logger.info(f"AI Analyze API: Starting analysis (prompt_type: {request.prompt_type})")
+    
+    if not AIConfig.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is not configured. Please set OPENAI_API_KEY and enable AI_ENABLED=true"
+        )
+    
+    async def stream_ai_response() -> AsyncGenerator[str, None]:
+        """Generate SSE stream from AI service."""
+        try:
+            ai_service = get_ai_service()
+            
+            # Send initial event
+            yield _format_sse_event({
+                "type": "ai_start",
+                "message": "AI analysis starting..."
+            })
+            
+            # Stream AI response
+            full_response = []
+            async for chunk in ai_service.analyze_stream(
+                content=request.content,
+                prompt_type=request.prompt_type,
+                custom_prompt=request.custom_prompt,
+                variables=request.variables
+            ):
+                full_response.append(chunk)
+                yield _format_sse_event({
+                    "type": "ai_chunk",
+                    "content": chunk
+                })
+            
+            # Send completion event
+            yield _format_sse_event({
+                "type": "ai_complete",
+                "message": "AI analysis complete",
+                "full_content": "".join(full_response)
+            })
+            
+            logger.info("AI Analyze API: Analysis complete")
+        
+        except Exception as e:
+            logger.error(f"AI Analyze API: Error during analysis: {e}", exc_info=True)
+            yield _format_sse_event({
+                "type": "ai_error",
+                "message": str(e),
+                "error": True
+            })
+    
+    return StreamingResponse(
+        stream_ai_response(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+@router.get("/ai/config")
+async def get_ai_config():
+    """
+    Get current AI configuration (without sensitive data).
+    
+    Returns configuration with masked API key.
+    """
+    logger.info("AI Config API: Fetching configuration")
+    return AIConfig.to_dict(include_sensitive=False)
+
+
+@router.post("/ai/config")
+async def update_ai_config(config: AIConfigUpdate):
+    """
+    Update AI configuration.
+    
+    Note: This updates runtime config only. For persistent changes,
+    update environment variables or .env file.
+    """
+    logger.info("AI Config API: Updating configuration")
+    
+    try:
+        # Convert to dict and filter None values
+        config_dict = {k: v for k, v in config.dict().items() if v is not None}
+        
+        # Update configuration
+        AIConfig.update_from_dict(config_dict)
+        
+        # Reset AI service to pick up new config
+        from app.services.ai_service import reset_ai_service
+        reset_ai_service()
+        
+        logger.info("AI Config API: Configuration updated successfully")
+        return {"status": "success", "message": "AI configuration updated"}
+    
+    except Exception as e:
+        logger.error(f"AI Config API: Error updating configuration: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating AI configuration: {str(e)}"
+        )
+
+
+@router.post("/ai/test")
+async def test_ai_connection():
+    """
+    Test connection to AI service.
+    
+    Returns success status and message.
+    """
+    logger.info("AI Test API: Testing connection")
+    
+    if not AIConfig.is_configured():
+        return {
+            "success": False,
+            "message": "AI service not configured (missing API key or disabled)"
+        }
+    
+    try:
+        ai_service = get_ai_service()
+        success, message = await ai_service.test_connection()
+        
+        logger.info(f"AI Test API: Test {'successful' if success else 'failed'}: {message}")
+        return {
+            "success": success,
+            "message": message
+        }
+    
+    except Exception as e:
+        logger.error(f"AI Test API: Error testing connection: {e}", exc_info=True)
+        return {
+            "success": False,
+            "message": f"Test failed: {str(e)}"
+        }
+

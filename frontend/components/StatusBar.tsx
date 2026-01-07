@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Code, Server, Info, CheckCircle2, AlertCircle, Activity } from "lucide-react";
+import { Code, Server, Info, CheckCircle2, AlertCircle, Activity, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
 
 interface VersionResponse {
   version: string;
@@ -15,7 +16,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 // Get mode from environment (Next.js exposes this at build time)
 const MODE = process.env.NODE_ENV === "production" ? "PROD" : "DEV";
 
-export function StatusBar() {
+interface StatusBarProps {
+  onOpenSettings?: () => void;
+}
+
+export function StatusBar({ onOpenSettings }: StatusBarProps) {
   const [version, setVersion] = useState<string>("...");
   const [versionLoading, setVersionLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
@@ -78,6 +83,19 @@ export function StatusBar() {
     <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-orange-200/30 dark:border-orange-900/20 bg-gradient-to-r from-orange-50/95 via-background/95 to-amber-50/95 dark:from-orange-950/30 dark:via-background/95 dark:to-amber-950/30 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-10 max-w-screen-2xl items-center justify-between px-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
+          {/* Settings Button (Left side for future menu expansion) */}
+          {onOpenSettings && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onOpenSettings}
+              className="h-7 w-7 p-0 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+              title="Settings"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          )}
+
           {/* Version */}
           <div className="flex items-center gap-1.5">
             <Code className="h-3.5 w-3.5" />

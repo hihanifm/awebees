@@ -222,4 +222,134 @@ export const apiClient = {
       }, 1000);
     });
   },
+
+  /**
+   * Analyze content with AI and stream the response.
+   * @param content Content to analyze
+   * @param promptType Type of analysis: summarize, explain, recommend, custom
+   * @param customPrompt Optional custom prompt (if promptType is "custom")
+   * @param variables Optional variables for prompt substitution
+   * @param onChunk Callback for AI response chunks
+   * @returns Promise that resolves with full AI response
+   */
+  async analyzeWithAI(
+    content: string,
+    promptType: string = "explain",
+    customPrompt?: string,
+    variables?: Record<string, any>,
+    onChunk?: (chunk: string) => void
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const streamUrl = API_URL ? `${API_URL}/api/analyze/ai/analyze` : "/api/analyze/ai/analyze";
+      
+      fetch(streamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          prompt_type: promptType,
+          custom_prompt: customPrompt,
+          variables,
+        }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+
+          if (!reader) {
+            throw new Error("Response body is not readable");
+          }
+
+          let buffer = "";
+          let fullResponse = "";
+
+          const readChunk = (): Promise<void> => {
+            return reader.read().then(({ done, value }) => {
+              if (done) {
+                resolve(fullResponse);
+                return Promise.resolve();
+              }
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    
+                    if (data.type === "ai_chunk" && data.content) {
+                      fullResponse += data.content;
+                      if (onChunk) {
+                        onChunk(data.content);
+                      }
+                    } else if (data.type === "ai_complete") {
+                      resolve(fullResponse);
+                      return Promise.resolve();
+                    } else if (data.type === "ai_error") {
+                      reject(new Error(data.message));
+                      return Promise.resolve();
+                    }
+                  } catch (e) {
+                    console.error("Error parsing AI SSE event:", e);
+                  }
+                }
+              }
+
+              return readChunk();
+            });
+          };
+
+          return readChunk();
+        })
+        .catch(reject);
+    });
+  },
+
+  /**
+   * Get AI configuration from backend.
+   */
+  async getAIConfig(): Promise<any> {
+    return fetchJSON("/api/analyze/ai/config");
+  },
+
+  /**
+   * Update AI configuration.
+   */
+  async updateAIConfig(config: {
+    enabled?: boolean;
+    base_url?: string;
+    api_key?: string;
+    model?: string;
+    max_tokens?: number;
+    temperature?: number;
+  }): Promise<void> {
+    await fetchJSON("/api/analyze/ai/config", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+  },
+
+  /**
+   * Test AI connection.
+   */
+  async testAIConnection(): Promise<{ success: boolean; message: string }> {
+    return fetchJSON("/api/analyze/ai/test", {
+      method: "POST",
+    });
+  },
 };
+
+// Export individual AI functions for easier imports
+export const getAIConfig = apiClient.getAIConfig;
+export const updateAIConfig = apiClient.updateAIConfig;
+export const testAIConnection = apiClient.testAIConnection;
+export const analyzeWithAI = apiClient.analyzeWithAI;
+

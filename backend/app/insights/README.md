@@ -6,6 +6,7 @@ This guide explains how to create insights for the Lens application.
 
 - [Overview](#overview)
 - [Config-Based Insights (Recommended)](#config-based-insights-recommended)
+- [AI-Powered Analysis](#ai-powered-analysis)
 - [Class-Based Insights (Advanced)](#class-based-insights-advanced)
 - [When to Use Each Approach](#when-to-use-each-approach)
 - [Testing Your Insight](#testing-your-insight)
@@ -228,6 +229,152 @@ Lens supports three reading modes for file processing, each optimized for differ
 - **Use `lines`**: Only when ripgrep is unavailable or for compatibility
 
 **Note:** Ripgrep mode only supports pattern matching. For complex processing (e.g., parsing JSON, computing statistics), you can still use ripgrep for filtering and add custom post-processing with `process_results()`.
+
+## AI-Powered Analysis
+
+Enhance your insights with AI analysis. Lens supports OpenAI-compatible APIs for automatic summarization, pattern explanation, and actionable recommendations.
+
+### Quick Start
+
+Add AI configuration to your insight:
+
+```python
+INSIGHT_CONFIG = {
+    "metadata": {
+        "id": "ai_insight",
+        "name": "AI-Enhanced Insight",
+        "description": "Detects errors with AI analysis"
+    },
+    "filters": {
+        "line_pattern": r"\b(ERROR|FATAL)\b"
+    },
+    "ai": {
+        "enabled": True,
+        "auto": False,  # Set to True for automatic AI analysis
+        "prompt_type": "explain"  # or "summarize", "recommend", "custom"
+    }
+}
+```
+
+### Prompt Types
+
+Choose from predefined prompt types:
+
+- **`summarize`**: Brief overview of key findings
+- **`explain`**: Detailed pattern analysis and explanations
+- **`recommend`**: Actionable recommendations and next steps
+
+### Custom Prompts
+
+For domain-specific analysis, provide custom prompts:
+
+```python
+"ai": {
+    "enabled": True,
+    "prompt_type": "custom",
+    "prompt": """You are an expert Android crash analyzer.
+
+Analyze the following crash logs and provide:
+
+1. **Root Cause**: What caused the crash?
+2. **Affected Components**: Which parts of the app are impacted?
+3. **Severity**: How critical is this issue?
+4. **Fix Recommendations**: Specific code changes needed
+5. **Prevention**: How to prevent similar crashes
+
+Be concise and actionable."""
+}
+```
+
+### Prompt Variables
+
+Use dynamic variables in custom prompts:
+
+```python
+"ai": {
+    "enabled": True,
+    "prompt_type": "custom",
+    "prompt": """Analyzed {file_count} log files and found {match_count} errors.
+
+Insight: {insight_name}
+Description: {insight_description}
+
+Please analyze the following errors and suggest fixes:
+
+{result_content}"""
+}
+```
+
+**Available Variables:**
+- `{file_count}` - Number of files analyzed
+- `{match_count}` - Number of matches found
+- `{insight_name}` - Name of the insight
+- `{insight_description}` - Description of the insight
+- `{result_content}` - Filtered content (auto-appended if not included)
+
+### Configuration Options
+
+Full AI configuration options:
+
+```python
+"ai": {
+    "enabled": True,              # Enable AI for this insight (default: True)
+    "auto": False,                # Auto-trigger after analysis (default: False)
+    "prompt_type": "explain",     # Prompt type (default: "explain")
+    "prompt": "...",              # Custom prompt (optional, for "custom" type)
+    "model": "gpt-4o",            # Override global model (optional)
+    "max_tokens": 3000,           # Override max tokens (optional)
+    "temperature": 0.5            # Override temperature (optional)
+}
+```
+
+### Setup
+
+See [AI Setup Guide](../../docs/AI_SETUP.md) for:
+- Getting an OpenAI API key
+- Using Azure OpenAI
+- Running local LLMs (Ollama, LM Studio)
+- Cost optimization tips
+- Security best practices
+
+### Example: Android Crash Analyzer
+
+```python
+"""Android Crash Analyzer with AI insights."""
+
+INSIGHT_CONFIG = {
+    "metadata": {
+        "id": "android_crash_ai",
+        "name": "Android Crash Analyzer (AI)",
+        "description": "Analyzes Android crashes with AI recommendations"
+    },
+    "filters": {
+        "line_pattern": r"FATAL EXCEPTION"
+    },
+    "ai": {
+        "enabled": True,
+        "auto": True,  # Automatically analyze crashes
+        "prompt_type": "custom",
+        "prompt": """You are an expert Android developer.
+
+Analyze these crash logs and provide:
+1. Root cause in simple terms
+2. Which Android components are involved
+3. Suggested fixes with code examples
+4. How to prevent this crash
+
+{result_content}"""
+    }
+}
+
+if __name__ == "__main__":
+    from app.utils.config_insight_runner import main_config_standalone
+    main_config_standalone(__file__)
+```
+
+**Note:** Automatic AI analysis (`"auto": True`) triggers AI immediately after insight execution. Manual mode requires user click in the UI.
+
+
 
 ## Class-Based Insights (Advanced)
 

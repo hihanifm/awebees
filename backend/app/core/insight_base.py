@@ -50,3 +50,53 @@ class Insight(ABC):
         
         """
         pass
+    
+    @property
+    def ai_enabled(self) -> bool:
+        """
+        Whether AI processing is supported for this insight.
+        
+        Returns:
+            True if AI can analyze this insight's results (default: True)
+        """
+        return True
+    
+    @property
+    def ai_auto(self) -> bool:
+        """
+        Whether to automatically trigger AI after analysis.
+        
+        Returns:
+            True to auto-trigger AI, False for manual only (default: False)
+        """
+        return False
+    
+    @property
+    def ai_prompt_type(self) -> str:
+        """
+        Default AI prompt type for this insight.
+        
+        Returns:
+            One of: "summarize", "explain", "recommend", "custom" (default: "explain")
+        """
+        return "explain"
+    
+    @property
+    def ai_custom_prompt(self) -> Optional[str]:
+        """
+        Custom AI prompt for this insight (if ai_prompt_type is "custom").
+        
+        Returns:
+            Custom prompt string or None
+        """
+        return None
+    
+    @property
+    def ai_prompt_variables(self) -> Optional[dict]:
+        """
+        Variables for AI prompt substitution.
+        
+        Returns:
+            Dictionary of variables or None
+        """
+        return None
