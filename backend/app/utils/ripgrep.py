@@ -18,7 +18,7 @@ def is_ripgrep_available() -> bool:
 def ripgrep_search(
     file_path: str,
     pattern: str,
-    case_insensitive: bool = True,  # Always True by default
+    case_insensitive: bool = True,
     max_count: Optional[int] = None,
     context_before: int = 0,
     context_after: int = 0
@@ -26,12 +26,10 @@ def ripgrep_search(
     """
     Search for pattern in file using ripgrep.
     
-    Note: Case-insensitive search is always enabled for log file analysis.
-    
     Args:
         file_path: Path to the file to search
         pattern: Regex pattern to search for
-        case_insensitive: Ignored (always case-insensitive)
+        case_insensitive: If True, use case-insensitive matching (default: True)
         max_count: Maximum number of matches (None for unlimited)
         context_before: Number of lines to show before match
         context_after: Number of lines to show after match
@@ -47,8 +45,11 @@ def ripgrep_search(
         raise FileNotFoundError("ripgrep (rg) is not installed")
     
     # Build ripgrep command
-    # Always use --ignore-case for log file analysis (ERROR, Error, error should all match)
-    cmd = ["rg", pattern, file_path, "--no-heading", "--no-line-number", "--text", "--ignore-case"]
+    cmd = ["rg", pattern, file_path, "--no-heading", "--no-line-number", "--text"]
+    
+    # Add case-insensitive flag if requested
+    if case_insensitive:
+        cmd.append("--ignore-case")
     
     if max_count:
         cmd.extend(["--max-count", str(max_count)])

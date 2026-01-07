@@ -408,16 +408,20 @@ class LineFilter:
                 raise CancelledError("Analysis cancelled")
             
             # Run ripgrep in executor to avoid blocking
-            # Note: ripgrep always uses case-insensitive matching for log files
             loop = asyncio.get_event_loop()
             
             def run_ripgrep():
                 """Run ripgrep search and collect results."""
                 results = []
                 try:
+                    # Check if case-insensitive flag is set
+                    import re
+                    case_insensitive = bool(self.flags & re.IGNORECASE)
+                    
                     for line in ripgrep_search(
                         file_path,
                         self.pattern,
+                        case_insensitive=case_insensitive,
                         context_before=self.context_before,
                         context_after=self.context_after
                     ):
