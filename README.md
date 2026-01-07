@@ -4,6 +4,9 @@ A modular engine for extracting insights from messy data!
 
 A local web application for analyzing log files with a plugin-based insight system.
 
+![Lens Main Interface](lens_1.png)
+*Main interface showing file selection, available insights, and real-time analysis progress*
+
 ## Architecture
 
 - **Frontend**: Next.js App Router + TypeScript + shadcn/ui + Tailwind CSS (Port 34000)
@@ -164,9 +167,6 @@ scripts\win-logs.bat -b     REM Backend logs (last 20 lines)
 ## Features
 
 Lens provides a modular plugin-based system for analyzing log files:
-
-![Lens Main Interface](lens_1.png)
-*Main interface showing file selection, available insights, and real-time analysis progress*
 
 ### Available Insights
 
