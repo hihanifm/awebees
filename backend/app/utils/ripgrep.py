@@ -68,7 +68,7 @@ def ripgrep_search(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            bufsize=1
+            bufsize=-1  # Use system default buffering (line buffering only works in text mode)
         )
         
         for line in process.stdout:
