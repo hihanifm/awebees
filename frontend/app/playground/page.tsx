@@ -154,21 +154,21 @@ export default function PlaygroundPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-orange-50/30 via-background to-amber-50/20 font-sans dark:from-orange-950/10 dark:via-background dark:to-amber-950/5">
-      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-6 pb-8 px-4 mx-auto bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm border-x border-orange-100/50 dark:border-orange-900/20">
+    <div className="flex min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 font-sans">
+      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-6 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 dark:from-orange-950/50 dark:via-amber-950/30 dark:to-orange-950/50 -mx-4 px-6 py-4">
+        <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
           <Link 
             href="/"
-            className="inline-flex items-center text-sm text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 mb-2"
+            className="inline-flex items-center text-sm text-primary hover:text-primary/80 mb-2"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Analysis
           </Link>
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 bg-clip-text text-transparent dark:from-orange-400 dark:via-amber-400 dark:to-orange-300">
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             Playground
           </h1>
-          <p className="text-orange-800 dark:text-orange-200 mt-2 font-medium">
+          <p className="text-foreground/80 mt-2 font-medium">
             Experiment with ripgrep filters and AI prompts in real-time
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function PlaygroundPage() {
         <div className="space-y-6">
           {/* Step 1: File Input */}
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-orange-900 dark:text-orange-200">
+            <h2 className="text-xl font-semibold text-foreground">
               1. Select File
             </h2>
             <div>
@@ -196,7 +196,7 @@ export default function PlaygroundPage() {
 
           {/* Step 2: Ripgrep Filter */}
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-orange-900 dark:text-orange-200">
+            <h2 className="text-xl font-semibold text-foreground">
               2. Configure Ripgrep Filter
             </h2>
             <div>
@@ -275,7 +275,7 @@ export default function PlaygroundPage() {
             <Button
               onClick={handleFilter}
               disabled={filtering || !filePath.trim() || !pattern.trim()}
-              className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700"
+              className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
             >
               <Play className="h-4 w-4 mr-2" />
               {filtering ? "Filtering..." : "Run Filter"}
@@ -290,7 +290,7 @@ export default function PlaygroundPage() {
 
           {/* Step 3: Filtered Results */}
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-orange-900 dark:text-orange-200">
+            <h2 className="text-xl font-semibold text-foreground">
               3. Filtered Results
             </h2>
             <FilteredResults result={filterResult} loading={filtering} />
@@ -299,7 +299,7 @@ export default function PlaygroundPage() {
           {/* Step 4: AI Prompts */}
           {filterResult && filterResult.lines.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-orange-900 dark:text-orange-200">
+              <h2 className="text-xl font-semibold text-foreground">
                 4. Configure AI Prompts
               </h2>
               <PromptManager
@@ -323,7 +323,7 @@ export default function PlaygroundPage() {
           {/* Step 5: AI Response */}
           {(aiResponse || aiStreaming || aiError) && (
             <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-orange-900 dark:text-orange-200">
+              <h2 className="text-xl font-semibold text-foreground">
                 5. AI Analysis
               </h2>
               <AIResponsePanel

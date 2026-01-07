@@ -81,7 +81,7 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
   }, []);
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-orange-200/30 dark:border-orange-900/20 bg-gradient-to-r from-orange-50/95 via-background/95 to-amber-50/95 dark:from-orange-950/30 dark:via-background/95 dark:to-amber-950/30 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-gradient-to-r from-primary/5 via-background/95 to-accent/5 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-10 max-w-screen-2xl items-center justify-between px-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
           {/* Playground Link */}
@@ -89,7 +89,7 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+              className="h-7 w-7 p-0 hover:bg-primary/10"
               title="Playground - Experiment with filters and AI"
             >
               <FlaskRound className="h-3.5 w-3.5" />
@@ -102,7 +102,7 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
               variant="ghost"
               size="sm"
               onClick={onOpenSettings}
-              className="h-7 w-7 p-0 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+              className="h-7 w-7 p-0 hover:bg-primary/10"
               title="Settings"
             >
               <Settings className="h-3.5 w-3.5" />
@@ -123,7 +123,7 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
                 "font-medium",
                 MODE === "PROD" 
                   ? "text-green-600 dark:text-green-400" 
-                  : "text-amber-600 dark:text-amber-400"
+                  : "text-accent"
               )}
             >
               {MODE}

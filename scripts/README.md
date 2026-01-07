@@ -248,6 +248,13 @@ If you get errors about ports being in use:
    scripts\win-logs.bat -b     REM Backend logs
    ```
 
+### UI Theme Settings
+
+Lens supports multiple UI color themes (Warm, Purple, Blue, Green).
+
+- Source/dev installs: open **Settings → General → Color Theme**
+- The selection is stored in the browser (localStorage), so it persists per user/device
+
 2. Verify dependencies are installed:
    
    **Linux/Mac:**

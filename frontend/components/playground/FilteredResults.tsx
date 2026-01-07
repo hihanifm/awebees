@@ -23,9 +23,9 @@ export function FilteredResults({ result, loading }: FilteredResultsProps) {
 
   if (loading) {
     return (
-      <div className="border border-orange-200 dark:border-orange-800 rounded-lg p-6">
-        <div className="flex items-center justify-center text-orange-600 dark:text-orange-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 dark:border-orange-400"></div>
+      <div className="border border-primary/20 rounded-lg p-6">
+        <div className="flex items-center justify-center text-primary">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <span className="ml-3">Filtering...</span>
         </div>
       </div>
@@ -34,7 +34,7 @@ export function FilteredResults({ result, loading }: FilteredResultsProps) {
 
   if (!result) {
     return (
-      <div className="border border-dashed border-orange-200 dark:border-orange-800 rounded-lg p-8 text-center">
+      <div className="border border-dashed border-primary/20 rounded-lg p-8 text-center">
         <p className="text-muted-foreground mb-4">No results yet. Enter a file path and ripgrep pattern above.</p>
         <div className="text-sm text-muted-foreground space-y-2">
           <p className="font-semibold">Ripgrep Pattern Examples:</p>
@@ -47,18 +47,18 @@ export function FilteredResults({ result, loading }: FilteredResultsProps) {
   }
 
   return (
-    <div className="border border-orange-200 dark:border-orange-800 rounded-lg overflow-hidden">
+    <div className="border border-primary/20 rounded-lg overflow-hidden">
       {/* Header with metadata */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/50 dark:to-amber-950/30 px-4 py-3 border-b border-orange-200 dark:border-orange-800 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-3 border-b border-primary/20 flex items-center justify-between">
         <div className="flex items-center gap-4 text-sm">
-          <span className="text-orange-900 dark:text-orange-200 font-medium">
+          <span className="text-foreground font-medium">
             {result.total_count} {result.total_count === 1 ? "line" : "lines"} found
           </span>
           <span className="text-muted-foreground">
             {result.execution_time.toFixed(3)}s
           </span>
           {result.truncated && (
-            <span className="text-amber-700 dark:text-amber-400 font-medium">
+            <span className="text-accent font-medium">
               (Truncated to first 1000 lines)
             </span>
           )}
@@ -67,7 +67,7 @@ export function FilteredResults({ result, loading }: FilteredResultsProps) {
           variant="ghost"
           size="sm"
           onClick={handleCopy}
-          className="text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+          className="text-primary hover:bg-primary/10"
         >
           {copied ? (
             <>
@@ -84,18 +84,18 @@ export function FilteredResults({ result, loading }: FilteredResultsProps) {
       </div>
 
       {/* Command display */}
-      <div className="bg-muted px-4 py-2 border-b border-orange-200 dark:border-orange-800">
+      <div className="bg-muted px-4 py-2 border-b border-primary/20">
         <code className="text-xs text-muted-foreground font-mono">
           $ {result.ripgrep_command}
         </code>
       </div>
 
       {/* Results */}
-      <div className="bg-orange-50/50 dark:bg-orange-950/20 overflow-auto max-h-96 border-t border-orange-200 dark:border-orange-800">
-        <pre className="p-4 text-sm font-mono text-zinc-900 dark:text-zinc-200">
+      <div className="bg-primary/5 overflow-auto max-h-96 border-t border-primary/20">
+        <pre className="p-4 text-sm font-mono text-foreground">
           {result.lines.map((line, index) => (
-            <div key={index} className="flex hover:bg-orange-100/30 dark:hover:bg-orange-900/20">
-              <span className="text-orange-600 dark:text-orange-500 select-none mr-4 text-right w-12 flex-shrink-0 font-semibold">
+            <div key={index} className="flex hover:bg-primary/10">
+              <span className="text-primary select-none mr-4 text-right w-12 flex-shrink-0 font-semibold">
                 {index + 1}
               </span>
               <span className="flex-1">{line}</span>

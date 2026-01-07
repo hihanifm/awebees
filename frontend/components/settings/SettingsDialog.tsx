@@ -11,8 +11,10 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AISettings, loadAISettings, saveAISettings } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, testAIConnection, apiClient } from "@/lib/api-client";
-import { Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw } from "lucide-react";
+import { Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { themes } from "@/lib/themes";
+import { loadTheme, saveTheme } from "@/lib/theme-storage";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -33,6 +35,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Theme state
+  const [selectedTheme, setSelectedTheme] = useState<string>("warm");
 
   // Insight paths state
   const [insightPaths, setInsightPaths] = useState<string[]>([]);
@@ -82,10 +87,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         setIsLoadingPaths(false);
       }
     };
+
+    const loadThemeSettings = () => {
+      const savedTheme = loadTheme();
+      setSelectedTheme(savedTheme);
+    };
     
     if (open) {
       loadSettings();
       loadInsightPaths();
+      loadThemeSettings();
     }
   }, [open, toast]);
 
@@ -198,6 +209,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const handleThemeChange = (newTheme: string) => {
+    setSelectedTheme(newTheme);
+    saveTheme(newTheme);
+    
+    // Apply theme immediately to html element
+    if (typeof document !== "undefined") {
+      const htmlElement = document.documentElement;
+      htmlElement.classList.remove("theme-warm", "theme-purple", "theme-blue", "theme-green");
+      htmlElement.classList.add(`theme-${newTheme}`);
+    }
+
+    toast({
+      title: "Theme Updated",
+      description: `Switched to ${themes.find(t => t.id === newTheme)?.name} theme`,
+    });
   };
 
   return (
@@ -445,9 +473,51 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </TabsContent>
 
           <TabsContent value="general" className="space-y-4 mt-4">
-            <p className="text-sm text-muted-foreground">
-              General settings coming soon...
-            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  <Label htmlFor="theme">Color Theme</Label>
+                </div>
+                <Select value={selectedTheme} onValueChange={handleThemeChange}>
+                  <SelectTrigger id="theme">
+                    <SelectValue placeholder="Select theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {themes.map((theme) => (
+                      <SelectItem key={theme.id} value={theme.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-4 h-4 rounded-full border border-border"
+                            style={{ backgroundColor: theme.preview }}
+                          />
+                          <span>{theme.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Choose your preferred color scheme. Changes apply immediately.
+                </p>
+              </div>
+
+              {/* Theme preview */}
+              <div className="rounded-lg border p-4 space-y-2">
+                <p className="text-sm font-medium">Theme Preview</p>
+                <div className="flex gap-2">
+                  <div className="flex-1 h-12 rounded bg-primary flex items-center justify-center text-primary-foreground text-xs">
+                    Primary
+                  </div>
+                  <div className="flex-1 h-12 rounded bg-secondary flex items-center justify-center text-secondary-foreground text-xs">
+                    Secondary
+                  </div>
+                  <div className="flex-1 h-12 rounded bg-accent flex items-center justify-center text-accent-foreground text-xs">
+                    Accent
+                  </div>
+                </div>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 

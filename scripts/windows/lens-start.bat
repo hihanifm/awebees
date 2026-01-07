@@ -114,7 +114,27 @@ where python
 echo [DEBUG] Testing Python import...
 python -c "import sys; print('Python executable:', sys.executable); print('Python path:', sys.path)"
 echo [DEBUG] Starting backend server
-echo Starting Lens backend on http://127.0.0.1:34001...
+REM Load backend PORT/HOST from backend\.env if present (defaults: 34001 / 0.0.0.0)
+set "BACKEND_PORT=34001"
+set "BACKEND_HOST=0.0.0.0"
+if exist ".env" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do (
+        if "%%a"=="PORT" (
+            set "BACKEND_PORT=%%b"
+            set "BACKEND_PORT=!BACKEND_PORT:"=!"
+            set "BACKEND_PORT=!BACKEND_PORT: =!"
+            for /f "tokens=*" %%x in ("!BACKEND_PORT!") do set "BACKEND_PORT=%%x"
+        )
+        if "%%a"=="HOST" (
+            set "BACKEND_HOST=%%b"
+            set "BACKEND_HOST=!BACKEND_HOST:"=!"
+            set "BACKEND_HOST=!BACKEND_HOST: =!"
+            for /f "tokens=*" %%x in ("!BACKEND_HOST!") do set "BACKEND_HOST=%%x"
+        )
+    )
+)
+
+echo Starting Lens backend on http://127.0.0.1:!BACKEND_PORT!...
 echo [DEBUG] Logs will be written to: %LOG_FILE%
 REM Ensure log file exists and is writable
 if not exist "%LOG_FILE%" echo. > "%LOG_FILE%"
@@ -138,7 +158,7 @@ set "WRAPPER_BAT=%TEMP%\lens-backend-wrapper-%RANDOM%.bat"
     echo @echo off
     echo cd /d "%CD%"
     echo echo [START] Backend starting at %%DATE%% %%TIME%% ^>^> "%LOG_FILE%"
-    echo "%VENV_PYTHON%" -u -m uvicorn app.main:app --host 0.0.0.0 --port 34001 ^>^> "%LOG_FILE%" 2^>^&1
+    echo "%VENV_PYTHON%" -u -m uvicorn app.main:app --host !BACKEND_HOST! --port !BACKEND_PORT! ^>^> "%LOG_FILE%" 2^>^&1
 ) > "%WRAPPER_BAT%"
 echo [DEBUG] Wrapper script created at: %WRAPPER_BAT%
 echo [DEBUG] Wrapper script will log to: %LOG_FILE%
@@ -160,11 +180,11 @@ goto error_start_backend
 echo [DEBUG] Waiting 3 seconds for backend to start...
 timeout /t 3 /nobreak >nul
 echo [DEBUG] Wait complete
-echo [DEBUG] Opening browser to http://127.0.0.1:34001
-start http://127.0.0.1:34001
+echo [DEBUG] Opening browser to http://127.0.0.1:!BACKEND_PORT!
+start http://127.0.0.1:!BACKEND_PORT!
 echo.
 echo Lens is starting...
-echo Backend: http://127.0.0.1:34001
+echo Backend: http://127.0.0.1:!BACKEND_PORT!
 echo.
 echo Press any key to close this window (Lens will continue running in background)
 pause >nul

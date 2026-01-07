@@ -178,6 +178,27 @@ After setup completes successfully:
    - Open browser to: http://localhost:34000 (development)
    - Or: http://localhost:34001 (production mode)
 
+> Note: If `.env.example` files are missing, `scripts\\win-setup.bat` will generate basic defaults using ports **34000/34001**.
+
+## Using the Windows ZIP Packages (No Git Needed)
+
+If you downloaded a prebuilt ZIP from GitHub (for example `dist/windows/lens-package-with-python-4.0.0.zip`):
+
+1. Extract the ZIP anywhere (e.g. `C:\\Users\\You\\Downloads\\Lens\\`)
+2. Open the extracted folder (it contains `lens-start.bat`, `lens-stop.bat`, etc.)
+3. Double-click `lens-start.bat` (or run it from Command Prompt)
+
+**Variants:**
+- **with-python**: includes an embedded Python runtime (recommended for easiest setup)
+- **requires-python**: requires Python 3.x installed and available in PATH
+
+**Playground:**
+- After starting, open `http://127.0.0.1:34001/playground`
+
+**Ports:**
+- The app runs on **http://127.0.0.1:34001** by default (API + UI served by backend in packaged builds)
+- If you add `backend\\.env` with `PORT=...`, the launcher will use it
+
 3. **Check status:**
    ```cmd
    scripts\win-status.bat
@@ -193,6 +214,13 @@ After setup completes successfully:
    ```cmd
    scripts\win-stop.bat
    ```
+
+## UI Theme Settings
+
+Lens supports multiple UI color themes (Warm, Purple, Blue, Green).
+
+- Open **Settings → General → Color Theme**
+- The selection is stored in the browser (localStorage), so it persists per user/device
 
 ## Support
 

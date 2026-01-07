@@ -214,9 +214,9 @@ if not exist ".env" (
     ) else (
         echo Warning: .env.example not found, creating basic .env file
         (
-            echo PORT=5001
+            echo PORT=34001
             echo HOST=0.0.0.0
-            echo FRONTEND_URL=http://localhost:5000
+            echo FRONTEND_URL=http://localhost:34000
             echo LOG_LEVEL=INFO
         ) > .env
         echo Created basic backend\.env file
@@ -291,8 +291,8 @@ if not exist ".env.local" (
     ) else (
         echo Warning: .env.example not found, creating basic .env.local file
         (
-            echo NEXT_PUBLIC_API_URL=http://localhost:5001
-            echo PORT=5000
+            echo NEXT_PUBLIC_API_URL=http://localhost:34001
+            echo PORT=34000
         ) > .env.local
         echo Created basic frontend\.env.local file
     )

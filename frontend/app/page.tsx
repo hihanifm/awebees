@@ -186,13 +186,13 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-orange-50/30 via-background to-amber-50/20 font-sans dark:from-orange-950/10 dark:via-background dark:to-amber-950/5">
-      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 pb-8 px-4 mx-auto bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm border-x border-orange-100/50 dark:border-orange-900/20">
-        <div className="bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 dark:from-orange-950/50 dark:via-amber-950/30 dark:to-orange-950/50 -mx-4 px-6 py-4">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 bg-clip-text text-transparent dark:from-orange-400 dark:via-amber-400 dark:to-orange-300">
+    <div className="flex min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 font-sans">
+      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
+        <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             Lens
           </h1>
-          <p className="text-orange-800 dark:text-orange-200 mt-2 font-medium">A modular engine for extracting insights from messy data!</p>
+          <p className="text-foreground/80 mt-2 font-medium">A modular engine for extracting insights from messy data!</p>
         </div>
 
         {/* Backend Errors Banner */}
@@ -225,7 +225,7 @@ export default function Home() {
                   disabled={analyzing || loadingSample}
                   variant="secondary"
                   size="sm"
-                  className="ml-4 whitespace-nowrap bg-gradient-to-r from-orange-100 to-amber-100 hover:from-orange-200 hover:to-amber-200 text-orange-900 border border-orange-300/50 dark:from-orange-950 dark:to-amber-950 dark:hover:from-orange-900 dark:hover:to-amber-900 dark:text-orange-200 dark:border-orange-800/50"
+                  className="ml-4 whitespace-nowrap bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 text-foreground border border-primary/30"
                 >
                   {loadingSample ? "Loading..." : "Load Sample File"}
                 </Button>

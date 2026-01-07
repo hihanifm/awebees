@@ -135,6 +135,6 @@ C:\Program Files (x86)\Lens\logs\backend.log
 **Application won't start:**
 - Check logs: `lens-logs.bat` or `logs\backend.log`
 - Verify Python is installed (for requires-python variant)
-- Check if port 34001 is already in use
+- Check if the backend port is already in use (default: 34001, or `PORT` from `backend\.env`)
 - Run `lens-status.bat` to check if backend is running
 
