@@ -262,6 +262,16 @@ if not exist "package.json" (
     exit /b 1
 )
 
+REM Check if npm is available
+where npm >nul 2>&1
+if errorlevel 1 (
+    echo Error: npm is not found in PATH
+    echo Please ensure Node.js is installed and npm is available
+    echo You can install Node.js from https://nodejs.org/ or use: winget install OpenJS.NodeJS
+    pause
+    exit /b 1
+)
+
 REM Check if node_modules exists, if not, install dependencies
 if not exist "node_modules" (
     echo Installing frontend dependencies...
@@ -273,11 +283,31 @@ if not exist "node_modules" (
     )
 )
 
-REM Build frontend
-echo Running npm run build...
-call npm run build
+REM Build frontend using npx (which finds local binaries)
+echo Running npx next build...
+where npx >nul 2>&1
+if errorlevel 1 (
+    echo Warning: npx not found, trying node_modules\.bin\next directly...
+    if exist "node_modules\.bin\next.cmd" (
+        call node_modules\.bin\next.cmd build
+    ) else if exist "node_modules\.bin\next" (
+        call node_modules\.bin\next build
+    ) else (
+        echo Error: Could not find next binary
+        echo Please ensure dependencies are installed: npm install
+        pause
+        exit /b 1
+    )
+) else (
+    call npx next build
+)
 if errorlevel 1 (
     echo Error: Frontend build failed
+    echo.
+    echo Troubleshooting:
+    echo 1. Ensure Node.js and npm are installed and in PATH
+    echo 2. Try running manually: cd frontend ^&^& npx next build
+    echo 3. Check if node_modules exists and next is installed
     pause
     exit /b 1
 )
