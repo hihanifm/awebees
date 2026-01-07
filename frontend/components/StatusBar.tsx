@@ -87,7 +87,7 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
       <div className="mx-auto flex h-10 max-w-screen-2xl items-center justify-between px-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
           {/* Playground Link */}
-          <Link href="/playground">
+          <Link href="/playground" className="no-underline">
             <Button
               variant="ghost"
               size="sm"

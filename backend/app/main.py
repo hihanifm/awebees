@@ -191,14 +191,32 @@ if serve_frontend:
                 return FileResponse(favicon_path)
             raise HTTPException(status_code=404)
         
-        # Catch-all route for SPA routing (must be last)
+        # Catch-all route for serving Next.js static export (must be last)
         @app.get("/{full_path:path}")
         async def serve_frontend(full_path: str):
             # Don't serve API routes as static files
             if full_path.startswith("api/"):
                 raise HTTPException(status_code=404, detail="API endpoint not found")
             
-            # Serve index.html for all non-API routes (SPA routing)
+            # For Next.js static export, try to serve the actual HTML file first
+            # e.g., /playground -> playground.html
+            if full_path:
+                # Try with .html extension
+                html_path = frontend_out_dir / f"{full_path}.html"
+                if html_path.exists():
+                    return FileResponse(html_path)
+                
+                # Try as directory with index.html
+                dir_index_path = frontend_out_dir / full_path / "index.html"
+                if dir_index_path.exists():
+                    return FileResponse(dir_index_path)
+                
+                # Try serving the file directly (for images, etc.)
+                direct_file_path = frontend_out_dir / full_path
+                if direct_file_path.exists() and direct_file_path.is_file():
+                    return FileResponse(direct_file_path)
+            
+            # Fallback to index.html for root and unknown routes
             index_path = frontend_out_dir / "index.html"
             if index_path.exists():
                 return FileResponse(index_path)
