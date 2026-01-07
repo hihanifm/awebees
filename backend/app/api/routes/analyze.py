@@ -458,8 +458,8 @@ async def update_ai_config(config: AIConfigUpdate):
     """
     Update AI configuration.
     
-    Note: This updates runtime config only. For persistent changes,
-    update environment variables or .env file.
+    Changes are automatically persisted to the .env file and will
+    survive application restarts.
     """
     logger.info("AI Config API: Updating configuration")
     

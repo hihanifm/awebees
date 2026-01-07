@@ -10,8 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AISettings, loadAISettings, saveAISettings } from "@/lib/settings-storage";
-import { getAIConfig, updateAIConfig, testAIConnection } from "@/lib/api-client";
-import { Settings, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { getAIConfig, updateAIConfig, testAIConnection, apiClient } from "@/lib/api-client";
+import { Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  const { toast } = useToast();
   const [settings, setSettings] = useState<AISettings>({
     enabled: false,
     baseUrl: "https://api.openai.com/v1",
@@ -31,6 +33,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Insight paths state
+  const [insightPaths, setInsightPaths] = useState<string[]>([]);
+  const [newPath, setNewPath] = useState("");
+  const [isLoadingPaths, setIsLoadingPaths] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load settings on mount
   useEffect(() => {
@@ -58,10 +66,28 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       }
     };
     
+    const loadInsightPaths = async () => {
+      setIsLoadingPaths(true);
+      try {
+        const paths = await apiClient.getInsightPaths();
+        setInsightPaths(paths);
+      } catch (error) {
+        console.error("Failed to load insight paths:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load external insight paths",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingPaths(false);
+      }
+    };
+    
     if (open) {
       loadSettings();
+      loadInsightPaths();
     }
-  }, [open]);
+  }, [open, toast]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -108,6 +134,72 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   };
 
+  const handleAddPath = async () => {
+    if (!newPath.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid path",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await apiClient.addInsightPath(newPath.trim());
+      setInsightPaths([...insightPaths, newPath.trim()]);
+      setNewPath("");
+      toast({
+        title: "Success",
+        description: `Added path: ${newPath.trim()}. Found ${result.insights_count} total insights.`,
+      });
+    } catch (error) {
+      console.error("Failed to add insight path:", error);
+      toast({
+        title: "Error",
+        description: String(error),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemovePath = async (path: string) => {
+    try {
+      const result = await apiClient.removeInsightPath(path);
+      setInsightPaths(insightPaths.filter((p) => p !== path));
+      toast({
+        title: "Success",
+        description: `Removed path: ${path}. ${result.insights_count} insights remaining.`,
+      });
+    } catch (error) {
+      console.error("Failed to remove insight path:", error);
+      toast({
+        title: "Error",
+        description: String(error),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRefreshInsights = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await apiClient.refreshInsights();
+      toast({
+        title: "Success",
+        description: `Refreshed ${result.insights_count} insights`,
+      });
+    } catch (error) {
+      console.error("Failed to refresh insights:", error);
+      toast({
+        title: "Error",
+        description: String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -122,8 +214,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </DialogHeader>
 
         <Tabs defaultValue="ai" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="ai">AI Settings</TabsTrigger>
+            <TabsTrigger value="insights">External Insights</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
           </TabsList>
 
@@ -275,6 +368,79 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   {testMessage}
                 </p>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="insights" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>External Insight Paths</Label>
+              <p className="text-sm text-muted-foreground">
+                Add directories containing custom insights. Changes are detected automatically.
+              </p>
+              
+              {/* List of paths */}
+              {isLoadingPaths ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+              ) : insightPaths.length > 0 ? (
+                <div className="space-y-2">
+                  {insightPaths.map((path, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 rounded border bg-muted/50">
+                      <FolderOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span className="flex-1 text-sm truncate font-mono">{path}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemovePath(path)}
+                        className="h-7 w-7 p-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
+                  No external insight paths configured
+                </div>
+              )}
+              
+              {/* Add new path */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="/path/to/insights"
+                  value={newPath}
+                  onChange={(e) => setNewPath(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddPath();
+                    }
+                  }}
+                  className="font-mono"
+                />
+                <Button onClick={handleAddPath} variant="secondary">
+                  Add
+                </Button>
+              </div>
+              
+              {/* Refresh button */}
+              <Button
+                variant="outline"
+                onClick={handleRefreshInsights}
+                disabled={isRefreshing}
+                className="w-full"
+              >
+                {isRefreshing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Refresh Insights
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Manually reload all insights from built-in and external paths
+              </p>
             </div>
           </TabsContent>
 

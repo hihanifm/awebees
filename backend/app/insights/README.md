@@ -561,6 +561,83 @@ backend/app/insights/
 
 Insights in subdirectories are automatically discovered and organized by folder in the UI.
 
+## External Insights
+
+You can develop insights in separate repositories or directories outside the Lens codebase. This is useful for:
+
+- **Sharing insights** across different projects
+- **Version controlling insights** separately from the engine
+- **Contributing insights** without needing engine access
+- **Modular deployment** - add/remove insight collections as needed
+
+### Setting Up External Insights
+
+1. Create a directory for your insights (e.g., `/Users/yourname/LensInsights`)
+2. Add your insight files following the same structure as above
+3. In the Lens application:
+   - Open Settings (bottom-left corner)
+   - Go to "External Insights" tab
+   - Add your directory path
+   - Insights will be loaded immediately
+
+### Structure
+
+External insights can use:
+
+- **Flat structure**: All insights in the root directory
+- **Nested structure**: Organized in subdirectories (e.g., `android/`, `web/`, `ios/`)
+- **Mixed structure**: Combine both approaches
+
+```
+/Users/yourname/LensInsights/
+├── simple_insight.py          # Flat
+├── another_insight.py         # Flat
+└── android/                   # Nested
+    ├── crash_detector.py
+    └── anr_detector.py
+```
+
+### Hot Reload
+
+Lens automatically watches external insight directories for changes. When you add, modify, or delete an insight file, the changes are detected and applied within 2 seconds (no restart needed).
+
+### Testing External Insights
+
+Test standalone before adding to Lens:
+
+```bash
+# From the Lens backend directory
+cd /path/to/awebees/backend
+source venv/bin/activate
+
+# Run your external insight
+python -m app.insights.your_insight /path/to/test/file.log
+```
+
+Or use the test runner script from the Lens root:
+
+```bash
+./scripts/run_insight.py /path/to/LensInsights/your_insight.py /path/to/test/file.log
+```
+
+### Example External Insights Repository
+
+Create a repository structure like this:
+
+```
+LensInsights/
+├── README.md                  # Documentation for your insights
+├── android/
+│   ├── crash_analyzer.py
+│   └── logcat_parser.py
+├── web/
+│   ├── error_tracker.py
+│   └── performance_monitor.py
+└── requirements.txt           # Optional: if your insights need extra packages
+```
+
+Share your insights by pushing to GitHub and sharing the repository URL!
+
 ## Best Practices
 
 1. **Start with config-based** - Try the simpler approach first

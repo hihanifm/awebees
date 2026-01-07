@@ -345,6 +345,52 @@ export const apiClient = {
       method: "POST",
     });
   },
+
+  /**
+   * Get all external insight paths.
+   */
+  async getInsightPaths(): Promise<string[]> {
+    const response = await fetchJSON<{ paths: string[] }>("/api/insight-paths/");
+    return response.paths;
+  },
+
+  /**
+   * Add an external insight path.
+   * @param path Directory path to add
+   */
+  async addInsightPath(path: string): Promise<{ status: string; message: string; insights_count: number }> {
+    return fetchJSON("/api/insight-paths/add", {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    });
+  },
+
+  /**
+   * Remove an external insight path.
+   * @param path Directory path to remove
+   */
+  async removeInsightPath(path: string): Promise<{ status: string; message: string; insights_count: number }> {
+    return fetchJSON("/api/insight-paths/remove", {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    });
+  },
+
+  /**
+   * Refresh insights from all paths.
+   */
+  async refreshInsights(): Promise<{ status: string; insights_count: number; message: string }> {
+    return fetchJSON("/api/insight-paths/refresh", {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Get source information for all insights.
+   */
+  async getInsightSources(): Promise<Array<{ insight_id: string; source: string }>> {
+    return fetchJSON("/api/insight-paths/sources");
+  },
 };
 
 // Export individual AI functions for easier imports

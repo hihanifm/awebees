@@ -1,0 +1,185 @@
+"""API routes for managing external insight paths."""
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List
+import logging
+from pathlib import Path
+
+from app.core.insight_paths_config import InsightPathsConfig
+from app.core.plugin_manager import get_plugin_manager
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/insight-paths", tags=["insight-paths"])
+
+
+class InsightPathRequest(BaseModel):
+    """Request model for adding/removing insight paths."""
+    path: str
+
+
+class InsightPathsResponse(BaseModel):
+    """Response model for listing insight paths."""
+    paths: List[str]
+
+
+class InsightSourceInfo(BaseModel):
+    """Model for insight source information."""
+    insight_id: str
+    source: str
+
+
+@router.get("/", response_model=InsightPathsResponse)
+async def get_insight_paths():
+    """Get all configured external insight paths."""
+    try:
+        config = InsightPathsConfig()
+        return InsightPathsResponse(paths=config.get_paths())
+    except Exception as e:
+        logger.error(f"Failed to get insight paths: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get insight paths: {str(e)}")
+
+
+@router.post("/add")
+async def add_insight_path(request: InsightPathRequest):
+    """
+    Add a new external insight path.
+    
+    Args:
+        request: Request containing the path to add
+        
+    Returns:
+        Success message with status
+        
+    Raises:
+        HTTPException: If path is invalid or addition fails
+    """
+    try:
+        path = Path(request.path)
+        
+        # Validate path exists
+        if not path.exists():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Path does not exist: {request.path}"
+            )
+        
+        if not path.is_dir():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Path is not a directory: {request.path}"
+            )
+        
+        # Add path
+        config = InsightPathsConfig()
+        config.add_path(str(path.absolute()))
+        
+        # Reload insights from all sources
+        plugin_manager = get_plugin_manager()
+        plugin_manager.discover_all_insights()
+        
+        # Restart file watcher with updated paths
+        plugin_manager.stop_watching()
+        plugin_manager.start_watching()
+        
+        insights_count = len(plugin_manager.get_all_insights())
+        logger.info(f"Added external insight path: {request.path} (total insights: {insights_count})")
+        
+        return {
+            "status": "success", 
+            "message": f"Added path: {request.path}",
+            "insights_count": insights_count
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add insight path: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to add path: {str(e)}")
+
+
+@router.post("/remove")
+async def remove_insight_path(request: InsightPathRequest):
+    """
+    Remove an external insight path.
+    
+    Args:
+        request: Request containing the path to remove
+        
+    Returns:
+        Success message with status
+    """
+    try:
+        # Remove path
+        config = InsightPathsConfig()
+        config.remove_path(request.path)
+        
+        # Reload insights from remaining sources
+        plugin_manager = get_plugin_manager()
+        plugin_manager.discover_all_insights()
+        
+        # Restart file watcher with updated paths
+        plugin_manager.stop_watching()
+        plugin_manager.start_watching()
+        
+        insights_count = len(plugin_manager.get_all_insights())
+        logger.info(f"Removed external insight path: {request.path} (total insights: {insights_count})")
+        
+        return {
+            "status": "success", 
+            "message": f"Removed path: {request.path}",
+            "insights_count": insights_count
+        }
+    except Exception as e:
+        logger.error(f"Failed to remove insight path: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove path: {str(e)}")
+
+
+@router.post("/refresh")
+async def refresh_insights():
+    """
+    Manually refresh insights from all paths.
+    
+    Returns:
+        Status message with insights count
+    """
+    try:
+        plugin_manager = get_plugin_manager()
+        plugin_manager.discover_all_insights()
+        
+        insights_count = len(plugin_manager.get_all_insights())
+        logger.info(f"Refreshed insights: {insights_count} total")
+        
+        return {
+            "status": "success", 
+            "insights_count": insights_count,
+            "message": f"Refreshed {insights_count} insight(s)"
+        }
+    except Exception as e:
+        logger.error(f"Failed to refresh insights: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to refresh insights: {str(e)}")
+
+
+@router.get("/sources")
+async def get_insight_sources():
+    """
+    Get source information for all insights.
+    
+    Returns:
+        List of insights with their source paths
+    """
+    try:
+        plugin_manager = get_plugin_manager()
+        sources = []
+        
+        for insight_id in plugin_manager.get_all_insights().keys():
+            sources.append(InsightSourceInfo(
+                insight_id=insight_id,
+                source=plugin_manager.get_insight_source(insight_id)
+            ))
+        
+        return sources
+    except Exception as e:
+        logger.error(f"Failed to get insight sources: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sources: {str(e)}")
+

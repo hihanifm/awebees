@@ -65,3 +65,6 @@ dist/windows/*
 # Sample files (keep .zip, ignore extracted .txt)
 backend/samples/*.txt
 
+# External insight paths configuration
+backend/insight_paths.json
+

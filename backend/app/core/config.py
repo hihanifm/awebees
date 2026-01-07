@@ -1,6 +1,7 @@
 """Configuration settings for the Lens application."""
 
 import os
+from pathlib import Path
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
@@ -93,15 +94,84 @@ Be specific and practical. Prioritize recommendations by severity."""
         return config
     
     @classmethod
-    def update_from_dict(cls, config: Dict[str, Any]) -> None:
+    def _get_env_file_path(cls) -> Path:
+        """Get the path to the .env file."""
+        # Start from this file's location and go up to backend directory
+        backend_dir = Path(__file__).parent.parent.parent
+        return backend_dir / ".env"
+    
+    @classmethod
+    def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
+        """
+        Persist AI configuration updates to .env file.
+        
+        Args:
+            updates: Dictionary of config updates to persist
+        """
+        env_file = cls._get_env_file_path()
+        
+        # Mapping of config keys to environment variable names
+        env_key_mapping = {
+            "enabled": "AI_ENABLED",
+            "base_url": "OPENAI_BASE_URL",
+            "api_key": "OPENAI_API_KEY",
+            "model": "OPENAI_MODEL",
+            "max_tokens": "OPENAI_MAX_TOKENS",
+            "temperature": "OPENAI_TEMPERATURE",
+            "timeout": "OPENAI_TIMEOUT"
+        }
+        
+        # Read existing .env file or create empty dict
+        env_vars = {}
+        if env_file.exists():
+            with open(env_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip empty lines and comments
+                    if not line or line.startswith('#'):
+                        continue
+                    # Parse KEY=VALUE
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        env_vars[key.strip()] = value.strip()
+        
+        # Update with new values
+        for config_key, value in updates.items():
+            if config_key in env_key_mapping:
+                env_key = env_key_mapping[config_key]
+                # Convert boolean to string
+                if isinstance(value, bool):
+                    env_vars[env_key] = "true" if value else "false"
+                else:
+                    env_vars[env_key] = str(value)
+        
+        # Write back to .env file
+        with open(env_file, 'w') as f:
+            f.write("# Lens AI Configuration\n")
+            f.write("# Auto-generated from settings panel\n\n")
+            
+            # Write AI settings first
+            ai_keys = ["AI_ENABLED", "OPENAI_BASE_URL", "OPENAI_API_KEY", 
+                       "OPENAI_MODEL", "OPENAI_MAX_TOKENS", "OPENAI_TEMPERATURE", 
+                       "OPENAI_TIMEOUT"]
+            for key in ai_keys:
+                if key in env_vars:
+                    f.write(f"{key}={env_vars[key]}\n")
+            
+            # Write other environment variables
+            f.write("\n# Other Settings\n")
+            for key, value in env_vars.items():
+                if key not in ai_keys:
+                    f.write(f"{key}={value}\n")
+    
+    @classmethod
+    def update_from_dict(cls, config: Dict[str, Any], persist: bool = True) -> None:
         """
         Update configuration from dictionary.
         
-        Note: This updates runtime config, not environment variables.
-        For persistent changes, update .env file.
-        
         Args:
             config: Configuration dictionary
+            persist: Whether to persist changes to .env file (default: True)
         """
         if "enabled" in config:
             cls.ENABLED = bool(config["enabled"])
@@ -123,6 +193,10 @@ Be specific and practical. Prioritize recommendations by severity."""
         
         if "timeout" in config:
             cls.TIMEOUT = int(config["timeout"])
+        
+        # Persist to .env file if requested
+        if persist:
+            cls._persist_to_env(config)
 
 
 class AppConfig:

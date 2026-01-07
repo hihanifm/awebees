@@ -9,7 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from app.version import get_version
 from app.core.plugin_manager import get_plugin_manager
-from app.api.routes import files, insights, analyze, errors
+from app.api.routes import files, insights, analyze, errors, insight_paths
 
 # Load environment variables
 load_dotenv()
@@ -105,6 +105,7 @@ app.include_router(files.router)
 app.include_router(insights.router)
 app.include_router(analyze.router)
 app.include_router(errors.router)
+app.include_router(insight_paths.router)
 
 
 @app.on_event("startup")
@@ -112,7 +113,13 @@ async def startup_event():
     """Initialize plugin manager and discover insights on startup."""
     logger.info("Initializing plugin manager...")
     plugin_manager = get_plugin_manager()
-    plugin_manager.discover_insights()
+    
+    # Discover insights from all sources (built-in + external)
+    plugin_manager.discover_all_insights()
+    
+    # Start watching external paths for changes
+    plugin_manager.start_watching()
+    
     logger.info(f"Discovered {len(plugin_manager.get_all_insights())} insights")
     
     # Check ripgrep availability
@@ -128,6 +135,15 @@ async def startup_event():
     
     # Extract sample files if needed
     extract_sample_files()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop file watching on shutdown."""
+    logger.info("Shutting down...")
+    plugin_manager = get_plugin_manager()
+    plugin_manager.stop_watching()
+    logger.info("Shutdown complete")
 
 
 @app.get("/api/health")
