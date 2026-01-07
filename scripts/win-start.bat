@@ -139,7 +139,8 @@ if not exist "venv" (
 REM Start backend (will be restarted in prod mode after frontend build)
 if "%MODE%"=="prod" goto start_frontend
 
-start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host %BACKEND_HOST% --port %BACKEND_PORT% > \"%BACKEND_LOG%\" 2>&1"
+REM NOTE: Use CMD escaping (^") not backslash escaping (\") inside cmd /c strings.
+start "" /b cmd /v:on /c "call venv\Scripts\activate.bat ^&^& uvicorn app.main:app --reload --host %BACKEND_HOST% --port %BACKEND_PORT% ^>^> ^\"%BACKEND_LOG%^\" 2^>^&1"
 
 REM Wait for backend to start (uvicorn with reload can take longer on Windows)
 call :wait_for_listening_pid %BACKEND_PORT% BACKEND_PID 20
@@ -172,7 +173,7 @@ if "%MODE%"=="prod" goto prod_mode
 
 REM Development mode: Start separate frontend server
 echo Starting frontend in DEVELOPMENT mode on port %FRONTEND_PORT%...
-start /b cmd /c "set PORT=%FRONTEND_PORT% && call npm run dev > \"%FRONTEND_LOG%\" 2>&1"
+start "" /b cmd /v:on /c "set PORT=%FRONTEND_PORT% ^&^& call npm run dev ^>^> ^\"%FRONTEND_LOG%^\" 2^>^&1"
 
 REM Wait for frontend to start (Next.js takes longer)
 call :wait_for_listening_pid %FRONTEND_PORT% FRONTEND_PID 30
@@ -223,7 +224,7 @@ echo Frontend built successfully
 
 REM Start backend with SERVE_FRONTEND enabled
 cd /d "%PROJECT_ROOT%\backend"
-start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% > \"%BACKEND_LOG%\" 2>&1"
+start "" /b cmd /v:on /c "call venv\Scripts\activate.bat ^&^& set SERVE_FRONTEND=true ^&^& uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% ^>^> ^\"%BACKEND_LOG%^\" 2^>^&1"
 
 REM Wait for backend to start
 call :wait_for_listening_pid %BACKEND_PORT% BACKEND_PID 20
