@@ -76,9 +76,3 @@ def process_results(filter_result):
             "files_analyzed": len(lines_by_file)
         }
     }
-
-
-if __name__ == "__main__":
-    """Standalone execution support for config-based insight."""
-    from app.utils.config_insight_runner import main_config_standalone
-    main_config_standalone(__file__)

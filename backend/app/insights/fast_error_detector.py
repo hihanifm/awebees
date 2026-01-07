@@ -64,9 +64,3 @@ def process_results(filter_result: FilterResult) -> Dict[str, Any]:
             "processing_mode": "ripgrep"
         }
     }
-
-if __name__ == "__main__":
-    # Hardcoded default file paths for quick testing
-    DEFAULT_FILE_PATHS = []
-    main_config_standalone(__file__, default_file_paths=DEFAULT_FILE_PATHS)
-
