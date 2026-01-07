@@ -95,12 +95,12 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                         key={insight.id} 
                         className={`group relative isolate flex flex-col items-center justify-center p-3
                           ${isSelected 
-                            ? 'bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-orange-900/50 dark:via-orange-950/40 dark:to-amber-900/50 border-[3px] border-orange-500 dark:border-orange-400 shadow-lg shadow-orange-300/60 dark:shadow-orange-800/60' 
+                            ? 'bg-gradient-to-br from-orange-50 via-amber-50/50 to-orange-50 dark:from-orange-950/20 dark:via-amber-950/15 dark:to-orange-950/20 border-[2px] border-orange-400 dark:border-orange-500 shadow-md shadow-orange-200/40 dark:shadow-orange-900/40' 
                             : 'bg-gradient-to-br from-orange-50/40 via-amber-50/30 to-orange-50/40 dark:from-zinc-800 dark:via-zinc-850 dark:to-zinc-800 border-[2px] border-orange-200 dark:border-zinc-600 shadow-md shadow-orange-100/40 dark:shadow-zinc-900/40'
                           }
-                          hover:shadow-2xl hover:shadow-orange-300/70 dark:hover:shadow-orange-800/70
+                          hover:shadow-xl hover:shadow-orange-300/50 dark:hover:shadow-orange-800/50
                           hover:z-10 
-                          hover:border-orange-500 dark:hover:border-orange-400
+                          hover:border-orange-400 dark:hover:border-orange-400
                           hover:scale-105
                           ${!isSelected && 'hover:from-orange-100/60 hover:via-amber-100/50 hover:to-orange-100/60 dark:hover:from-zinc-750 dark:hover:via-zinc-800 dark:hover:to-zinc-750'}
                           transition-all duration-200 
@@ -111,11 +111,11 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                         {/* Visual selection indicator - checkmark badge */}
                         <div className={`absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 border-2 
                           ${isSelected 
-                            ? 'bg-orange-500 dark:bg-orange-400 border-orange-600 dark:border-orange-500 scale-100' 
+                            ? 'bg-orange-500 dark:bg-orange-500 border-orange-600 dark:border-orange-600 scale-100' 
                             : 'bg-zinc-200 dark:bg-zinc-700 border-zinc-300 dark:border-zinc-600 scale-90 opacity-40 group-hover:opacity-70'
                           }`}>
                           {isSelected && (
-                            <svg className="w-3.5 h-3.5 text-white dark:text-zinc-900" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3.5 h-3.5 text-white dark:text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" stroke="currentColor">
                               <path d="M5 13l4 4L19 7"></path>
                             </svg>
                           )}
@@ -133,7 +133,7 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                           htmlFor={insight.id} 
                           className={`text-sm font-bold text-center cursor-pointer select-none leading-snug px-2
                             ${isSelected 
-                              ? 'text-orange-900 dark:text-orange-100' 
+                              ? 'text-orange-800 dark:text-orange-200' 
                               : 'text-orange-800/80 dark:text-orange-200/70'
                             }
                             group-hover:text-orange-900 dark:group-hover:text-orange-100
