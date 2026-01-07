@@ -278,6 +278,9 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                         <CardTitle className="text-sm flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-blue-500" />
                           <span>AI Analysis (Auto)</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({formatTime(resultItem.execution_time)})
+                          </span>
                           <Badge variant="secondary" className="ml-auto text-xs">
                             {resultItem.result.ai_prompt_type || "custom"}
                           </Badge>
@@ -415,11 +418,15 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                                       <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase">
                                         AI Analysis
                                       </span>
-                                      {aiStates[resultItem.insight_id].executionTime !== undefined && (
-                                        <span className="text-xs text-muted-foreground">
+                                      {aiStates[resultItem.insight_id].executionTime !== undefined ? (
+                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                                           ({formatTime(aiStates[resultItem.insight_id].executionTime!)})
                                         </span>
-                                      )}
+                                      ) : aiStates[resultItem.insight_id].status === "streaming" ? (
+                                        <span className="text-xs text-blue-500 dark:text-blue-400">
+                                          (analyzing...)
+                                        </span>
+                                      ) : null}
                                     </div>
                                     <div className="flex gap-2">
                                       <Button
