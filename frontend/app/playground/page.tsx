@@ -9,10 +9,12 @@ import { StatusBar } from "@/components/StatusBar";
 import { FilteredResults } from "@/components/playground/FilteredResults";
 import { AIResponsePanel } from "@/components/playground/AIResponsePanel";
 import { PromptManager } from "@/components/playground/PromptManager";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, getAIConfig } from "@/lib/api-client";
+import { loadAISettings } from "@/lib/settings-storage";
 import { FilterResult, AISystemPrompts } from "@/lib/api-types";
-import { Play, Sparkles, ArrowLeft } from "lucide-react";
+import { Play, Sparkles, ArrowLeft, Settings, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 
 const STORAGE_KEYS = {
   FILE_PATH: "lens_playground_file_path",
@@ -40,6 +42,8 @@ export default function PlaygroundPage() {
   const [aiResponse, setAiResponse] = useState("");
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [defaultPrompts, setDefaultPrompts] = useState<AISystemPrompts>({
     summarize: "",
@@ -112,6 +116,52 @@ export default function PlaygroundPage() {
     }
   };
 
+  const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
+    try {
+      // Check localStorage first
+      const localSettings = loadAISettings();
+      
+      // Also check backend config
+      const backendConfig = await getAIConfig();
+      
+      // Merge settings (local takes precedence)
+      const enabled = localSettings?.enabled ?? backendConfig.enabled ?? false;
+      const baseUrl = localSettings?.baseUrl ?? backendConfig.base_url ?? "";
+      const apiKey = localSettings?.apiKey ?? "";
+      
+      // Check if AI is enabled
+      if (!enabled) {
+        return {
+          isValid: false,
+          message: "AI processing is not enabled. Please enable it in settings."
+        };
+      }
+      
+      // Check if base URL is configured
+      if (!baseUrl || baseUrl.trim() === "") {
+        return {
+          isValid: false,
+          message: "AI Base URL is not configured. Please set it in settings."
+        };
+      }
+      
+      // Check if API key is configured
+      if (!apiKey || apiKey.trim() === "") {
+        return {
+          isValid: false,
+          message: "AI API Key is not configured. Please set it in settings."
+        };
+      }
+      
+      return { isValid: true };
+    } catch (error) {
+      return {
+        isValid: false,
+        message: "Failed to check AI configuration. Please verify your settings."
+      };
+    }
+  };
+
   const handleAIAnalyze = async () => {
     if (!filterResult || filterResult.lines.length === 0) {
       setAiError("No filtered results to analyze. Run a filter first.");
@@ -123,8 +173,17 @@ export default function PlaygroundPage() {
       return;
     }
 
+    // Check AI configuration before proceeding
+    const configCheck = await checkAIConfiguration();
+    if (!configCheck.isValid) {
+      setConfigError(configCheck.message || "AI is not properly configured. Please configure AI settings.");
+      setAiError(null); // Clear any previous errors
+      return;
+    }
+
     setAiStreaming(true);
     setAiError(null);
+    setConfigError(null); // Clear config error if we got past the check
     setAiResponse("");
 
     try {
@@ -317,6 +376,38 @@ export default function PlaygroundPage() {
                 <Sparkles className="h-4 w-4 mr-2" />
                 {aiStreaming ? "Analyzing..." : "Analyze with AI"}
               </Button>
+              {configError && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                        AI Configuration Required
+                      </p>
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        {configError}
+                      </p>
+                      <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                        <p>To use AI analysis, please configure:</p>
+                        <ul className="list-disc list-inside space-y-0.5 ml-2">
+                          <li>Enable AI processing</li>
+                          <li>Set the AI Base URL (e.g., https://api.openai.com/v1)</li>
+                          <li>Provide your API Key</li>
+                        </ul>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSettingsOpen(true)}
+                        className="mt-2 border-amber-300 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
+                      >
+                        <Settings className="mr-2 h-4 w-4" />
+                        Open Settings
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
@@ -336,7 +427,8 @@ export default function PlaygroundPage() {
         </div>
       </main>
 
-      <StatusBar onOpenSettings={() => {}} />
+      <StatusBar onOpenSettings={() => setSettingsOpen(true)} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AnalysisResponse } from "@/lib/api-types";
-import { analyzeWithAI } from "@/lib/api-client";
-import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, Zap } from "lucide-react";
+import { analyzeWithAI, getAIConfig } from "@/lib/api-client";
+import { loadAISettings } from "@/lib/settings-storage";
+import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, Settings, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface ResultsPanelProps {
   analysisResponse: AnalysisResponse;
   loading?: boolean;
+  onOpenSettings?: () => void;
 }
 
 interface AIAnalysisState {
@@ -21,12 +23,13 @@ interface AIAnalysisState {
   error?: string;
 }
 
-export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
+export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: ResultsPanelProps) {
   const [aiStates, setAiStates] = useState<Record<string, AIAnalysisState>>({});
   const [promptTypes, setPromptTypes] = useState<Record<string, string>>({});
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
   const [showAI, setShowAI] = useState<Record<string, boolean>>({});
   const [showCustomPrompt, setShowCustomPrompt] = useState<Record<string, boolean>>({});
+  const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
 
   if (loading) {
     return (
@@ -47,9 +50,97 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
     return `${seconds.toFixed(2)}s`;
   };
 
+  const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
+    try {
+      // Check localStorage first
+      const localSettings = loadAISettings();
+      
+      // Also check backend config
+      const backendConfig = await getAIConfig();
+      
+      // Merge settings (local takes precedence)
+      const enabled = localSettings?.enabled ?? backendConfig.enabled ?? false;
+      const baseUrl = localSettings?.baseUrl ?? backendConfig.base_url ?? "";
+      const apiKey = localSettings?.apiKey ?? "";
+      
+      // Check if AI is enabled
+      if (!enabled) {
+        return {
+          isValid: false,
+          message: "AI processing is not enabled. Please enable it in settings."
+        };
+      }
+      
+      // Check if base URL is configured
+      if (!baseUrl || baseUrl.trim() === "") {
+        return {
+          isValid: false,
+          message: "AI Base URL is not configured. Please set it in settings."
+        };
+      }
+      
+      // Check if API key is configured
+      if (!apiKey || apiKey.trim() === "") {
+        return {
+          isValid: false,
+          message: "AI API Key is not configured. Please set it in settings."
+        };
+      }
+      
+      return { isValid: true };
+    } catch (error) {
+      return {
+        isValid: false,
+        message: "Failed to check AI configuration. Please verify your settings."
+      };
+    }
+  };
+
   const handleAIAnalyze = async (insightId: string, content: string) => {
+    // Clear any previous config errors for this insight
+    setConfigErrors(prev => {
+      const updated = { ...prev };
+      delete updated[insightId];
+      return updated;
+    });
+
+    // Check AI configuration before proceeding
+    const configCheck = await checkAIConfiguration();
+    if (!configCheck.isValid) {
+      setConfigErrors(prev => ({
+        ...prev,
+        [insightId]: configCheck.message || "AI is not properly configured."
+      }));
+      setAiStates(prev => ({
+        ...prev,
+        [insightId]: {
+          status: "error",
+          response: "",
+          error: configCheck.message || "Configuration error",
+        }
+      }));
+      return;
+    }
+
     const promptType = promptTypes[insightId] || "explain";
     const customPrompt = customPrompts[insightId];
+
+    // Validate custom prompt if needed
+    if (promptType === "custom" && (!customPrompt || customPrompt.trim() === "")) {
+      setConfigErrors(prev => ({
+        ...prev,
+        [insightId]: "Please enter a custom prompt."
+      }));
+      setAiStates(prev => ({
+        ...prev,
+        [insightId]: {
+          status: "error",
+          response: "",
+          error: "Custom prompt is required.",
+        }
+      }));
+      return;
+    }
 
     // Initialize or update AI state
     setAiStates(prev => ({
@@ -210,6 +301,42 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
 
                       {showAI[resultItem.insight_id] && (
                         <div className="space-y-3 mt-3">
+                          {/* Configuration Error Alert */}
+                          {configErrors[resultItem.insight_id] && (
+                            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                  <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                                    AI Configuration Required
+                                  </p>
+                                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                                    {configErrors[resultItem.insight_id]}
+                                  </p>
+                                  <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                                    <p>To use AI analysis, please configure:</p>
+                                    <ul className="list-disc list-inside space-y-0.5 ml-2">
+                                      <li>Enable AI processing</li>
+                                      <li>Set the AI Base URL (e.g., https://api.openai.com/v1)</li>
+                                      <li>Provide your API Key</li>
+                                    </ul>
+                                  </div>
+                                  {onOpenSettings && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={onOpenSettings}
+                                      className="mt-2 border-amber-300 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
+                                    >
+                                      <Settings className="mr-2 h-4 w-4" />
+                                      Open Settings
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Prompt Type Selector */}
                           <div className="flex gap-2">
                             <Select

@@ -271,7 +271,11 @@ export default function Home() {
           {/* Results */}
           {analysisResponse && (
             <section>
-              <ResultsPanel analysisResponse={analysisResponse} loading={analyzing} />
+              <ResultsPanel 
+                analysisResponse={analysisResponse} 
+                loading={analyzing}
+                onOpenSettings={() => setSettingsOpen(true)}
+              />
             </section>
           )}
         </div>
