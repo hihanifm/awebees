@@ -1,23 +1,27 @@
-C:\Users\m.hanifa\Desktop\work\lens\awebees\scripts>win-start.bat
-Starting Lens services in DEVELOPMENT mode...
-Starting backend on port 34001...
-The filename, directory name, or volume label syntax is incorrect.
-Warning: Could not detect backend PID immediately, retrying...
-Error: Backend failed to start - no process listening on port 34001
-Check backend logs: C:\Users\m.hanifa\Desktop\work\lens\awebees\scripts\..\logs\backend.log
-INFO:     Will watch for changes in these directories: ['C:\\Users\\m.hanifa\\Desktop\\work\\lens\\awebees\\backend']
-INFO:     Uvicorn running on http://0.0.0.0:34001 (Press CTRL+C to quit)
-INFO:     Started reloader process [24948] using WatchFiles
-INFO:     Started server process [12828]
-INFO:     Waiting for application startup.
-INFO:app.main:Initializing plugin manager...
-INFO:app.core.config_insight:ConfigBasedInsight initialized: error_detector from app.insights.error_detector
-INFO:app.core.plugin_manager:Registered config-based insight: error_detector (Error Detector) in folder: root
-INFO:app.core.plugin_manager:Registered class-based insight: line_count (Line Count) in folder: root
-INFO:app.main:Discovered 2 insights
-INFO:app.main:\u2713 Sample file ready: android-bugreport.txt (54.6MB)
-INFO:     Application startup complete.
-INFO:     127.0.0.1:59355 - "GET / HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:59355 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-
-Press any key to continue . . .
+1512 http fetch GET https://registry.npmjs.org/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1513 verbose reify failed optional dependency C:\Users\m.hanifa\Desktop\work\lens\awebees\frontend\node_modules\@unrs\resolver-binding-win32-x64-msvc
+1514 silly reify mark deleted [
+1514 silly reify   'C:\\Users\\m.hanifa\\Desktop\\work\\lens\\awebees\\frontend\\node_modules\\@unrs\\resolver-binding-win32-x64-msvc'
+1514 silly reify ]
+1515 http fetch GET https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.1.18.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1516 verbose reify failed optional dependency C:\Users\m.hanifa\Desktop\work\lens\awebees\frontend\node_modules\@tailwindcss\oxide-win32-x64-msvc
+1517 silly reify mark deleted [
+1517 silly reify   'C:\\Users\\m.hanifa\\Desktop\\work\\lens\\awebees\\frontend\\node_modules\\@tailwindcss\\oxide-win32-x64-msvc'
+1517 silly reify ]
+1518 http fetch GET https://registry.npmjs.org/@typescript-eslint/types/-/types-8.51.0.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1519 http fetch GET https://registry.npmjs.org/@types/ms/-/ms-2.1.0.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1520 http fetch GET https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.51.0.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1521 http fetch GET https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.51.0.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1522 http fetch GET https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.51.0.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1523 http fetch GET https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.51.0.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1524 http fetch GET https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.51.0.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
+1525 verbose cwd C:\Users\m.hanifa\Desktop\work\lens\awebees\frontend
+1526 verbose os Windows_NT 10.0.22621
+1527 verbose node v24.12.0
+1528 verbose npm  v11.6.2
+1529 error Exit handler never called!
+1530 error This is an error with npm itself. Please report this error at:
+1531 error   <https://github.com/npm/cli/issues>
+1532 verbose exit 1
+1533 verbose code 1
+1534 error A complete log of this run can be found in: C:\Users\m.hanifa\AppData\Local\npm-cache\_logs\2026-01-07T16_38_43_106Z-debug-0.log
