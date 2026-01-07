@@ -118,13 +118,18 @@ export default function PlaygroundPage() {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Check localStorage first
-      const localSettings = loadAISettings();
-      
-      // Also check backend config
+      // Check backend config first - backend is the source of truth
       const backendConfig = await getAIConfig();
       
-      // Merge settings (local takes precedence)
+      // If backend says it's configured, trust it (backend uses .env file)
+      if (backendConfig.is_configured) {
+        return { isValid: true };
+      }
+      
+      // If backend is not configured, check if user has local overrides
+      const localSettings = loadAISettings();
+      
+      // Merge settings (local takes precedence for user overrides)
       const enabled = localSettings?.enabled ?? backendConfig.enabled ?? false;
       const baseUrl = localSettings?.baseUrl ?? backendConfig.base_url ?? "";
       const apiKey = localSettings?.apiKey ?? "";
@@ -145,7 +150,7 @@ export default function PlaygroundPage() {
         };
       }
       
-      // Check if API key is configured
+      // Check if API key is configured (only check local, backend key is not exposed)
       if (!apiKey || apiKey.trim() === "") {
         return {
           isValid: false,
