@@ -202,6 +202,14 @@ scripts\win-setup.bat
 2. Try: `python -m venv test_venv` in a test directory
 3. If that fails, reinstall Python with "Add to PATH" checked
 
+### SSL Certificate Errors (UNABLE_TO_GET_ISSUER_CERT_LOCALLY)
+
+**Solution:** 
+1. The setup script will automatically detect SSL certificate errors and offer to fix them
+2. If prompted, choose **Y** to configure npm to handle SSL issues
+3. For more detailed solutions, see `WINDOWS-NPM-TROUBLESHOOTING.md`
+4. Common causes: Corporate proxy, firewall, or missing CA certificates
+
 ### Permission errors
 
 **Solution:** Run Command Prompt as Administrator (Right-click → "Run as administrator").

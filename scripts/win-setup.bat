@@ -241,41 +241,108 @@ if not exist "node_modules" (
     echo Clearing npm cache...
     call npm cache clean --force >nul 2>&1
     
-    REM Try npm install
-    call npm install
-    if errorlevel 1 (
-        echo.
-        echo Error: npm install failed with error code !errorlevel!
-        echo.
-        echo Troubleshooting steps:
-        echo 1. Trying to clear npm cache and retry...
-        
-        REM Remove package-lock.json if it exists (might be corrupted)
-        if exist "package-lock.json" (
-            echo 2. Removing potentially corrupted package-lock.json...
-            del package-lock.json
-        )
-        
-        REM Clear cache again
-        call npm cache clean --force
-        
-        REM Retry installation
-        echo 3. Retrying npm install...
-        call npm install
-        if errorlevel 1 (
+    REM Try npm install and capture output to check for SSL errors
+    echo Running npm install...
+    call npm install >npm_output.tmp 2>&1
+    set INSTALL_RESULT=!errorlevel!
+    
+    REM Check if output contains SSL certificate error
+    findstr /C:"UNABLE_TO_GET_ISSUER_CERT_LOCALLY" npm_output.tmp >nul 2>&1
+    if not errorlevel 1 (
+        set SSL_ERROR=1
+    )
+    
+    REM Clean up temp file
+    if exist npm_output.tmp del npm_output.tmp >nul 2>&1
+    
+    if !INSTALL_RESULT! neq 0 (
+        if defined SSL_ERROR (
             echo.
-            echo Error: npm install still failing after troubleshooting attempts
+            echo ========================================
+            echo SSL Certificate Error Detected
+            echo ========================================
             echo.
-            echo Additional troubleshooting:
-            echo - Try running as Administrator
-            echo - Disable antivirus temporarily
-            echo - Check npm logs at: %%APPDATA%%\npm-cache\_logs\
-            echo - Try: npm cache verify
-            echo - Update npm: npm install -g npm@latest
-            echo - Reinstall Node.js from https://nodejs.org/
+            echo Error: UNABLE_TO_GET_ISSUER_CERT_LOCALLY
             echo.
-            pause
-            exit /b 1
+            echo This is a common issue on Windows, especially in corporate environments.
+            echo.
+            echo Would you like to configure npm to handle SSL certificate issues? [Y/N]
+            echo WARNING: This will temporarily disable strict SSL verification.
+            echo.
+            set /p FIX_SSL="Enter choice: "
+            
+            if /i "!FIX_SSL!"=="Y" (
+                echo.
+                echo Configuring npm to handle SSL certificate issues...
+                call npm config set strict-ssl false
+                call npm config set registry https://registry.npmjs.org/
+                
+                echo.
+                echo Retrying npm install with SSL workaround...
+                call npm install
+                if errorlevel 1 (
+                    echo.
+                    echo Error: npm install still failing after SSL configuration
+                    echo.
+                    echo Additional troubleshooting:
+                    echo - Check if you're behind a corporate proxy
+                    echo - Try: npm config set proxy http://your-proxy:port
+                    echo - Try: npm config set https-proxy http://your-proxy:port
+                    echo - See WINDOWS-NPM-TROUBLESHOOTING.md for more solutions
+                    echo.
+                    pause
+                    exit /b 1
+                )
+                echo.
+                echo NOTE: SSL strict verification has been disabled for npm.
+                echo To re-enable later, run: npm config set strict-ssl true
+            ) else (
+                echo.
+                echo SSL certificate issue not resolved.
+                echo.
+                echo Manual solutions:
+                echo 1. Install proper CA certificates for your system
+                echo 2. Configure corporate proxy settings if applicable
+                echo 3. See WINDOWS-NPM-TROUBLESHOOTING.md for detailed solutions
+                echo.
+                pause
+                exit /b 1
+            )
+        ) else (
+            echo.
+            echo Error: npm install failed with error code !INSTALL_RESULT!
+            echo.
+            echo Troubleshooting steps:
+            echo 1. Trying to clear npm cache and retry...
+            
+            REM Remove package-lock.json if it exists (might be corrupted)
+            if exist "package-lock.json" (
+                echo 2. Removing potentially corrupted package-lock.json...
+                del package-lock.json
+            )
+            
+            REM Clear cache again
+            call npm cache clean --force
+            
+            REM Retry installation
+            echo 3. Retrying npm install...
+            call npm install
+            if errorlevel 1 (
+                echo.
+                echo Error: npm install still failing after troubleshooting attempts
+                echo.
+                echo Additional troubleshooting:
+                echo - Try running as Administrator
+                echo - Disable antivirus temporarily
+                echo - Check npm logs at: %%APPDATA%%\npm-cache\_logs\
+                echo - Try: npm cache verify
+                echo - Update npm: npm install -g npm@latest
+                echo - Reinstall Node.js from https://nodejs.org/
+                echo - See WINDOWS-NPM-TROUBLESHOOTING.md for SSL certificate solutions
+                echo.
+                pause
+                exit /b 1
+            )
         )
     )
     echo Node.js dependencies installed

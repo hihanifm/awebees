@@ -68,12 +68,16 @@ export default function PlaygroundPage() {
     // Check URL query parameter first, then localStorage
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get("tab");
+    let currentTab: "filter" | "text" = "filter";
+    
     if (tabParam === "filter" || tabParam === "text") {
+      currentTab = tabParam;
       setActiveTab(tabParam);
     } else {
       // Load active tab from localStorage
       const savedTab = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
       if (savedTab === "filter" || savedTab === "text") {
+        currentTab = savedTab;
         setActiveTab(savedTab);
       }
     }
@@ -96,7 +100,7 @@ export default function PlaygroundPage() {
       setUserPrompt(savedUserPrompt);
     } else {
       // Set default based on active tab
-      setUserPrompt(savedTab === "text" ? "Please analyze the text above." : "Please analyze the filtered results above.");
+      setUserPrompt(currentTab === "text" ? "Please analyze the text above." : "Please analyze the filtered results above.");
     }
 
     // Load default prompts

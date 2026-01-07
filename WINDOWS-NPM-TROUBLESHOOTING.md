@@ -1,6 +1,6 @@
 # Windows npm Installation Troubleshooting
 
-If you encounter the error "Exit handler never called!" or other npm installation issues during setup, try these solutions:
+If you encounter the error "Exit handler never called!" or SSL certificate errors like "UNABLE_TO_GET_ISSUER_CERT_LOCALLY" during setup, try these solutions:
 
 ## Quick Fix (Most Common)
 
@@ -11,6 +11,83 @@ cd frontend
 npm cache clean --force
 del package-lock.json
 npm install
+```
+
+## SSL Certificate Error Fix (UNABLE_TO_GET_ISSUER_CERT_LOCALLY)
+
+If you see `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` errors, this is an SSL certificate verification issue. Try these solutions in order:
+
+### Solution A: Configure npm to Handle SSL Issues (Quick Fix)
+
+**Warning:** This disables strict SSL verification. Only use if other solutions don't work.
+
+```cmd
+npm config set strict-ssl false
+npm config set registry https://registry.npmjs.org/
+cd frontend
+npm install
+```
+
+To re-enable strict SSL later:
+```cmd
+npm config set strict-ssl true
+```
+
+### Solution B: Configure Corporate Proxy (If Behind a Proxy)
+
+If you're behind a corporate proxy, configure npm to use it:
+
+```cmd
+npm config set proxy http://your-proxy-server:port
+npm config set https-proxy http://your-proxy-server:port
+npm config set registry https://registry.npmjs.org/
+cd frontend
+npm install
+```
+
+### Solution C: Use Environment Variables
+
+Set these environment variables before running npm install:
+
+```cmd
+set NODE_TLS_REJECT_UNAUTHORIZED=0
+cd frontend
+npm install
+```
+
+**Note:** This is less secure but may work in restricted environments.
+
+### Solution D: Install CA Certificates (Best Long-term Solution)
+
+1. Download the npm registry CA certificate bundle
+2. Configure npm to use it:
+
+```cmd
+npm config set cafile "C:\path\to\ca-bundle.crt"
+cd frontend
+npm install
+```
+
+Or set the environment variable:
+```cmd
+set NODE_EXTRA_CA_CERTS=C:\path\to\ca-bundle.crt
+cd frontend
+npm install
+```
+
+### Solution E: Use Alternative Registry (Temporary Workaround)
+
+Try using a different registry mirror:
+
+```cmd
+npm config set registry https://registry.npmmirror.com
+cd frontend
+npm install
+```
+
+Then reset to official registry:
+```cmd
+npm config set registry https://registry.npmjs.org/
 ```
 
 ## Solution 1: Clear npm Cache
@@ -88,13 +165,14 @@ The `--verbose` flag will show detailed output to help identify where the failur
 
 ## Common Causes
 
+- **SSL certificate issues**: See "SSL Certificate Error Fix" section above
+- **Corporate proxy/firewall**: Solution B in SSL section
 - **Corrupted npm cache**: Solution 1
 - **Permission issues**: Solution 2
 - **Antivirus interference**: Solution 3
 - **Outdated npm**: Solution 4
 - **Corrupted Node.js installation**: Solution 5
 - **Firewall blocking npm registry**: Check firewall settings
-- **Corporate proxy**: Configure npm proxy settings
 
 ## Still Having Issues?
 
