@@ -39,6 +39,10 @@ VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 
+; Finish page settings - Add "Run Lens" option
+!define MUI_FINISHPAGE_RUN "$INSTDIR\lens-start.bat"
+!define MUI_FINISHPAGE_RUN_TEXT "Launch Lens now"
+
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${NSISDIR}\Docs\Modern UI\License.txt"
