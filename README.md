@@ -165,12 +165,14 @@ scripts\win-logs.bat -b     REM Backend logs (last 20 lines)
 
 Lens provides a modular plugin-based system for analyzing log files:
 
-![Lens Main Interface](lens-screenshot.png)
+![Lens Main Interface](lens_1.png)
+*Main interface showing file selection, available insights, and real-time analysis progress*
 
 ### Available Insights
 
 - **Line Count**: Counts total lines, empty lines, and non-empty lines in log files
 - **Error Detector**: Detects ERROR and FATAL log lines in log files
+- **Android Crash Detector**: Specialized Android crash analysis with AI-powered insights
 
 ### 🧪 Playground
 
@@ -220,9 +222,11 @@ python -m app.insights.error_detector samples/android-bugreport.txt
    - View real-time progress and results
    - Cancel analysis mid-flight if needed
 
-![Analysis Progress](lens-analysis-progress.png)
+![Analysis Results with Statistics](lens_2.png)
+*Analysis results showing performance statistics, crash details, and AI-powered analysis*
 
-![Analysis Results](lens-result.png)
+![Detailed AI Analysis](lens_3.png)
+*AI analysis providing summary, common patterns, root causes, recommended fixes, and priority guidance*
 
 ### Status Indicators
 
