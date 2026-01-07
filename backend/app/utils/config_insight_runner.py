@@ -121,8 +121,9 @@ def main_config_standalone(
         
         # Get file paths to analyze
         if input_file_paths is None:
-            # Parse from CLI arguments (skip first arg which is the script name)
-            args = sys.argv[1:] if len(sys.argv) > 1 else []
+            # Parse from CLI arguments (skip script name and config file path)
+            # sys.argv[0] = module, sys.argv[1] = config file, sys.argv[2:] = file paths
+            args = sys.argv[2:] if len(sys.argv) > 2 else []
             
             # Check for verbose flag
             if "--verbose" in args or "-v" in args:
