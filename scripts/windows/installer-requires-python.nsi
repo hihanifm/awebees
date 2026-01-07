@@ -1,16 +1,16 @@
-; NSIS Installer Script for Lens (Requires Python)
+; NSIS Installer Script for LensAI (Requires Python)
 ; This installer requires Python to be pre-installed
 
 !include "MUI2.nsh"
 
 ; Installer Information
-Name "Lens (Requires Python)"
+Name "LensAI (Requires Python)"
 !ifdef OUTDIR
 OutFile "${OUTDIR}\lens-setup-requires-python.exe"
 !else
 OutFile "lens-setup-requires-python.exe"
 !endif
-InstallDir "$PROGRAMFILES\Lens"
+InstallDir "$PROGRAMFILES\LensAI"
 RequestExecutionLevel admin
 
 ; Build directory (passed from GitHub Actions)
@@ -22,8 +22,8 @@ RequestExecutionLevel admin
 !ifndef VERSION
 !define VERSION "2.6.0"
 !endif
-!define APP_NAME "Lens"
-!define PUBLISHER "Lens Development Team"
+!define APP_NAME "LensAI"
+!define PUBLISHER "LensAI Development Team"
 !define APP_URL "https://github.com/hihanifm/awebees"
 
 VIProductVersion "${VERSION}.0"
@@ -64,7 +64,7 @@ Function CheckPython
     ClearErrors
     ExecWait 'python --version' $0
     IfErrors 0 PythonFound
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Python is not installed or not in PATH.$\n$\nLens requires Python 3.x to be installed.$\nWould you like to open the Python download page?" IDNO NoPython
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Python is not installed or not in PATH.$\n$\nLensAI requires Python 3.x to be installed.$\nWould you like to open the Python download page?" IDNO NoPython
     ExecShell "open" "https://www.python.org/downloads/"
     Abort
     NoPython:
@@ -74,12 +74,19 @@ FunctionEnd
 
 ; Function to uninstall previous version if it exists
 Function uninstallPrevious
-    ; Check if Lens is already installed by looking for the registry key
+    ; Check if LensAI is already installed by looking for the registry key
+    ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "UninstallString"
+    StrCmp $0 "" checkOld
+    goto found
+    
+    checkOld:
+    ; Also check for old "Lens" registry key for backward compatibility
     ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "UninstallString"
     StrCmp $0 "" done
     
+    found:
     ; Found existing installation, uninstall it
-    DetailPrint "Uninstalling previous version of Lens..."
+    DetailPrint "Uninstalling previous version of LensAI..."
     ExecWait '"$0" /S _?=$INSTDIR'
     
     ; Wait a bit for uninstaller to complete
@@ -116,23 +123,23 @@ Section "Lens Application" SecApp
     ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m pip install -r "$INSTDIR\backend\requirements.txt"'
     
     ; Create Start Menu shortcuts
-    CreateDirectory "$SMPROGRAMS\Lens"
-    CreateShortcut "$SMPROGRAMS\Lens\Lens.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
-    CreateShortcut "$SMPROGRAMS\Lens\Stop Lens.lnk" "$INSTDIR\lens-stop.bat" "" "$INSTDIR\lens-stop.bat" 0
-    CreateShortcut "$SMPROGRAMS\Lens\Uninstall Lens.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
+    CreateDirectory "$SMPROGRAMS\LensAI"
+    CreateShortcut "$SMPROGRAMS\LensAI\LensAI.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
+    CreateShortcut "$SMPROGRAMS\LensAI\Stop LensAI.lnk" "$INSTDIR\lens-stop.bat" "" "$INSTDIR\lens-stop.bat" 0
+    CreateShortcut "$SMPROGRAMS\LensAI\Uninstall LensAI.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
     
     ; Create desktop shortcut (optional)
-    CreateShortcut "$DESKTOP\Lens.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
+    CreateShortcut "$DESKTOP\LensAI.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
     
     ; Write registry keys for Add/Remove Programs
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "DisplayName" "${APP_NAME}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "DisplayVersion" "${VERSION}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "Publisher" "${PUBLISHER}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "URLInfoAbout" "${APP_URL}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "UninstallString" "$INSTDIR\Uninstall.exe"
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "NoModify" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens" "NoRepair" 1
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "DisplayName" "${APP_NAME}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "DisplayVersion" "${VERSION}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "Publisher" "${PUBLISHER}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "URLInfoAbout" "${APP_URL}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "UninstallString" "$INSTDIR\Uninstall.exe"
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "NoModify" 1
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "NoRepair" 1
     
     ; Create uninstaller
     WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -144,10 +151,10 @@ Section "Uninstall"
     RMDir /r "$INSTDIR"
     
     ; Remove shortcuts
-    RMDir /r "$SMPROGRAMS\Lens"
-    Delete "$DESKTOP\Lens.lnk"
+    RMDir /r "$SMPROGRAMS\LensAI"
+    Delete "$DESKTOP\LensAI.lnk"
     
     ; Remove registry keys
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Lens"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI"
 SectionEnd
 

@@ -1,10 +1,10 @@
 # AI Setup Guide
 
-This guide will help you configure AI-powered analysis in Lens.
+This guide will help you configure AI-powered analysis in LensAI.
 
 ## Overview
 
-Lens supports OpenAI-compatible APIs for enhanced log analysis. You can use:
+LensAI supports OpenAI-compatible APIs for enhanced log analysis. You can use:
 
 - **OpenAI** - Official OpenAI API (GPT-4, GPT-3.5)
 - **Azure OpenAI** - Microsoft's OpenAI service
@@ -20,7 +20,7 @@ Lens supports OpenAI-compatible APIs for enhanced log analysis. You can use:
 4. Create a new API key
 5. Copy the key (starts with `sk-`)
 
-### 2. Configure Lens
+### 2. Configure LensAI
 
 **Option A: Using Environment Variables (Recommended)**
 
@@ -39,7 +39,7 @@ OPENAI_TEMPERATURE=0.7
 
 **Option B: Using the Settings Dialog**
 
-1. Start Lens
+1. Start LensAI
 2. Click the Settings icon in the status bar
 3. Go to "AI Settings" tab
 4. Toggle "Enable AI Processing"
@@ -95,7 +95,7 @@ ollama pull codellama
 ollama pull mistral
 ```
 
-### 3. Configure Lens
+### 3. Configure LensAI
 
 ```bash
 AI_ENABLED=true
@@ -125,7 +125,7 @@ Download from [lmstudio.ai](https://lmstudio.ai)
 3. Click "Start Server"
 4. Note the port (usually 1234)
 
-### 4. Configure Lens
+### 4. Configure LensAI
 
 ```bash
 AI_ENABLED=true

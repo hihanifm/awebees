@@ -237,7 +237,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             Settings
           </DialogTitle>
           <DialogDescription>
-            Configure Lens application settings
+            Configure LensAI application settings
           </DialogDescription>
         </DialogHeader>
 

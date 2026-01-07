@@ -1,6 +1,6 @@
 # Windows Package Build System
 
-This directory contains scripts and configuration for building Windows production packages for Lens.
+This directory contains scripts and configuration for building Windows production packages for LensAI.
 
 ## Overview
 
@@ -102,9 +102,9 @@ Backend logs are written to:
 {Installation Directory}\logs\backend.log
 ```
 
-For example, if installed to `C:\Program Files (x86)\Lens`:
+For example, if installed to `C:\Program Files (x86)\LensAI`:
 ```
-C:\Program Files (x86)\Lens\logs\backend.log
+C:\Program Files (x86)\LensAI\logs\backend.log
 ```
 
 **View logs:**
@@ -112,7 +112,7 @@ C:\Program Files (x86)\Lens\logs\backend.log
 - Or open the log file directly in a text editor
 - For real-time logs, use PowerShell:
   ```powershell
-  Get-Content "C:\Program Files (x86)\Lens\logs\backend.log" -Wait -Tail 20
+  Get-Content "C:\Program Files (x86)\LensAI\logs\backend.log" -Wait -Tail 20
   ```
 
 ## Troubleshooting

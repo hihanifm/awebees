@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start script for Lens frontend and backend
+# Start script for LensAI frontend and backend
 # This script starts both services as background processes
 # Usage: ./start.sh [-p] [-h]
 #   -p: Production mode (uses next start instead of next dev)
@@ -30,7 +30,7 @@ fi
 
 # Print OS information
 echo "=========================================="
-echo "Lens Start Script"
+echo "LensAI Start Script"
 echo "=========================================="
 echo "OS: $OS_DETAILS"
 echo "OSTYPE: $OSTYPE"
@@ -94,7 +94,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 MODE_UPPER=$(echo "$MODE" | tr '[:lower:]' '[:upper:]')
-echo "Starting Lens services in $MODE_UPPER mode..."
+echo "Starting LensAI services in $MODE_UPPER mode..."
 
 # Load backend environment variables
 if [ -f "$PROJECT_ROOT/backend/.env" ]; then

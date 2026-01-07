@@ -1,4 +1,4 @@
-# Lens
+# LensAI
 
 A modular engine for extracting insights from messy data!
 
@@ -166,7 +166,7 @@ scripts\win-logs.bat -b     REM Backend logs (last 20 lines)
 
 ## Features
 
-Lens provides a modular plugin-based system for analyzing log files:
+LensAI provides a modular plugin-based system for analyzing log files:
 
 ### Available Insights
 
@@ -188,7 +188,7 @@ The **Playground** is an interactive environment for experimenting with ripgrep 
 
 ### Quick Start with Sample File
 
-**New to Lens?** Try it immediately with the included Android bugreport sample:
+**New to LensAI?** Try it immediately with the included Android bugreport sample:
 
 1. Start the application (see Quick Start above)
 2. Click **"Load Sample File"** button on the main page
@@ -250,7 +250,7 @@ The footer displays:
 
 ## Creating Custom Insights
 
-Lens supports two approaches for creating insights:
+LensAI supports two approaches for creating insights:
 
 ### Config-Based Insights (Recommended)
 

@@ -190,7 +190,7 @@ export default function Home() {
       <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
         <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            Lens
+            LensAI
           </h1>
           <p className="text-foreground/80 mt-2 font-medium">A modular engine for extracting insights from messy data!</p>
         </div>

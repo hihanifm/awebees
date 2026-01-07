@@ -1,6 +1,6 @@
 # Windows Setup Guide
 
-This guide explains how to set up Lens on Windows, including automatic installation of prerequisites.
+This guide explains how to set up LensAI on Windows, including automatic installation of prerequisites.
 
 ## Quick Start
 
@@ -89,7 +89,7 @@ When you run `scripts\win-setup.bat`, the script will:
 ```cmd
 C:\Users\YourName\awebees> scripts\win-setup.bat
 
-Setting up Lens...
+Setting up LensAI...
 
 === Checking Node.js Installation ===
 Node.js/npm is not installed or not in PATH
@@ -117,7 +117,7 @@ After restarting:
 ```cmd
 C:\Users\YourName\awebees> scripts\win-setup.bat
 
-Setting up Lens...
+Setting up LensAI...
 
 === Checking Node.js Installation ===
 Node.js v20.11.0 detected
@@ -225,7 +225,7 @@ After setup completes successfully:
 
 If you downloaded a prebuilt ZIP from GitHub (for example `dist/windows/lens-package-with-python-4.0.0.zip`):
 
-1. Extract the ZIP anywhere (e.g. `C:\\Users\\You\\Downloads\\Lens\\`)
+1. Extract the ZIP anywhere (e.g. `C:\\Users\\You\\Downloads\\LensAI\\`)
 2. Open the extracted folder (it contains `lens-start.bat`, `lens-stop.bat`, etc.)
 3. Double-click `lens-start.bat` (or run it from Command Prompt)
 
@@ -258,7 +258,7 @@ If you downloaded a prebuilt ZIP from GitHub (for example `dist/windows/lens-pac
 
 ## UI Theme Settings
 
-Lens supports multiple UI color themes (Warm, Purple, Blue, Green).
+LensAI supports multiple UI color themes (Warm, Purple, Blue, Green).
 
 - Open **Settings → General → Color Theme**
 - The selection is stored in the browser (localStorage), so it persists per user/device

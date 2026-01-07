@@ -1,11 +1,11 @@
 @echo off
-REM Setup script for Lens - Run this once before starting services
+REM Setup script for LensAI - Run this once before starting services
 REM This script sets up the Python virtual environment, installs dependencies,
 REM and creates .env files from examples
 
 setlocal enabledelayedexpansion
 
-echo Setting up Lens...
+echo Setting up LensAI...
 echo.
 
 REM Get script directory and project root
@@ -313,13 +313,13 @@ echo   scripts\win-status.bat
 echo.
 echo ========================================
 echo.
-echo Would you like to start Lens now? [Y/N]
+echo Would you like to start LensAI now? [Y/N]
 set /p LAUNCH_LENS="Enter choice: "
 
 if /i "!LAUNCH_LENS!"=="Y" (
     echo.
     echo ========================================
-    echo Launching Lens...
+    echo Launching LensAI...
     echo ========================================
     echo.
     REM Change to script directory and launch
@@ -329,7 +329,7 @@ if /i "!LAUNCH_LENS!"=="Y" (
     exit /b 0
 ) else (
     echo.
-    echo Setup complete. You can start Lens later with:
+    echo Setup complete. You can start LensAI later with:
     echo   scripts\win-start.bat
     echo.
     pause

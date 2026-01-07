@@ -1,6 +1,6 @@
 # Scripts
 
-Scripts to manage Lens frontend and backend services.
+Scripts to manage LensAI frontend and backend services.
 
 Available for both **Linux/Mac** and **Windows** platforms.
 
@@ -129,11 +129,11 @@ Validates the OpenAI API configuration and connection:
 - OpenAI API key validity
 - API connection and availability
 - Configured model (`OPENAI_MODEL`) availability
-- Lists recommended models for Lens
+- Lists recommended models for LensAI
 
 **Example output:**
 ```
-🔍 Lens AI Configuration Validator
+🔍 LensAI AI Configuration Validator
 ============================================================
 
 📋 Configuration:
@@ -150,7 +150,7 @@ Validates the OpenAI API configuration and connection:
 🤖 Checking Configured Model...
 ✅ Model 'gpt-4o-mini' is available!
 
-💡 Recommended Models for Lens:
+💡 Recommended Models for LensAI:
   [✓] gpt-4o-mini          - Fast, cost-effective, great for log analysis
   [ ] gpt-4o               - More capable, higher quality, more expensive
   [ ] gpt-4-turbo          - Good balance of speed and capability
@@ -250,7 +250,7 @@ If you get errors about ports being in use:
 
 ### UI Theme Settings
 
-Lens supports multiple UI color themes (Warm, Purple, Blue, Green).
+LensAI supports multiple UI color themes (Warm, Purple, Blue, Green).
 
 - Source/dev installs: open **Settings → General → Color Theme**
 - The selection is stored in the browser (localStorage), so it persists per user/device

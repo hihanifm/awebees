@@ -170,7 +170,7 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
           {/* Build info */}
           <div className="flex items-center gap-1.5">
             <Info className="h-3.5 w-3.5" />
-            <span>Lens</span>
+            <span>LensAI</span>
           </div>
         </div>
       </div>

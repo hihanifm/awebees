@@ -1,9 +1,9 @@
-# Lens Features
+# LensAI Features
 
 **Version:** 3.6.0  
 **Last Updated:** January 6, 2026
 
-A comprehensive overview of Lens capabilities, both implemented and planned.
+A comprehensive overview of LensAI capabilities, both implemented and planned.
 
 ---
 
@@ -814,7 +814,7 @@ Have ideas for new features? We'd love to hear them!
 
 ---
 
-**Maintained by:** Lens Team  
+**Maintained by:** LensAI Team  
 **Repository:** https://github.com/hihanifm/awebees  
 **License:** See LICENSE file
 

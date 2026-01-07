@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Setup script for Lens - Run this once before starting services
+# Setup script for LensAI - Run this once before starting services
 # This script sets up the Python virtual environment, installs dependencies,
 # and creates .env files from examples
 
@@ -25,7 +25,7 @@ else
 fi
 
 echo "=========================================="
-echo "Lens Setup Script"
+echo "LensAI Setup Script"
 echo "=========================================="
 echo "OS: $OS_DETAILS"
 echo "OSTYPE: $OSTYPE"

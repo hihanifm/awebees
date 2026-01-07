@@ -1,5 +1,5 @@
 @echo off
-REM Start script for Lens frontend and backend
+REM Start script for LensAI frontend and backend
 REM This script starts both services as background processes
 REM Usage: win-start.bat [-p] [-h]
 REM   -p: Production mode (uses next start instead of next dev)
@@ -76,9 +76,9 @@ if exist "%PID_FILE%" (
 )
 
 if "%MODE%"=="prod" (
-    echo Starting Lens services in PRODUCTION mode...
+    echo Starting LensAI services in PRODUCTION mode...
 ) else (
-    echo Starting Lens services in DEVELOPMENT mode...
+    echo Starting LensAI services in DEVELOPMENT mode...
 )
 
 REM ===================================
