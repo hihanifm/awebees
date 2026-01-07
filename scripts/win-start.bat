@@ -137,63 +137,34 @@ if not exist "venv" (
 )
 
 REM Start backend (will be restarted in prod mode after frontend build)
-if not "%MODE%"=="prod" (
-    start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host !BACKEND_HOST! --port !BACKEND_PORT! > "!BACKEND_LOG!" 2>&1"
-    
-    REM Wait for backend to start (uvicorn with reload needs more time)
-    timeout /t 5 /nobreak >nul
-    
-    REM Get PID of the backend process (find python.exe listening on backend port)
-    set "BACKEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
-    
-    REM Verify backend is running by checking if port is listening
-    if "!BACKEND_PID!"=="" (
-        echo Warning: Could not detect backend PID immediately, checking if port is accessible...
-        timeout /t 2 /nobreak >nul
-        
-        REM Try again after additional wait
-        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
-        
-        if "!BACKEND_PID!"=="" (
-            echo Error: Backend failed to start - no process listening on port !BACKEND_PORT!
-            echo Check backend logs: !BACKEND_LOG!
-            type "!BACKEND_LOG!" 2>nul | more
-            pause
-            exit /b 1
-        )
-    )
-    
-    REM Verify the process exists (note: PID might be cmd.exe wrapper, not python.exe directly)
-    tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
-    if errorlevel 1 (
-        echo Warning: Backend PID verification failed, but checking if server is responding...
-        
-        REM Check if we can find any python process on the port
-        netstat -ano | findstr ":%BACKEND_PORT% " | findstr "LISTENING" >nul
-        if errorlevel 1 (
-            echo Error: Backend process not found and port not listening
-            echo Check backend logs: %BACKEND_LOG%
-            type "%BACKEND_LOG%" 2>nul | more
-            pause
-            exit /b 1
-        ) else (
-            echo Backend appears to be running on port !BACKEND_PORT! ^(PID detection uncertain^)
-            REM Try to find actual python.exe process
-            for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" ^| findstr "python.exe"') do (
-                set "BACKEND_PID=%%a"
-                goto :pid_found
-            )
-            :pid_found
-        )
-    ) else (
-        echo Backend started ^(PID: !BACKEND_PID!, Port: !BACKEND_PORT!^)
-    )
-)
+if "%MODE%"=="prod" goto start_frontend
+
+start /b cmd /c "call venv\Scripts\activate.bat && uvicorn app.main:app --reload --host %BACKEND_HOST% --port %BACKEND_PORT% > \"%BACKEND_LOG%\" 2>&1"
+
+REM Wait for backend to start (uvicorn with reload needs more time)
+timeout /t 5 /nobreak >nul
+
+call :find_listening_pid %BACKEND_PORT% BACKEND_PID
+if not "%BACKEND_PID%"=="" goto backend_ok
+
+echo Warning: Could not detect backend PID immediately, retrying...
+timeout /t 2 /nobreak >nul
+call :find_listening_pid %BACKEND_PORT% BACKEND_PID
+if not "%BACKEND_PID%"=="" goto backend_ok
+
+echo Error: Backend failed to start - no process listening on port %BACKEND_PORT%
+echo Check backend logs: %BACKEND_LOG%
+type "%BACKEND_LOG%" 2>nul | more
+pause
+exit /b 1
+
+:backend_ok
+echo Backend started ^(PID: %BACKEND_PID%, Port: %BACKEND_PORT%^)
 
 REM ===================================
 REM Start Frontend
 REM ===================================
+:start_frontend
 cd /d "%PROJECT_ROOT%\frontend"
 
 if not exist "node_modules" (
@@ -204,143 +175,96 @@ if not exist "node_modules" (
     exit /b 1
 )
 
-if "%MODE%"=="prod" (
-    REM Production mode: Build frontend and serve from backend
-    echo Building frontend for production...
-    
-    call npm run build
-    if errorlevel 1 (
-        echo Error: Frontend build failed
-        pause
-        exit /b 1
-    )
-    
-    if not exist "out" (
-        echo Error: Frontend build output not found. Expected 'out' directory.
-        pause
-        exit /b 1
-    )
-    
-    echo Frontend built successfully
-    
-    REM Start backend with SERVE_FRONTEND enabled
-    cd /d "%PROJECT_ROOT%\backend"
-    set "SERVE_FRONTEND=true"
-    start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host !BACKEND_HOST! --port !BACKEND_PORT! > "!BACKEND_LOG!" 2>&1"
-    
-    REM Wait for backend to start
-    timeout /t 5 /nobreak >nul
-    
-    REM Get PID of the backend process (find python.exe listening on backend port)
-    set "BACKEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
-    
-    REM Verify backend is running by checking if port is listening
-    if "!BACKEND_PID!"=="" (
-        echo Warning: Could not detect backend PID immediately, checking if port is accessible...
-        timeout /t 2 /nobreak >nul
-        
-        REM Try again after additional wait
-        for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!BACKEND_PORT! " ^| findstr "LISTENING" 2^>nul') do set "BACKEND_PID=%%a"
-        
-        if "!BACKEND_PID!"=="" (
-            echo Error: Backend failed to restart with frontend serving - no process listening on port !BACKEND_PORT!
-            echo Check backend logs: !BACKEND_LOG!
-            type "!BACKEND_LOG!" 2>nul | more
-            pause
-            exit /b 1
-        )
-    )
-    
-    REM Verify the process exists
-    tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
-    if errorlevel 1 (
-        echo Warning: Backend PID verification failed, but checking if server is responding...
-        
-        REM Check if we can find any python process on the port
-        netstat -ano | findstr ":!BACKEND_PORT! " | findstr "LISTENING" >nul
-        if errorlevel 1 (
-            echo Error: Backend process not found and port not listening
-            echo Check backend logs: !BACKEND_LOG!
-            type "!BACKEND_LOG!" 2>nul | more
-            pause
-            exit /b 1
-        ) else (
-            echo Backend appears to be running on port !BACKEND_PORT! ^(PID detection uncertain^)
-            REM Try to find actual python.exe process
-            for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" ^| findstr "python.exe"') do (
-                set "BACKEND_PID=%%a"
-                goto :pid_found_prod
-            )
-            :pid_found_prod
-        )
-    )
-    
-    REM Save PID (only backend in production)
-    echo backend !BACKEND_PID! > "%PID_FILE%"
-    
-    echo.
-    echo Services started successfully in PRODUCTION mode!
-    echo Backend ^(serving API + Frontend^): http://localhost:!BACKEND_PORT! ^(PID: !BACKEND_PID!^)
-    echo.
-    echo Logs:
-    echo   Backend: !BACKEND_LOG!
-    echo.
-    echo Use 'scripts\win-status.bat' to check status
-    echo Use 'scripts\win-stop.bat' to stop services
-    
-) else (
-    REM Development mode: Start separate frontend server
-    echo Starting frontend in DEVELOPMENT mode on port !FRONTEND_PORT!...
-    
-    cd /d "%PROJECT_ROOT%\frontend"
-    start /b cmd /c "set PORT=!FRONTEND_PORT! && call npm run dev > "!FRONTEND_LOG!" 2>&1"
-    
-    REM Wait for frontend to start (Next.js takes longer)
-    timeout /t 5 /nobreak >nul
-    
-    REM Get PID of the frontend process (find node.exe listening on frontend port)
-    set "FRONTEND_PID="
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":!FRONTEND_PORT! " ^| findstr "LISTENING"') do set "FRONTEND_PID=%%a"
-    
-    REM Verify frontend is running by checking if PID exists and port is listening
-    if "!FRONTEND_PID!"=="" (
-        echo Error: Frontend failed to start - no process listening on port !FRONTEND_PORT!
-        echo Check frontend logs: !FRONTEND_LOG!
-        type "!FRONTEND_LOG!" | more
-        REM Clean up backend if frontend failed
-        taskkill /PID !BACKEND_PID! /F >nul 2>&1
-        pause
-        exit /b 1
-    )
-    
-    tasklist /FI "PID eq !FRONTEND_PID!" 2>nul | find "!FRONTEND_PID!" >nul
-    if errorlevel 1 (
-        echo Error: Frontend process not found
-        echo Check frontend logs: !FRONTEND_LOG!
-        type "!FRONTEND_LOG!" | more
-        REM Clean up backend if frontend failed
-        taskkill /PID !BACKEND_PID! /F >nul 2>&1
-        pause
-        exit /b 1
-    )
-    
-    REM Save PIDs
-    echo backend !BACKEND_PID! > "%PID_FILE%"
-    echo frontend !FRONTEND_PID! >> "%PID_FILE%"
-    
-    echo.
-    echo Services started successfully in DEVELOPMENT mode!
-    echo Backend: http://localhost:!BACKEND_PORT! ^(PID: !BACKEND_PID!^)
-    echo Frontend: http://localhost:!FRONTEND_PORT! ^(PID: !FRONTEND_PID!^)
-    echo.
-    echo Logs:
-    echo   Backend: !BACKEND_LOG!
-    echo   Frontend: !FRONTEND_LOG!
-    echo.
-    echo Use 'scripts\win-status.bat' to check status
-    echo Use 'scripts\win-stop.bat' to stop services
+if "%MODE%"=="prod" goto prod_mode
+
+REM Development mode: Start separate frontend server
+echo Starting frontend in DEVELOPMENT mode on port %FRONTEND_PORT%...
+start /b cmd /c "set PORT=%FRONTEND_PORT% && call npm run dev > \"%FRONTEND_LOG%\" 2>&1"
+
+REM Wait for frontend to start (Next.js takes longer)
+timeout /t 5 /nobreak >nul
+
+call :find_listening_pid %FRONTEND_PORT% FRONTEND_PID
+if "%FRONTEND_PID%"=="" (
+    echo Error: Frontend failed to start - no process listening on port %FRONTEND_PORT%
+    echo Check frontend logs: %FRONTEND_LOG%
+    type "%FRONTEND_LOG%" | more
+    if not "%MODE%"=="prod" taskkill /PID %BACKEND_PID% /F >nul 2>&1
+    pause
+    exit /b 1
 )
 
-echo.
+REM Save PIDs
+echo backend %BACKEND_PID% > "%PID_FILE%"
+echo frontend %FRONTEND_PID% >> "%PID_FILE%"
 
+echo.
+echo Services started successfully in DEVELOPMENT mode!
+echo Backend: http://localhost:%BACKEND_PORT% ^(PID: %BACKEND_PID%^)
+echo Frontend: http://localhost:%FRONTEND_PORT% ^(PID: %FRONTEND_PID%^)
+echo.
+echo Logs:
+echo   Backend: %BACKEND_LOG%
+echo   Frontend: %FRONTEND_LOG%
+echo.
+echo Use 'scripts\win-status.bat' to check status
+echo Use 'scripts\win-stop.bat' to stop services
+echo.
+exit /b 0
+
+:prod_mode
+REM Production mode: Build frontend and serve from backend
+echo Building frontend for production...
+call npm run build
+if errorlevel 1 (
+    echo Error: Frontend build failed
+    pause
+    exit /b 1
+)
+
+if not exist "out" (
+    echo Error: Frontend build output not found. Expected 'out' directory.
+    pause
+    exit /b 1
+)
+
+echo Frontend built successfully
+
+REM Start backend with SERVE_FRONTEND enabled
+cd /d "%PROJECT_ROOT%\backend"
+start /b cmd /c "call venv\Scripts\activate.bat && set SERVE_FRONTEND=true && uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% > \"%BACKEND_LOG%\" 2>&1"
+
+REM Wait for backend to start
+timeout /t 5 /nobreak >nul
+
+call :find_listening_pid %BACKEND_PORT% BACKEND_PID
+if "%BACKEND_PID%"=="" (
+    echo Error: Backend failed to start in production mode - no process listening on port %BACKEND_PORT%
+    echo Check backend logs: %BACKEND_LOG%
+    type "%BACKEND_LOG%" 2>nul | more
+    pause
+    exit /b 1
+)
+
+REM Save PID (only backend in production)
+echo backend %BACKEND_PID% > "%PID_FILE%"
+
+echo.
+echo Services started successfully in PRODUCTION mode!
+echo Backend ^(serving API + Frontend^): http://localhost:%BACKEND_PORT% ^(PID: %BACKEND_PID%^)
+echo.
+echo Logs:
+echo   Backend: %BACKEND_LOG%
+echo.
+echo Use 'scripts\win-status.bat' to check status
+echo Use 'scripts\win-stop.bat' to stop services
+echo.
+exit /b 0
+
+:find_listening_pid
+setlocal
+set "PORT=%~1"
+set "PID="
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%PORT% " ^| findstr "LISTENING" 2^>nul') do set "PID=%%a"
+endlocal & set "%~2=%PID%"
+exit /b 0
