@@ -2,7 +2,11 @@
 
 The Playground is an interactive environment for experimenting with ripgrep filters and AI prompts in real-time. It allows you to quickly test different filter configurations and see how AI analyzes the results, making it perfect for iterating on log analysis strategies.
 
-![Playground Screenshot](playground-screenshot.png)
+![Playground - Filtering Workflow](playground-screenshot.png)
+*Sections 1-3: File selection, ripgrep filter configuration, and filtered results with performance metrics*
+
+![Playground - AI Analysis](playground_2nd.png)
+*Sections 4-5: AI prompt configuration and streaming analysis results*
 
 ## Overview
 
