@@ -198,7 +198,7 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                         className="mb-2 w-full justify-between"
                       >
                         <span className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-orange-500" />
+                          <Sparkles className="h-4 w-4 text-blue-500" />
                           {resultItem.result.ai_analysis ? "Re-analyze with Different Prompt" : "Analyze with AI"}
                         </span>
                         {showAI[resultItem.insight_id] ? (
@@ -264,7 +264,7 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
 
                           {/* AI Response */}
                           {aiStates[resultItem.insight_id] && (
-                            <div className="rounded-md border border-orange-200 dark:border-orange-800/50 bg-orange-50/50 dark:bg-orange-950/20 p-4">
+                            <div className="rounded-md border border-blue-500 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-4">
                               {aiStates[resultItem.insight_id].status === "error" ? (
                                 <div className="text-red-600 text-sm">
                                   Error: {aiStates[resultItem.insight_id].error}
@@ -272,7 +272,7 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                               ) : aiStates[resultItem.insight_id].response ? (
                                 <>
                                   <div className="flex justify-between items-start mb-2">
-                                    <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase">
+                                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase">
                                       AI Analysis
                                     </span>
                                     <div className="flex gap-2">
@@ -295,7 +295,7 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                                   <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                                     {aiStates[resultItem.insight_id].response}
                                     {aiStates[resultItem.insight_id].status === "streaming" && (
-                                      <span className="inline-block w-2 h-4 ml-1 bg-orange-500 animate-pulse" />
+                                      <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
                                     )}
                                   </div>
                                 </>
