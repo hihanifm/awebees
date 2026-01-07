@@ -11,7 +11,11 @@ class InsightResult(BaseModel):
     content: str  # Text content, file path, or JSON string for charts
     metadata: Optional[Dict[str, Any]] = None
     ai_enabled: bool = False  # Whether AI processing is enabled for this insight
+    ai_auto: bool = False  # Whether AI was auto-triggered for this result
+    ai_prompt_type: str = "explain"  # AI prompt type used
+    ai_custom_prompt: Optional[str] = None  # Custom AI prompt if used
     ai_summary: Optional[str] = None  # AI-generated summary (populated after AI analysis)
+    ai_analysis: Optional[str] = None  # AI analysis result if auto-triggered
 
 
 class InsightMetadata(BaseModel):

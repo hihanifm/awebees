@@ -100,3 +100,60 @@ class Insight(ABC):
             Dictionary of variables or None
         """
         return None
+    
+    async def analyze_with_ai(
+        self,
+        file_paths: List[str],
+        cancellation_event: Optional[asyncio.Event] = None,
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
+    ) -> InsightResult:
+        """
+        Analyze files and optionally trigger AI analysis.
+        
+        This is a wrapper around analyze() that:
+        - Calls analyze() to get filtered results  
+        - If ai_auto is true, automatically calls AI analysis
+        - Returns InsightResult with ai_analysis field populated
+        
+        Args:
+            file_paths: List of file paths to analyze
+            cancellation_event: Optional asyncio.Event to check for cancellation
+            progress_callback: Optional async callback to emit progress events
+            
+        Returns:
+            InsightResult with analysis results and optional AI analysis
+        """
+        # Call regular analyze
+        result = await self.analyze(file_paths, cancellation_event, progress_callback)
+        
+        # Set AI metadata on result
+        result.ai_enabled = self.ai_enabled
+        result.ai_auto = self.ai_auto
+        result.ai_prompt_type = self.ai_prompt_type
+        result.ai_custom_prompt = self.ai_custom_prompt
+        
+        # Check if AI should auto-run
+        if self.ai_auto and self.ai_enabled:
+            from app.services.ai_service import AIService
+            from app.core.config import AIConfig
+            
+            if AIConfig.is_configured():
+                try:
+                    ai_service = AIService()
+                    
+                    # Run AI analysis
+                    ai_result = await ai_service.analyze(
+                        content=result.content,
+                        prompt_type=self.ai_prompt_type,
+                        custom_prompt=self.ai_custom_prompt
+                    )
+                    
+                    # Add to result
+                    result.ai_analysis = ai_result
+                except Exception as e:
+                    # Log error but don't fail the entire analysis
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"AI auto-analysis failed: {e}")
+        
+        return result

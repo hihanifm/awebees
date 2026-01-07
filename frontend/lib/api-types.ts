@@ -6,6 +6,12 @@ export interface InsightResult {
   result_type: ResultType;
   content: string;
   metadata?: Record<string, any>;
+  ai_enabled?: boolean;  // Whether AI processing is enabled for this insight
+  ai_auto?: boolean;  // Whether AI was auto-triggered for this result
+  ai_prompt_type?: string;  // AI prompt type used
+  ai_custom_prompt?: string;  // Custom AI prompt if used
+  ai_summary?: string;  // AI-generated summary (populated after AI analysis)
+  ai_analysis?: string;  // AI analysis result if auto-triggered
 }
 
 export interface InsightMetadata {

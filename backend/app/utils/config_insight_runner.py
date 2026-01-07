@@ -13,6 +13,7 @@ from app.utils.insight_runner import (
     check_venv_and_reexecute,
     print_progress,
     run_insight_standalone,
+    run_insight_with_ai_standalone,
     format_result
 )
 
@@ -154,53 +155,19 @@ def main_config_standalone(
                     print("No file paths provided. Exiting.", file=sys.stderr)
                     sys.exit(1)
         
-        # Run the insight
-        result = asyncio.run(run_insight_standalone(insight, input_file_paths, verbose=verbose))
-        
-        # Check if AI should auto-run
-        if insight.ai_enabled and insight.ai_auto:
-            print("\n" + "="*70, file=sys.stderr)
-            print("AI Analysis (auto-triggered)", file=sys.stderr)
-            print("="*70 + "\n", file=sys.stderr)
-            
-            try:
-                from app.services.ai_service import AIService
-                ai_service = AIService()
-                
-                if not ai_service.is_configured():
-                    print("[WARNING] AI is enabled but not configured. Set OPENAI_API_KEY to enable AI analysis.", file=sys.stderr)
-                else:
-                    # Get AI prompt configuration
-                    prompt_type = insight_config.get("ai", {}).get("prompt_type", "explain")
-                    custom_prompt = insight_config.get("ai", {}).get("prompt", None)
-                    
-                    # Build content to analyze
-                    result_content = format_result(result)
-                    
-                    print("Analyzing with AI...\n", file=sys.stderr)
-                    
-                    # Run AI analysis
-                    ai_result = asyncio.run(ai_service.analyze(
-                        content=result_content,
-                        prompt_type=prompt_type,
-                        custom_prompt=custom_prompt
-                    ))
-                    
-                    # Print AI analysis
-                    print("\n" + "="*70, file=sys.stderr)
-                    print("AI Analysis Result", file=sys.stderr)
-                    print("="*70 + "\n", file=sys.stderr)
-                    print(ai_result, file=sys.stderr)
-                    print("\n" + "="*70 + "\n", file=sys.stderr)
-                    
-            except Exception as e:
-                print(f"[WARNING] AI analysis failed: {e}", file=sys.stderr)
-                if verbose:
-                    import traceback
-                    traceback.print_exc(file=sys.stderr)
+        # Run the insight with AI auto-trigger support
+        result = asyncio.run(run_insight_with_ai_standalone(insight, input_file_paths, verbose=verbose))
         
         # Print results to stdout
         print(format_result(result))
+        
+        # Print AI analysis in separate box if available
+        if result.ai_analysis:
+            print("\n" + "="*80)
+            print("AI ANALYSIS")
+            print("="*80 + "\n")
+            print(result.ai_analysis)
+            print("\n" + "="*80 + "\n")
         
         # Exit with success
         sys.exit(0)

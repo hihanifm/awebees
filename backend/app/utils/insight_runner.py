@@ -106,6 +106,63 @@ async def run_insight_standalone(
         raise
 
 
+async def run_insight_with_ai_standalone(
+    insight: Insight,
+    file_paths: List[str],
+    verbose: bool = False,
+    show_progress: bool = True
+) -> InsightResult:
+    """
+    Run an insight with AI auto-trigger support.
+    
+    Similar to run_insight_standalone but calls analyze_with_ai()
+    which will automatically trigger AI analysis if ai_auto=true.
+    
+    Args:
+        insight: Insight instance to run
+        file_paths: List of file paths to analyze
+        verbose: If True, print detailed progress messages
+        show_progress: If True, print progress updates to stderr
+        
+    Returns:
+        InsightResult from the analysis (with ai_analysis if auto-triggered)
+    """
+    if not file_paths:
+        raise ValueError("No file paths provided")
+    
+    # Validate file paths exist
+    import os
+    invalid_paths = [path for path in file_paths if not os.path.exists(path)]
+    if invalid_paths:
+        raise FileNotFoundError(f"File(s) not found: {', '.join(invalid_paths)}")
+    
+    print(f"\n{'='*70}", file=sys.stderr)
+    print(f"Running: {insight.name} ({insight.id})", file=sys.stderr)
+    print(f"Files: {len(file_paths)}", file=sys.stderr)
+    print(f"{'='*70}\n", file=sys.stderr)
+    
+    # Simple progress callback for standalone execution
+    async def progress_callback(event):
+        if show_progress:
+            print_progress(event.message, verbose=verbose)
+    
+    try:
+        # Call analyze_with_ai instead of analyze
+        result = await insight.analyze_with_ai(
+            file_paths=file_paths,
+            cancellation_event=None,  # No cancellation for standalone runs
+            progress_callback=progress_callback if show_progress else None
+        )
+        
+        return result
+    except Exception as e:
+        print(f"\n[ERROR] Analysis failed: {e}", file=sys.stderr)
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        raise
+
+
 def format_result(result: InsightResult) -> str:
     """
     Format an InsightResult for console output.

@@ -116,7 +116,7 @@ async def _run_analysis_with_progress(
             
             try:
                 insight_start_time = time.time()
-                result = await insight.analyze(
+                result = await insight.analyze_with_ai(
                     request.file_paths,
                     cancellation_event=task.cancellation_event,
                     progress_callback=progress_callback
@@ -324,7 +324,7 @@ async def analyze(request: AnalysisRequest):
                 raise HTTPException(status_code=404, detail=f"Insight not found: {insight_id}")
             
             logger.info(f"Analyze API: Executing '{insight.name}' (ID: {insight_id}) on {len(request.file_paths)} file(s)")
-            result = await insight.analyze(request.file_paths, cancellation_event=None)
+            result = await insight.analyze_with_ai(request.file_paths, cancellation_event=None)
             insight_elapsed = time.time() - insight_start_time
             logger.info(f"Analyze API: Completed '{insight.name}' in {insight_elapsed:.2f}s")
             
