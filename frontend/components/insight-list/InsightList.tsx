@@ -77,7 +77,6 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
 
   return (
     <div className="space-y-2">
-      <h2 className="text-lg font-semibold">{t("insights.availableInsights")}</h2>
       <div className="overflow-y-auto max-h-[400px] pr-2 border rounded-md">
         <Accordion type="multiple" className="w-full" defaultValue={sortedFolders}>
           {sortedFolders.map((folder) => (
