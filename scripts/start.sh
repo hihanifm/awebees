@@ -89,6 +89,20 @@ fi
 # Set frontend defaults if not set
 FRONTEND_PORT=${FRONTEND_PORT_FROM_ENV:-34000}
 
+# Function to activate Python virtual environment (cross-platform)
+activate_venv() {
+  local venv_dir="$1"
+  # Try Windows path first (Git Bash on Windows)
+  if [ -f "$venv_dir/Scripts/activate" ]; then
+    source "$venv_dir/Scripts/activate" 2>/dev/null && return 0
+  fi
+  # Try Unix path (Linux/Mac)
+  if [ -f "$venv_dir/bin/activate" ]; then
+    source "$venv_dir/bin/activate" 2>/dev/null && return 0
+  fi
+  return 1
+}
+
 # Start backend
 echo "Starting backend on port $BACKEND_PORT..."
 cd "$PROJECT_ROOT/backend"
@@ -98,8 +112,9 @@ if [ ! -d "venv" ]; then
   exit 1
 fi
 
-source venv/bin/activate 2>/dev/null || {
+activate_venv "venv" || {
   echo "Error: Failed to activate Python virtual environment"
+  echo "Tried: venv/Scripts/activate (Windows) and venv/bin/activate (Unix)"
   exit 1
 }
 
@@ -195,7 +210,7 @@ if [ "$MODE" = "prod" ]; then
   
   # Start backend with SERVE_FRONTEND enabled (no need to kill, it wasn't started yet)
   cd "$PROJECT_ROOT/backend"
-  source venv/bin/activate 2>/dev/null || {
+  activate_venv "venv" || {
     echo "Error: Failed to activate Python virtual environment"
     exit 1
   }

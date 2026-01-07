@@ -12,6 +12,31 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "Setting up Lens..."
 echo ""
 
+# Function to activate Python virtual environment (cross-platform)
+activate_venv() {
+  local venv_dir="$1"
+  # Try Windows path first (Git Bash on Windows)
+  if [ -f "$venv_dir/Scripts/activate" ]; then
+    source "$venv_dir/Scripts/activate" 2>/dev/null && return 0
+  fi
+  # Try Unix path (Linux/Mac)
+  if [ -f "$venv_dir/bin/activate" ]; then
+    source "$venv_dir/bin/activate" 2>/dev/null && return 0
+  fi
+  return 1
+}
+
+# Find Python command (try python3 first, then python)
+PYTHON_CMD=""
+if command -v python3 &> /dev/null; then
+  PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+  PYTHON_CMD="python"
+else
+  echo "Error: Python not found. Please install Python 3.7+"
+  exit 1
+fi
+
 # Setup Backend
 echo "=== Backend Setup ==="
 cd "$PROJECT_ROOT/backend"
@@ -19,7 +44,7 @@ cd "$PROJECT_ROOT/backend"
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
   echo "Creating Python virtual environment..."
-  python3 -m venv venv
+  $PYTHON_CMD -m venv venv
   echo "Virtual environment created in backend/venv"
 else
   echo "Virtual environment already exists in backend/venv"
@@ -27,7 +52,10 @@ fi
 
 # Activate virtual environment and install dependencies
 echo "Installing Python dependencies..."
-source venv/bin/activate
+activate_venv "venv" || {
+  echo "Error: Failed to activate Python virtual environment"
+  exit 1
+}
 pip install --upgrade pip > /dev/null 2>&1
 pip install -r requirements.txt
 echo "Python dependencies installed"
@@ -41,9 +69,9 @@ if [ ! -f ".env" ]; then
   else
     echo "Warning: .env.example not found, creating basic .env file"
     cat > .env << EOF
-PORT=5001
+PORT=34001
 HOST=0.0.0.0
-FRONTEND_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:34000
 LOG_LEVEL=INFO
 EOF
     echo "Created basic backend/.env file"
@@ -71,8 +99,8 @@ if [ ! -f ".env.local" ]; then
   else
     echo "Warning: .env.example not found, creating basic .env.local file"
     cat > .env.local << EOF
-NEXT_PUBLIC_API_URL=http://localhost:5001
-PORT=5000
+NEXT_PUBLIC_API_URL=http://localhost:34001
+PORT=34000
 EOF
     echo "Created basic frontend/.env.local file"
   fi
