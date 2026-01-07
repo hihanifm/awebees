@@ -254,9 +254,24 @@ export const apiClient = {
           variables,
         }),
       })
-        .then((response) => {
+        .then(async (response) => {
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // Try to read error message from response body
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try {
+              const errorText = await response.text();
+              if (errorText) {
+                try {
+                  const errorJson = JSON.parse(errorText);
+                  errorMessage = errorJson.detail || errorJson.message || errorText;
+                } catch {
+                  errorMessage = errorText;
+                }
+              }
+            } catch (e) {
+              // If we can't read the error, use the default message
+            }
+            throw new Error(errorMessage);
           }
 
           const reader = response.body?.getReader();
@@ -268,37 +283,65 @@ export const apiClient = {
 
           let buffer = "";
           let fullResponse = "";
+          let receivedComplete = false;
 
           const readChunk = (): Promise<void> => {
             return reader.read().then(({ done, value }) => {
               if (done) {
-                resolve(fullResponse);
+                // If stream ends without ai_complete, check if we have content
+                if (!receivedComplete && fullResponse.length > 0) {
+                  // We have content but no completion event - resolve anyway
+                  console.warn("AI stream ended without completion event, but content was received");
+                  resolve(fullResponse);
+                } else if (!receivedComplete) {
+                  // No content and no completion - this is an error
+                  reject(new Error("AI stream ended unexpectedly without completion event"));
+                } else {
+                  // We already resolved on ai_complete, but stream ended normally
+                  resolve(fullResponse);
+                }
                 return Promise.resolve();
               }
 
               buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split("\n\n");
-              buffer = lines.pop() || "";
+              // Split on double newline (SSE event separator)
+              const events = buffer.split("\n\n");
+              // Keep the last incomplete event in buffer
+              buffer = events.pop() || "";
 
-              for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                  try {
-                    const data = JSON.parse(line.slice(6));
-                    
-                    if (data.type === "ai_chunk" && data.content) {
-                      fullResponse += data.content;
-                      if (onChunk) {
-                        onChunk(data.content);
+              for (const eventText of events) {
+                if (!eventText.trim()) continue;
+                
+                // SSE events can have multiple lines, but we only care about "data: " lines
+                const lines = eventText.split("\n");
+                for (const line of lines) {
+                  if (line.startsWith("data: ")) {
+                    try {
+                      const data = JSON.parse(line.slice(6));
+                      
+                      if (data.type === "ai_chunk" && data.content) {
+                        fullResponse += data.content;
+                        if (onChunk) {
+                          onChunk(data.content);
+                        }
+                      } else if (data.type === "ai_complete") {
+                        receivedComplete = true;
+                        // Use full_content if provided, otherwise use accumulated response
+                        const finalResponse = data.full_content || fullResponse;
+                        resolve(finalResponse);
+                        return Promise.resolve();
+                      } else if (data.type === "ai_error") {
+                        receivedComplete = true;
+                        reject(new Error(data.message || "AI analysis failed"));
+                        return Promise.resolve();
+                      } else if (data.type === "ai_start") {
+                        // Ignore start event, just log it
+                        console.debug("AI analysis started");
                       }
-                    } else if (data.type === "ai_complete") {
-                      resolve(fullResponse);
-                      return Promise.resolve();
-                    } else if (data.type === "ai_error") {
-                      reject(new Error(data.message));
-                      return Promise.resolve();
+                    } catch (e) {
+                      console.error("Error parsing AI SSE event:", e, "Raw line:", line);
+                      // Don't reject on parsing errors, just log and continue
                     }
-                  } catch (e) {
-                    console.error("Error parsing AI SSE event:", e);
                   }
                 }
               }
