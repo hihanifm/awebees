@@ -50,6 +50,108 @@ activate_venv() {
   return 1
 }
 
+# Function to install Python automatically
+install_python() {
+  echo "Python not found. Attempting to install automatically..."
+  echo ""
+  
+  if [[ "$OS_TYPE" == "Windows" ]]; then
+    # Windows: Try winget first, then chocolatey
+    if command -v winget &> /dev/null; then
+      echo "Installing Python 3.12 via winget..."
+      if winget install Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements; then
+        echo "✓ Python installed via winget"
+        echo "  → Please restart your terminal and run this script again"
+        echo "  → Or manually add Python to your PATH"
+        exit 0
+      else
+        echo "⚠ winget installation failed, trying chocolatey..."
+      fi
+    fi
+    
+    if command -v choco &> /dev/null; then
+      echo "Installing Python 3.12 via Chocolatey..."
+      if choco install python312 -y; then
+        echo "✓ Python installed via Chocolatey"
+        echo "  → Please restart your terminal and run this script again"
+        exit 0
+      else
+        echo "⚠ Chocolatey installation failed"
+      fi
+    fi
+    
+    echo "⚠ Automatic installation failed. Please install Python manually:"
+    echo "  Download from: https://www.python.org/downloads/"
+    echo "  Or use: winget install Python.Python.3.12"
+    exit 1
+    
+  elif [[ "$OS_TYPE" == "macOS" ]]; then
+    # macOS: Use Homebrew
+    if command -v brew &> /dev/null; then
+      echo "Installing Python via Homebrew..."
+      if brew install python@3.12; then
+        echo "✓ Python installed via Homebrew"
+        echo "  → Refreshing PATH..."
+        # Add Homebrew to PATH for current session
+        eval "$(brew shellenv)"
+        if command -v python3 &> /dev/null; then
+          echo "✓ Python is now available"
+          return 0
+        else
+          echo "⚠ Python installed but not in PATH. Please restart your terminal."
+          exit 0
+        fi
+      else
+        echo "⚠ Homebrew installation failed"
+        exit 1
+      fi
+    else
+      echo "⚠ Homebrew not found. Please install Homebrew first:"
+      echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+      exit 1
+    fi
+    
+  elif [[ "$OS_TYPE" == "Linux" ]]; then
+    # Linux: Try different package managers
+    if command -v apt-get &> /dev/null; then
+      echo "Installing Python 3 via apt-get..."
+      if sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv; then
+        echo "✓ Python installed via apt-get"
+        return 0
+      else
+        echo "⚠ apt-get installation failed"
+        exit 1
+      fi
+    elif command -v dnf &> /dev/null; then
+      echo "Installing Python 3 via dnf..."
+      if sudo dnf install -y python3 python3-pip; then
+        echo "✓ Python installed via dnf"
+        return 0
+      else
+        echo "⚠ dnf installation failed"
+        exit 1
+      fi
+    elif command -v pacman &> /dev/null; then
+      echo "Installing Python 3 via pacman..."
+      if sudo pacman -S --noconfirm python python-pip; then
+        echo "✓ Python installed via pacman"
+        return 0
+      else
+        echo "⚠ pacman installation failed"
+        exit 1
+      fi
+    else
+      echo "⚠ Package manager not detected. Please install Python manually:"
+      echo "  Visit: https://www.python.org/downloads/"
+      exit 1
+    fi
+  else
+    echo "⚠ Unsupported OS. Please install Python manually:"
+    echo "  Visit: https://www.python.org/downloads/"
+    exit 1
+  fi
+}
+
 # Find Python command (try python3 first, then python)
 echo "Detecting Python..."
 PYTHON_CMD=""
@@ -60,10 +162,30 @@ if command -v python3 &> /dev/null; then
 elif command -v python &> /dev/null; then
   PYTHON_CMD="python"
   PYTHON_VERSION=$(python --version 2>&1 || echo "unknown")
-  echo "  → Found: python ($PYTHON_VERSION)"
+  # Check if it's Python 3
+  if python --version 2>&1 | grep -q "Python 3"; then
+    echo "  → Found: python ($PYTHON_VERSION)"
+  else
+    echo "  → Found: python ($PYTHON_VERSION) - but Python 3.7+ required"
+    install_python
+  fi
 else
-  echo "Error: Python not found. Please install Python 3.7+"
-  exit 1
+  install_python
+  # If we get here, installation succeeded but Python might not be in PATH yet
+  if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+    PYTHON_VERSION=$(python3 --version 2>&1 || echo "unknown")
+    echo "  → Found: python3 ($PYTHON_VERSION)"
+  elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+    PYTHON_VERSION=$(python --version 2>&1 || echo "unknown")
+    echo "  → Found: python ($PYTHON_VERSION)"
+  else
+    echo ""
+    echo "⚠ Python was installed but is not yet in PATH."
+    echo "  Please restart your terminal and run this script again."
+    exit 0
+  fi
 fi
 echo ""
 
@@ -157,15 +279,119 @@ if [ ! -f "package.json" ]; then
   exit 1
 fi
 
+# Function to install Node.js/npm automatically
+install_nodejs() {
+  echo "Node.js/npm not found. Attempting to install automatically..."
+  echo ""
+  
+  if [[ "$OS_TYPE" == "Windows" ]]; then
+    # Windows: Try winget first, then chocolatey
+    if command -v winget &> /dev/null; then
+      echo "Installing Node.js LTS via winget..."
+      if winget install OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements; then
+        echo "✓ Node.js installed via winget"
+        echo "  → Please restart your terminal and run this script again"
+        echo "  → Or manually add Node.js to your PATH"
+        exit 0
+      else
+        echo "⚠ winget installation failed, trying chocolatey..."
+      fi
+    fi
+    
+    if command -v choco &> /dev/null; then
+      echo "Installing Node.js LTS via Chocolatey..."
+      if choco install nodejs-lts -y; then
+        echo "✓ Node.js installed via Chocolatey"
+        echo "  → Please restart your terminal and run this script again"
+        exit 0
+      else
+        echo "⚠ Chocolatey installation failed"
+      fi
+    fi
+    
+    echo "⚠ Automatic installation failed. Please install Node.js manually:"
+    echo "  Download from: https://nodejs.org/"
+    echo "  Or use: winget install OpenJS.NodeJS"
+    exit 1
+    
+  elif [[ "$OS_TYPE" == "macOS" ]]; then
+    # macOS: Use Homebrew
+    if command -v brew &> /dev/null; then
+      echo "Installing Node.js via Homebrew..."
+      if brew install node; then
+        echo "✓ Node.js installed via Homebrew"
+        echo "  → Refreshing PATH..."
+        # Add Homebrew to PATH for current session
+        eval "$(brew shellenv)"
+        if command -v npm &> /dev/null; then
+          echo "✓ npm is now available"
+          return 0
+        else
+          echo "⚠ npm installed but not in PATH. Please restart your terminal."
+          exit 0
+        fi
+      else
+        echo "⚠ Homebrew installation failed"
+        exit 1
+      fi
+    else
+      echo "⚠ Homebrew not found. Please install Homebrew first:"
+      echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+      exit 1
+    fi
+    
+  elif [[ "$OS_TYPE" == "Linux" ]]; then
+    # Linux: Try different package managers
+    if command -v apt-get &> /dev/null; then
+      echo "Installing Node.js via apt-get..."
+      if sudo apt-get update && sudo apt-get install -y nodejs npm; then
+        echo "✓ Node.js installed via apt-get"
+        return 0
+      else
+        echo "⚠ apt-get installation failed"
+        exit 1
+      fi
+    elif command -v dnf &> /dev/null; then
+      echo "Installing Node.js via dnf..."
+      if sudo dnf install -y nodejs npm; then
+        echo "✓ Node.js installed via dnf"
+        return 0
+      else
+        echo "⚠ dnf installation failed"
+        exit 1
+      fi
+    elif command -v pacman &> /dev/null; then
+      echo "Installing Node.js via pacman..."
+      if sudo pacman -S --noconfirm nodejs npm; then
+        echo "✓ Node.js installed via pacman"
+        return 0
+      else
+        echo "⚠ pacman installation failed"
+        exit 1
+      fi
+    else
+      echo "⚠ Package manager not detected. Please install Node.js manually:"
+      echo "  Visit: https://nodejs.org/"
+      exit 1
+    fi
+  else
+    echo "⚠ Unsupported OS. Please install Node.js manually:"
+    echo "  Visit: https://nodejs.org/"
+    exit 1
+  fi
+}
+
 # Check for npm/node
 echo "Detecting Node.js..."
 if ! command -v npm &> /dev/null; then
-  echo "Error: npm is not found in PATH"
-  echo "Please install Node.js and npm:"
-  echo "  - Windows: Download from https://nodejs.org/ or use: winget install OpenJS.NodeJS"
-  echo "  - macOS: brew install node"
-  echo "  - Linux: sudo apt-get install nodejs npm (or use your distribution's package manager)"
-  exit 1
+  install_nodejs
+  # If we get here, installation succeeded but npm might not be in PATH yet
+  if ! command -v npm &> /dev/null; then
+    echo ""
+    echo "⚠ npm was installed but is not yet in PATH."
+    echo "  Please restart your terminal and run this script again."
+    exit 0
+  fi
 fi
 
 NPM_VERSION=$(npm --version 2>&1 || echo "unknown")
