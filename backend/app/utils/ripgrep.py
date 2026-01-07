@@ -110,18 +110,26 @@ def ripgrep_search(
             bufsize=-1  # Use system default buffering (line buffering only works in text mode)
         )
         
+        # Read stdout line by line
+        lines_yielded = 0
         for line in process.stdout:
             # Decode with error handling for non-UTF-8 bytes (common in binary files)
             decoded_line = line.decode('utf-8', errors='replace').rstrip('\n')
             yield decoded_line
+            lines_yielded += 1
         
+        # Wait for process to complete
         process.wait()
         
+        # Check return code and read stderr if there was an error
         if process.returncode not in [0, 1]:  # 0 = matches found, 1 = no matches
             stderr = process.stderr.read().decode('utf-8', errors='replace')
-            logger.error(f"Ripgrep failed: {stderr}")
+            logger.error(f"Ripgrep failed with return code {process.returncode}: {stderr}")
             raise subprocess.CalledProcessError(process.returncode, cmd, stderr=stderr)
             
+    except subprocess.CalledProcessError:
+        # Re-raise CalledProcessError as-is (it already has stderr)
+        raise
     except Exception as e:
         logger.error(f"Ripgrep error: {e}")
         raise

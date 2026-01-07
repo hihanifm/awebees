@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import logging
 import time
+import subprocess
 from pathlib import Path
 
 from app.utils.ripgrep import ripgrep_search, is_ripgrep_available
@@ -103,15 +104,23 @@ async def filter_file(request: PlaygroundFilterRequest):
     try:
         # Execute ripgrep
         lines = []
-        for line in ripgrep_search(
-            file_path=request.file_path,
-            pattern=request.pattern,
-            case_insensitive=request.case_insensitive,
-            max_count=request.max_count,
-            context_before=request.context_before,
-            context_after=request.context_after
-        ):
-            lines.append(line)
+        try:
+            for line in ripgrep_search(
+                file_path=request.file_path,
+                pattern=request.pattern,
+                case_insensitive=request.case_insensitive,
+                max_count=request.max_count,
+                context_before=request.context_before,
+                context_after=request.context_after
+            ):
+                lines.append(line)
+        except subprocess.CalledProcessError as ripgrep_error:
+            # Re-raise to be caught by outer handler
+            raise ripgrep_error
+        except Exception as ripgrep_error:
+            # Wrap other exceptions
+            logger.error(f"Playground Filter: Unexpected error in ripgrep_search: {ripgrep_error}", exc_info=True)
+            raise
         
         execution_time = time.time() - start_time
         truncated = request.max_count is not None and len(lines) >= request.max_count
@@ -126,6 +135,43 @@ async def filter_file(request: PlaygroundFilterRequest):
             ripgrep_command=ripgrep_command
         )
     
+    except subprocess.CalledProcessError as e:
+        error_msg = str(e)
+        stderr = ""
+        if hasattr(e, 'stderr') and e.stderr:
+            stderr = e.stderr.decode('utf-8', errors='replace') if isinstance(e.stderr, bytes) else str(e.stderr)
+        
+        # Check if error is related to invalid regex (common with unescaped special chars)
+        # Ripgrep error messages can vary, so check multiple patterns
+        error_text = (stderr + " " + error_msg).lower()
+        is_regex_error = (
+            "regex parse error" in error_text or 
+            "invalid pattern" in error_text or 
+            "unclosed character class" in error_text or
+            "error parsing regex" in error_text or
+            "regex error" in error_text
+        )
+        
+        if is_regex_error:
+            # Extract problematic characters and suggest escaping
+            import re
+            special_chars = r'[](){}.*+?^$|\\'
+            found_special = [char for char in request.pattern if char in special_chars]
+            if found_special:
+                escaped_pattern = re.escape(request.pattern)
+                unique_special = sorted(set(found_special))
+                suggestion = f"Invalid regex pattern. Special characters {', '.join(repr(c) for c in unique_special)} need to be escaped with backslash. Try: {escaped_pattern}"
+                logger.error(f"Playground Filter: Regex error - {suggestion}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=suggestion
+                )
+        
+        logger.error(f"Playground Filter: Error executing ripgrep: {error_msg}. stderr: {stderr}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error executing ripgrep: {stderr if stderr else error_msg}"
+        )
     except Exception as e:
         logger.error(f"Playground Filter: Error executing ripgrep: {e}", exc_info=True)
         raise HTTPException(
