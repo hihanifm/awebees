@@ -69,6 +69,11 @@ echo ""
 
 # Setup Backend
 echo "=== Backend Setup ==="
+if [ ! -d "$PROJECT_ROOT/backend" ]; then
+  echo "Error: Backend directory not found at $PROJECT_ROOT/backend"
+  exit 1
+fi
+
 cd "$PROJECT_ROOT/backend"
 
 # Create virtual environment if it doesn't exist
@@ -86,8 +91,34 @@ activate_venv "venv" || {
   echo "Error: Failed to activate Python virtual environment"
   exit 1
 }
-pip install --upgrade pip > /dev/null 2>&1
-pip install -r requirements.txt
+
+# Check if requirements.txt exists
+if [ ! -f "requirements.txt" ]; then
+  echo "Error: requirements.txt not found in backend directory"
+  deactivate
+  exit 1
+fi
+
+# Upgrade pip (suppress output but show errors)
+echo "  → Upgrading pip..."
+if ! pip install --upgrade pip > /dev/null 2>&1; then
+  echo "Warning: Failed to upgrade pip, continuing anyway..."
+fi
+
+# Install dependencies
+echo "  → Installing Python packages from requirements.txt..."
+if ! pip install -r requirements.txt; then
+  echo ""
+  echo "Error: pip install failed"
+  echo ""
+  echo "Troubleshooting:"
+  echo "  1. Check your internet connection"
+  echo "  2. Ensure Python virtual environment is activated"
+  echo "  3. Try upgrading pip manually: pip install --upgrade pip"
+  echo "  4. Check pip logs for more details"
+  deactivate
+  exit 1
+fi
 echo "Python dependencies installed"
 deactivate
 
@@ -114,24 +145,50 @@ echo ""
 
 # Setup Frontend
 echo "=== Frontend Setup ==="
+if [ ! -d "$PROJECT_ROOT/frontend" ]; then
+  echo "Error: Frontend directory not found at $PROJECT_ROOT/frontend"
+  exit 1
+fi
+
 cd "$PROJECT_ROOT/frontend"
+
+if [ ! -f "package.json" ]; then
+  echo "Error: package.json not found in frontend directory"
+  exit 1
+fi
 
 # Check for npm/node
 echo "Detecting Node.js..."
-if command -v npm &> /dev/null; then
-  NPM_VERSION=$(npm --version 2>&1 || echo "unknown")
-  NODE_VERSION=$(node --version 2>&1 || echo "unknown")
-  echo "  → npm: $NPM_VERSION"
-  echo "  → node: $NODE_VERSION"
-else
-  echo "  → Warning: npm not found in PATH"
-  echo "  → Will attempt to use npm anyway..."
+if ! command -v npm &> /dev/null; then
+  echo "Error: npm is not found in PATH"
+  echo "Please install Node.js and npm:"
+  echo "  - Windows: Download from https://nodejs.org/ or use: winget install OpenJS.NodeJS"
+  echo "  - macOS: brew install node"
+  echo "  - Linux: sudo apt-get install nodejs npm (or use your distribution's package manager)"
+  exit 1
 fi
+
+NPM_VERSION=$(npm --version 2>&1 || echo "unknown")
+NODE_VERSION=$(node --version 2>&1 || echo "unknown")
+echo "  → npm: $NPM_VERSION"
+echo "  → node: $NODE_VERSION"
 echo ""
 
 # Install/update npm dependencies
 echo "Installing/updating Node.js dependencies..."
-npm install
+if ! npm install; then
+  echo ""
+  echo "Error: npm install failed"
+  echo ""
+  echo "Troubleshooting:"
+  echo "  1. Check your internet connection"
+  echo "  2. Try clearing npm cache: npm cache clean --force"
+  echo "  3. Delete node_modules and package-lock.json, then try again:"
+  echo "     rm -rf node_modules package-lock.json"
+  echo "     npm install"
+  echo "  4. Check npm logs for more details"
+  exit 1
+fi
 echo "Node.js dependencies installed"
 
 # Create .env.local file from .env.example if it doesn't exist
