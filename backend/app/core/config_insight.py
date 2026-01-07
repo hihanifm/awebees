@@ -315,22 +315,22 @@ class ConfigBasedInsight(Insight):
         file_count = filter_result.get_file_count()
         
         # Format results
-        result_text = f"{self._name} Results\n"
-        result_text += f"{'=' * 50}\n\n"
+        result_text = f"{self._name}\n"
+        result_text += f"{'=' * 80}\n\n"
         result_text += f"Total matches: {total_lines:,}\n"
-        result_text += f"Files with matches: {file_count}\n\n"
+        result_text += f"Files analyzed: {file_count}\n\n"
         
         if file_count > 0:
-            result_text += "Per-file breakdown:\n\n"
             for file_path, lines in lines_by_file.items():
+                result_text += f"{'=' * 80}\n"
                 result_text += f"File: {file_path}\n"
-                result_text += f"  Matches: {len(lines):,}\n"
-                # Show first 10 matches
-                for line in lines[:10]:
-                    line_content = line.strip()[:200]  # Truncate long lines
-                    result_text += f"    {line_content}\n"
-                if len(lines) > 10:
-                    result_text += f"    ... and {len(lines) - 10:,} more matches\n"
+                result_text += f"Matches: {len(lines):,}\n"
+                result_text += f"{'=' * 80}\n"
+                # Show first 100 matches
+                for line in lines[:100]:
+                    result_text += f"{line.rstrip()}\n"
+                if len(lines) > 100:
+                    result_text += f"\n... and {len(lines) - 100:,} more matches\n"
                 result_text += "\n"
         
         metadata = {
