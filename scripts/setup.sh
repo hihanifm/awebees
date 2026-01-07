@@ -58,14 +58,10 @@ echo ""
 echo "=== Frontend Setup ==="
 cd "$PROJECT_ROOT/frontend"
 
-# Install npm dependencies
-if [ ! -d "node_modules" ]; then
-  echo "Installing Node.js dependencies..."
-  npm install
-  echo "Node.js dependencies installed"
-else
-  echo "Node.js dependencies already installed"
-fi
+# Install/update npm dependencies
+echo "Installing/updating Node.js dependencies..."
+npm install
+echo "Node.js dependencies installed"
 
 # Create .env.local file from .env.example if it doesn't exist
 if [ ! -f ".env.local" ]; then
