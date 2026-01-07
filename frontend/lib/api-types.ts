@@ -89,3 +89,36 @@ export interface ErrorEvent {
   timestamp: string; // ISO format string
 }
 
+// Playground types
+export interface PlaygroundFilterRequest {
+  file_path: string;
+  pattern: string;
+  custom_flags?: string;
+  case_insensitive?: boolean;
+  context_before?: number;
+  context_after?: number;
+  max_count?: number;
+}
+
+export interface FilterResult {
+  lines: string[];
+  total_count: number;
+  truncated: boolean;
+  execution_time: number;
+  ripgrep_command: string;
+}
+
+export interface AISystemPrompts {
+  summarize: string;
+  explain: string;
+  recommend: string;
+}
+
+export interface SavedPrompt {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  userPrompt: string;
+  createdAt: string;
+}
+

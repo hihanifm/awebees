@@ -9,7 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from app.version import get_version
 from app.core.plugin_manager import get_plugin_manager
-from app.api.routes import files, insights, analyze, errors, insight_paths
+from app.api.routes import files, insights, analyze, errors, insight_paths, playground
 
 # Load environment variables
 load_dotenv()
@@ -106,6 +106,7 @@ app.include_router(insights.router)
 app.include_router(analyze.router)
 app.include_router(errors.router)
 app.include_router(insight_paths.router)
+app.include_router(playground.router)
 
 
 @app.on_event("startup")

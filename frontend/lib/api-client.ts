@@ -391,6 +391,31 @@ export const apiClient = {
   async getInsightSources(): Promise<Array<{ insight_id: string; source: string }>> {
     return fetchJSON("/api/insight-paths/sources");
   },
+
+  // Playground API methods
+  /**
+   * Execute ripgrep filter on a file for playground.
+   * @param request Filter request with file path and pattern
+   */
+  async filterFile(request: import("./api-types").PlaygroundFilterRequest): Promise<import("./api-types").FilterResult> {
+    return fetchJSON("/api/playground/filter", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  },
+
+  /**
+   * Get default AI system prompts from backend config.
+   */
+  async getAISystemPrompts(): Promise<import("./api-types").AISystemPrompts> {
+    const config = await this.getAIConfig();
+    // System prompts are in backend config
+    return {
+      summarize: "You are a log analysis assistant. Summarize the following log analysis results concisely.\n\nFocus on:\n- Key findings and patterns\n- Critical issues identified\n- Important statistics\n\nKeep it brief and actionable, using bullet points.",
+      explain: "You are a log analysis expert. Analyze the following log data and explain:\n\n- What patterns and trends you observe\n- What these patterns indicate about system behavior\n- Potential root causes of issues\n- Technical insights and correlations\n\nBe thorough but concise. Use technical terminology when appropriate.",
+      recommend: "You are a system reliability expert. Based on the following log analysis, provide:\n\n1. **Immediate Actions**: Critical issues requiring immediate attention\n2. **Short-term Fixes**: Problems to address soon\n3. **Long-term Improvements**: Preventive measures and optimizations\n4. **Monitoring Recommendations**: What to watch for\n\nBe specific and practical. Prioritize recommendations by severity."
+    };
+  },
 };
 
 // Export individual AI functions for easier imports

@@ -172,6 +172,18 @@ Lens provides a modular plugin-based system for analyzing log files:
 - **Line Count**: Counts total lines, empty lines, and non-empty lines in log files
 - **Error Detector**: Detects ERROR and FATAL log lines in log files
 
+### 🧪 Playground
+
+The **Playground** is an interactive environment for experimenting with ripgrep filters and AI prompts in real-time. Perfect for:
+- **Testing ripgrep patterns** with immediate feedback
+- **Iterating on AI prompts** to refine analysis
+- **Learning ripgrep syntax** with live examples
+- **Developing custom analysis workflows**
+
+**Access:** Click the flask icon (🧪) in the status bar, or navigate to `/playground`
+
+📖 **[Read the Playground Guide →](PLAYGROUND.md)**
+
 ### Quick Start with Sample File
 
 **New to Lens?** Try it immediately with the included Android bugreport sample:
@@ -382,4 +394,12 @@ awebees/
 ├── CHANGELOG.md      # Version history
 └── .cursor/          # Cursor IDE rules
 ```
+
+## Documentation
+
+- **[Playground Guide](PLAYGROUND.md)** - Interactive ripgrep and AI experimentation environment
+- **[AI Setup Guide](docs/AI_SETUP.md)** - Configure OpenAI API integration
+- **[Windows Setup Guide](WINDOWS-SETUP-GUIDE.md)** - Windows-specific installation instructions
+- **[Features](FEATURES.md)** - Detailed feature documentation
+- **[Changelog](CHANGELOG.md)** - Version history and release notes
 
