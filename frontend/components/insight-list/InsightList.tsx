@@ -87,53 +87,72 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                 </span>
               </AccordionTrigger>
               <AccordionContent className="pb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-2">
-                  {groupedInsights[folder].map((insight) => (
-                    <Card 
-                      key={insight.id} 
-                      className="group relative isolate flex flex-col items-center justify-center p-4 
-                        bg-gradient-to-br from-orange-50/80 via-white to-amber-50/80 
-                        dark:from-orange-950/30 dark:via-zinc-900 dark:to-amber-950/30
-                        border-2 border-orange-200/60 dark:border-orange-800/40
-                        shadow-md shadow-orange-100/50 dark:shadow-orange-950/50
-                        hover:shadow-xl hover:shadow-orange-200/60 dark:hover:shadow-orange-900/40
-                        hover:z-10 
-                        hover:border-orange-400/80 
-                        hover:from-orange-100 hover:to-amber-100 
-                        dark:hover:from-orange-950/60 dark:hover:to-amber-950/60 
-                        hover:-translate-y-1
-                        transition-all duration-200 
-                        cursor-pointer min-h-[100px]"
-                      title={insight.description}
-                      onClick={() => handleToggle(insight.id)}
-                    >
-                      <Checkbox
-                        id={insight.id}
-                        checked={selectedInsightIds.includes(insight.id)}
-                        onCheckedChange={() => handleToggle(insight.id)}
-                        disabled={disabled}
-                        className="absolute top-3 left-3 group-hover:border-orange-500 group-hover:scale-110 transition-all duration-200"
-                      />
-                      <label 
-                        htmlFor={insight.id} 
-                        className="text-sm font-semibold text-center mt-2 cursor-pointer select-none leading-tight px-6
-                          text-orange-800 dark:text-orange-200
-                          group-hover:text-orange-900 dark:group-hover:text-orange-100
-                          transition-colors duration-200"
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4 pt-2">
+                  {groupedInsights[folder].map((insight) => {
+                    const isSelected = selectedInsightIds.includes(insight.id);
+                    return (
+                      <Card 
+                        key={insight.id} 
+                        className={`group relative isolate flex flex-col items-center justify-center p-3
+                          ${isSelected 
+                            ? 'bg-gradient-to-br from-orange-100 via-orange-50 to-amber-100 dark:from-orange-900/50 dark:via-orange-950/40 dark:to-amber-900/50 border-[3px] border-orange-500 dark:border-orange-400 shadow-lg shadow-orange-300/60 dark:shadow-orange-800/60' 
+                            : 'bg-gradient-to-br from-orange-50/40 via-amber-50/30 to-orange-50/40 dark:from-zinc-800 dark:via-zinc-850 dark:to-zinc-800 border-[2px] border-orange-200 dark:border-zinc-600 shadow-md shadow-orange-100/40 dark:shadow-zinc-900/40'
+                          }
+                          hover:shadow-2xl hover:shadow-orange-300/70 dark:hover:shadow-orange-800/70
+                          hover:z-10 
+                          hover:border-orange-500 dark:hover:border-orange-400
+                          hover:scale-105
+                          ${!isSelected && 'hover:from-orange-100/60 hover:via-amber-100/50 hover:to-orange-100/60 dark:hover:from-zinc-750 dark:hover:via-zinc-800 dark:hover:to-zinc-750'}
+                          transition-all duration-200 
+                          cursor-pointer min-h-[80px] rounded-lg overflow-visible`}
+                        title={insight.description}
+                        onClick={() => handleToggle(insight.id)}
                       >
-                        {insight.name}
-                      </label>
-                      
-                      {/* Enhanced Tooltip with warm styling */}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 w-64 p-3 
-                        bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950
-                        border-2 border-orange-300/50 dark:border-orange-700/50 
-                        rounded-lg shadow-xl shadow-orange-200/30 dark:shadow-orange-900/50">
-                        <p className="text-xs text-foreground">{insight.description}</p>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-orange-300/50 dark:border-t-orange-700/50"></div>
-                      </div>
-                    </Card>
-                  ))}
+                        {/* Visual selection indicator - checkmark badge */}
+                        <div className={`absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 border-2 
+                          ${isSelected 
+                            ? 'bg-orange-500 dark:bg-orange-400 border-orange-600 dark:border-orange-500 scale-100' 
+                            : 'bg-zinc-200 dark:bg-zinc-700 border-zinc-300 dark:border-zinc-600 scale-90 opacity-40 group-hover:opacity-70'
+                          }`}>
+                          {isSelected && (
+                            <svg className="w-3.5 h-3.5 text-white dark:text-zinc-900" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" stroke="currentColor">
+                              <path d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          )}
+                        </div>
+                        
+                        <Checkbox
+                          id={insight.id}
+                          checked={isSelected}
+                          onCheckedChange={() => handleToggle(insight.id)}
+                          disabled={disabled}
+                          className="sr-only"
+                        />
+                        
+                        <label 
+                          htmlFor={insight.id} 
+                          className={`text-sm font-bold text-center cursor-pointer select-none leading-snug px-2
+                            ${isSelected 
+                              ? 'text-orange-900 dark:text-orange-100' 
+                              : 'text-orange-800/80 dark:text-orange-200/70'
+                            }
+                            group-hover:text-orange-900 dark:group-hover:text-orange-100
+                            transition-colors duration-200`}
+                        >
+                          {insight.name}
+                        </label>
+                        
+                        {/* Enhanced Tooltip */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:block z-50 w-72 p-4 
+                          bg-white dark:bg-zinc-800
+                          border-2 border-orange-400 dark:border-orange-500 
+                          rounded-lg shadow-2xl shadow-orange-300/50 dark:shadow-orange-900/70">
+                          <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">{insight.description}</p>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[2px] border-[10px] border-transparent border-t-orange-400 dark:border-t-orange-500"></div>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
               </AccordionContent>
             </AccordionItem>
