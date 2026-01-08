@@ -99,6 +99,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
         message: t("playground.aiNotConfigured")
       };
     } catch (error) {
+      console.error("[ResultsPanel] Error checking configuration:", error);
       return {
         isValid: false,
         message: "Failed to check AI configuration. Please verify your settings."

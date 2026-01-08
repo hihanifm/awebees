@@ -478,12 +478,13 @@ async def update_ai_config(config: AIConfigUpdate):
     try:
         # Convert to dict and filter None values
         config_dict = {k: v for k, v in config.dict().items() if v is not None}
+        logger.info(f"AI Config API: Config dict to update: {config_dict}")
         
         # Update configuration
         AIConfig.update_from_dict(config_dict)
         
         # Log the updated config
-        logger.info(f"AI Config API: Updated - base_url={AIConfig.BASE_URL}, model={AIConfig.MODEL}")
+        logger.info(f"AI Config API: Updated - enabled={AIConfig.ENABLED}, base_url={AIConfig.BASE_URL}, model={AIConfig.MODEL}, is_configured={AIConfig.is_configured()}")
         
         # Reset AI service to pick up new config
         from app.services.ai_service import reset_ai_service

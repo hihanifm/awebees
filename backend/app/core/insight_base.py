@@ -134,11 +134,18 @@ class Insight(ABC):
         
         # Check if AI should auto-run
         if self.ai_auto and self.ai_enabled:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"AI Auto-trigger: Checking if AI should auto-run for insight (ai_auto={self.ai_auto}, ai_enabled={self.ai_enabled})")
+            
             from app.services.ai_service import AIService
             from app.core.config import AIConfig
             
+            logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, ENABLED={AIConfig.ENABLED}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}")
+            
             if AIConfig.is_configured():
                 try:
+                    logger.info(f"AI Auto-trigger: Starting auto-analysis with prompt_type={self.ai_prompt_type}")
                     ai_service = AIService()
                     
                     # Run AI analysis
@@ -150,10 +157,11 @@ class Insight(ABC):
                     
                     # Add to result
                     result.ai_analysis = ai_result
+                    logger.info(f"AI Auto-trigger: Auto-analysis completed successfully")
                 except Exception as e:
                     # Log error but don't fail the entire analysis
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.warning(f"AI auto-analysis failed: {e}")
+                    logger.warning(f"AI auto-analysis failed: {e}", exc_info=True)
+            else:
+                logger.warning(f"AI Auto-trigger: AI is not configured - skipping auto-analysis")
         
         return result

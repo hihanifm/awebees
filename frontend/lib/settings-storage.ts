@@ -19,9 +19,15 @@ const STORAGE_KEY = "lens_ai_settings";
  */
 export function saveAISettings(settings: AISettings): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    const serialized = JSON.stringify(settings);
+    console.log("[settings-storage] Saving to localStorage:", settings);
+    localStorage.setItem(STORAGE_KEY, serialized);
+    // Verify it was saved
+    const verified = localStorage.getItem(STORAGE_KEY);
+    console.log("[settings-storage] Verified saved data:", verified);
   } catch (error) {
     console.error("Failed to save AI settings to localStorage:", error);
+    throw error; // Re-throw so caller knows save failed
   }
 }
 
@@ -31,9 +37,15 @@ export function saveAISettings(settings: AISettings): void {
 export function loadAISettings(): AISettings | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return null;
+    console.log("[settings-storage] Raw data from localStorage:", stored);
+    if (!stored) {
+      console.log("[settings-storage] No settings found in localStorage");
+      return null;
+    }
     
-    return JSON.parse(stored) as AISettings;
+    const parsed = JSON.parse(stored) as AISettings;
+    console.log("[settings-storage] Parsed settings:", parsed);
+    return parsed;
   } catch (error) {
     console.error("Failed to load AI settings from localStorage:", error);
     return null;

@@ -69,20 +69,28 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       try {
         // Load from localStorage
         const localSettings = loadAISettings();
+        logger.info("Loaded settings from localStorage:", localSettings);
         
         // Load from backend
         const backendConfig = await getAIConfig();
+        logger.info("Loaded settings from backend:", backendConfig);
         
         // Merge: local overrides backend
+        // For booleans, explicitly check if localStorage has a value
+        const enabledValue = localSettings !== null && localSettings.hasOwnProperty('enabled') 
+            ? localSettings.enabled 
+            : (backendConfig.enabled ?? false);
+        
         const merged: AISettings = {
-          enabled: localSettings?.enabled ?? backendConfig.enabled ?? false,
+          enabled: enabledValue,
           baseUrl: localSettings?.baseUrl ?? backendConfig.base_url ?? "https://api.openai.com/v1",
-          apiKey: localSettings?.apiKey ?? (backendConfig.api_key_preview ? "" : "sk-no-key-required"),
+          apiKey: localSettings?.apiKey ?? backendConfig.api_key_preview ?? "",
           model: localSettings?.model ?? backendConfig.model ?? "gpt-4o-mini",
           maxTokens: localSettings?.maxTokens ?? backendConfig.max_tokens ?? 2000,
           temperature: localSettings?.temperature ?? backendConfig.temperature ?? 0.7,
         };
         
+        logger.info("Merged AI settings:", merged);
         setSettings(merged);
       } catch (error) {
         logger.error("Failed to load AI settings:", error);
@@ -145,9 +153,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         setAvailableModels(defaultModels);
         setModelsSource('defaults');
         // Set first model as default if no model selected
-        if (!settings.model && defaultModels.length > 0) {
-          setSettings({ ...settings, model: defaultModels[0] });
-        }
+        // Use functional form to avoid stale state closure
+        setSettings(prev => {
+          if (!prev.model && defaultModels.length > 0) {
+            return { ...prev, model: defaultModels[0] };
+          }
+          return prev;
+        });
         return;
       }
 
@@ -158,11 +170,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         setModelsSource(result.source);
         
         // Automatically select first model if current model is not in the list
+        // Use functional form to avoid stale state closure
         if (result.models.length > 0) {
-          const currentModelExists = result.models.includes(settings.model);
-          if (!currentModelExists) {
-            setSettings({ ...settings, model: result.models[0] });
-          }
+          setSettings(prev => {
+            const currentModelExists = result.models.includes(prev.model);
+            if (!currentModelExists) {
+              return { ...prev, model: result.models[0] };
+            }
+            return prev;
+          });
         }
         
         logger.info(`Loaded ${result.models.length} models via ${result.source}`);
@@ -190,8 +206,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      logger.info("Saving AI settings:", settings);
+      
       // Save to localStorage
       saveAISettings(settings);
+      logger.info("Settings saved to localStorage");
       
       // Send to backend
       await updateAIConfig({
@@ -202,19 +221,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         max_tokens: settings.maxTokens,
         temperature: settings.temperature,
       });
+      logger.info("Settings saved to backend");
       
-      onOpenChange(false);
       toast({
         title: t("settings.saved"),
         description: t("settings.saved"),
       });
+      
+      // Only close dialog if save was successful
+      onOpenChange(false);
     } catch (error) {
-      console.error("Failed to save settings:", error);
+      logger.error("Failed to save settings:", error);
       toast({
         title: t("common.error"),
         description: t("settings.saveFailed"),
         variant: "destructive",
       });
+      // Don't close dialog on error so user can try again
     } finally {
       setIsSaving(false);
     }
@@ -392,11 +415,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setModelsSource(result.source);
       
       // Automatically select first model if current model is not in the list
+      // Use functional form to avoid stale state closure
       if (result.models.length > 0) {
-        const currentModelExists = result.models.includes(settings.model);
-        if (!currentModelExists) {
-          setSettings({ ...settings, model: result.models[0] });
-        }
+        setSettings(prev => {
+          const currentModelExists = result.models.includes(prev.model);
+          if (!currentModelExists) {
+            return { ...prev, model: result.models[0] };
+          }
+          return prev;
+        });
       }
       
       const sourceText = result.source === 'direct' ? 'direct connection' : 
