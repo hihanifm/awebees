@@ -227,7 +227,7 @@ export default function Home() {
                   disabled={analyzing || loadingSample}
                   variant="secondary"
                   size="sm"
-                  className="ml-4 whitespace-nowrap bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 text-foreground border border-primary/30"
+                  className="ml-4 whitespace-nowrap bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 text-foreground border border-primary/30 font-bold"
                 >
                   {loadingSample ? t("common.loading") : t("app.loadSampleFile")}
                 </Button>
@@ -260,7 +260,7 @@ export default function Home() {
             <Button
               onClick={handleAnalyze}
               disabled={analyzing || selectedInsightIds.length === 0 || !filePaths.trim()}
-              className="w-full"
+              className="w-full font-bold"
             >
               {analyzing ? t("app.analyzing") : t("app.analyzeFiles")}
             </Button>

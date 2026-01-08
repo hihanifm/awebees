@@ -426,20 +426,21 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                   {resultItem.result.ai_enabled && (
                     <div className="border-t pt-4">
                       <Button
-                        variant="outline"
-                        size="sm"
                         onClick={() => handleToggleAI(resultItem.insight_id)}
-                        className="mb-2 w-full justify-between"
+                        className="mb-2 w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 font-bold relative"
+                        size="sm"
                       >
-                        <span className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-blue-500" />
+                        <span className="flex items-center gap-2 justify-center">
+                          <Sparkles className="h-4 w-4 text-white" />
                           {resultItem.result.ai_analysis ? t("playground.analyzeWithAI") + " (Re-analyze)" : t("playground.analyzeWithAI")}
                         </span>
-                        {showAI[resultItem.insight_id] ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
+                        <span className="absolute right-4">
+                          {showAI[resultItem.insight_id] ? (
+                            <ChevronUp className="h-4 w-4 text-white" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-white" />
+                          )}
+                        </span>
                       </Button>
 
                       {showAI[resultItem.insight_id] && (
@@ -501,15 +502,16 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                               onClick={() => handleAIAnalyze(resultItem.insight_id, resultItem.result.content)}
                               disabled={aiStates[resultItem.insight_id]?.status === "streaming"}
                               size="sm"
+                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
                             >
                               {aiStates[resultItem.insight_id]?.status === "streaming" ? (
                                 <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
                                   Analyzing...
                                 </>
                               ) : (
                                 <>
-                                  <Sparkles className="mr-2 h-4 w-4" />
+                                  <Sparkles className="mr-2 h-4 w-4 text-white" />
                                   Analyze
                                 </>
                               )}

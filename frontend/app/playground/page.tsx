@@ -488,7 +488,7 @@ export default function PlaygroundPage() {
               <Button
                 onClick={handleFilter}
                 disabled={filtering || !filePath.trim() || !pattern.trim()}
-                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 font-bold"
               >
                 <Play className="h-4 w-4 mr-2" />
                 {filtering ? t("playground.filtering") : t("playground.runFilter")}
@@ -525,9 +525,9 @@ export default function PlaygroundPage() {
                 <Button
                   onClick={handleFilterAIAnalyze}
                   disabled={aiStreaming || !systemPrompt.trim() || !userPrompt.trim()}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <Sparkles className="h-4 w-4 mr-2 text-white" />
                   {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
                 </Button>
                 {configError && (
@@ -594,7 +594,7 @@ export default function PlaygroundPage() {
                     variant="ghost"
                     size="sm"
                     onClick={handleClearText}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground font-bold"
                   >
                     <X className="h-4 w-4 mr-1" />
                     {t("common.clear")}
@@ -638,9 +638,9 @@ export default function PlaygroundPage() {
               <Button
                 onClick={handleTextAIAnalyze}
                 disabled={aiStreaming || !textInput.trim() || !systemPrompt.trim() || !userPrompt.trim()}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
+                <Sparkles className="h-4 w-4 mr-2 text-white" />
                 {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
               </Button>
               {configError && (

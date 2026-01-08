@@ -617,7 +617,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 variant="outline"
                 onClick={handleTest}
                 disabled={!settings.enabled || !settings.apiKey || testStatus === "testing"}
-                className="w-full"
+                className="w-full font-bold"
               >
                 {testStatus === "testing" && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -690,7 +690,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   }}
                   className="font-mono"
                 />
-                <Button onClick={handleAddPath} variant="secondary">
+                <Button onClick={handleAddPath} variant="secondary" className="font-bold">
                   {t("settings.addPath")}
                 </Button>
               </div>
@@ -700,7 +700,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 variant="outline"
                 onClick={handleRefreshInsights}
                 disabled={isRefreshing}
-                className="w-full"
+                className="w-full font-bold"
               >
                 {isRefreshing ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -860,10 +860,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="font-bold">
             {t("common.cancel")}
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving} className="font-bold">
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isSaving ? t("settings.saving") : t("settings.save")}
           </Button>

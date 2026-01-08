@@ -62,7 +62,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
               variant="outline"
               size="sm"
               onClick={onCancel}
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 font-bold"
             >
               <X className="h-4 w-4" />
               {t("common.cancel")}

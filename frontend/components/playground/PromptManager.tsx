@@ -198,7 +198,7 @@ export function PromptManager({
             variant="outline"
             size="sm"
             onClick={() => setSaveDialogOpen(true)}
-            className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-900/30"
+            className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-900/30 font-bold"
           >
             <Save className="h-4 w-4 mr-2" />
             {t("promptManager.saveCurrent")}
@@ -215,7 +215,7 @@ export function PromptManager({
                 if (e.key === "Escape") setSaveDialogOpen(false);
               }}
             />
-            <Button size="sm" onClick={handleSavePrompt}>
+            <Button size="sm" onClick={handleSavePrompt} className="font-bold">
               <Plus className="h-4 w-4" />
             </Button>
             <Button
@@ -225,6 +225,7 @@ export function PromptManager({
                 setSaveDialogOpen(false);
                 setNewPromptName("");
               }}
+              className="font-bold"
             >
               {t("common.cancel")}
             </Button>
