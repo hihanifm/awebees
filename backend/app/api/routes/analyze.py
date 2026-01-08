@@ -473,6 +473,7 @@ async def update_ai_config(config: AIConfigUpdate):
     survive application restarts.
     """
     logger.info("AI Config API: Updating configuration")
+    logger.debug(f"AI Config API: Received config: {config.dict()}")
     
     try:
         # Convert to dict and filter None values
@@ -481,9 +482,13 @@ async def update_ai_config(config: AIConfigUpdate):
         # Update configuration
         AIConfig.update_from_dict(config_dict)
         
+        # Log the updated config
+        logger.info(f"AI Config API: Updated - base_url={AIConfig.BASE_URL}, model={AIConfig.MODEL}")
+        
         # Reset AI service to pick up new config
         from app.services.ai_service import reset_ai_service
         reset_ai_service()
+        logger.info("AI Config API: AI service singleton reset")
         
         logger.info("AI Config API: Configuration updated successfully")
         return {"status": "success", "message": "AI configuration updated"}
@@ -499,11 +504,12 @@ async def update_ai_config(config: AIConfigUpdate):
 @router.post("/ai/test")
 async def test_ai_connection():
     """
-    Test connection to AI service.
+    Test connection to AI service using saved configuration.
     
     Returns success status and message.
     """
-    logger.info("AI Test API: Testing connection")
+    logger.info("AI Test API: Testing connection with saved config")
+    logger.debug(f"AI Test API: Current config - base_url={AIConfig.BASE_URL}, api_key={'set' if AIConfig.API_KEY else 'not set'}")
     
     if not AIConfig.is_configured():
         return {
@@ -513,6 +519,7 @@ async def test_ai_connection():
     
     try:
         ai_service = get_ai_service()
+        logger.debug(f"AI Test API: Using service with base_url={ai_service.base_url}")
         success, message = await ai_service.test_connection()
         
         logger.info(f"AI Test API: Test {'successful' if success else 'failed'}: {message}")
@@ -523,6 +530,54 @@ async def test_ai_connection():
     
     except Exception as e:
         logger.error(f"AI Test API: Error testing connection: {e}", exc_info=True)
+        return {
+            "success": False,
+            "message": f"Test failed: {str(e)}"
+        }
+
+
+@router.post("/ai/test-config")
+async def test_ai_connection_with_config(config: AIConfigUpdate):
+    """
+    Test connection to AI service with provided configuration (without saving).
+    This allows testing settings before saving them.
+    
+    Returns success status and message.
+    """
+    logger.info("AI Test API: Testing connection with provided config")
+    logger.debug(f"AI Test API: Test config - base_url={config.base_url}, model={config.model}")
+    
+    # Validate required fields
+    if not config.base_url or not config.api_key:
+        return {
+            "success": False,
+            "message": "Base URL and API key are required for testing"
+        }
+    
+    try:
+        # Create a temporary AI service instance with the provided config
+        from app.services.ai_service import AIService
+        
+        test_service = AIService(
+            base_url=config.base_url,
+            api_key=config.api_key,
+            model=config.model or "gpt-4o-mini",
+            max_tokens=config.max_tokens or 2000,
+            temperature=config.temperature or 0.7,
+            timeout=60
+        )
+        
+        logger.debug(f"AI Test API: Created test service with base_url={test_service.base_url}")
+        success, message = await test_service.test_connection()
+        
+        logger.info(f"AI Test API: Test {'successful' if success else 'failed'}: {message}")
+        return {
+            "success": success,
+            "message": message
+        }
+    
+    except Exception as e:
+        logger.error(f"AI Test API: Error testing connection with config: {e}", exc_info=True)
         return {
             "success": False,
             "message": f"Test failed: {str(e)}"

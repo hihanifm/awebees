@@ -175,7 +175,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setTestMessage(t("settings.testing"));
     
     try {
-      const result = await testAIConnection();
+      // Test with CURRENT form values, not saved values
+      const result = await apiClient.testAIConnectionWithConfig({
+        enabled: settings.enabled,
+        base_url: settings.baseUrl,
+        api_key: settings.apiKey,
+        model: settings.model,
+        max_tokens: settings.maxTokens,
+        temperature: settings.temperature,
+      });
       
       if (result.success) {
         setTestStatus("success");

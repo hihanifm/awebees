@@ -391,6 +391,24 @@ export const apiClient = {
   },
 
   /**
+   * Test AI connection with specific config (without saving).
+   * @param config Configuration to test with
+   */
+  async testAIConnectionWithConfig(config: {
+    enabled: boolean;
+    base_url: string;
+    api_key: string;
+    model: string;
+    max_tokens?: number;
+    temperature?: number;
+  }): Promise<{ success: boolean; message: string }> {
+    return fetchJSON("/api/analyze/ai/test-config", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+  },
+
+  /**
    * Get all external insight paths.
    */
   async getInsightPaths(): Promise<string[]> {
