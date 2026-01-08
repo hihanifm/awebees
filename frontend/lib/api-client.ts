@@ -10,6 +10,7 @@ import {
       ProgressEvent,
       ErrorEvent,
     } from "./api-types";
+import { logger } from "./logger";
 
 // Use relative path in production (when served from same origin) or configured URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -139,7 +140,7 @@ export const apiClient = {
                     // Note: error events are non-terminal (insight-level errors don't stop analysis)
                     // analysis_complete events are also non-terminal (wait for result event)
                   } catch (e) {
-                    console.error("Error parsing SSE event:", e);
+                    logger.error("Error parsing SSE event:", e);
                   }
                 }
               }
@@ -194,7 +195,7 @@ export const apiClient = {
           hasReceivedData = true;
           onError(data);
         } catch (e) {
-          console.error("Error parsing error event:", e);
+          logger.error("Error parsing error event:", e);
         }
       };
 
@@ -291,7 +292,7 @@ export const apiClient = {
                 // If stream ends without ai_complete, check if we have content
                 if (!receivedComplete && fullResponse.length > 0) {
                   // We have content but no completion event - resolve anyway
-                  console.warn("AI stream ended without completion event, but content was received");
+                  logger.warn("AI stream ended without completion event, but content was received");
                   resolve(fullResponse);
                 } else if (!receivedComplete) {
                   // No content and no completion - this is an error
@@ -339,7 +340,7 @@ export const apiClient = {
                         console.debug("AI analysis started");
                       }
                     } catch (e) {
-                      console.error("Error parsing AI SSE event:", e, "Raw line:", line);
+                      logger.error("Error parsing AI SSE event:", e, "Raw line:", line);
                       // Don't reject on parsing errors, just log and continue
                     }
                   }
@@ -458,6 +459,24 @@ export const apiClient = {
       explain: "You are a log analysis expert. Analyze the following log data and explain:\n\n- What patterns and trends you observe\n- What these patterns indicate about system behavior\n- Potential root causes of issues\n- Technical insights and correlations\n\nBe thorough but concise. Use technical terminology when appropriate.",
       recommend: "You are a system reliability expert. Based on the following log analysis, provide:\n\n1. **Immediate Actions**: Critical issues requiring immediate attention\n2. **Short-term Fixes**: Problems to address soon\n3. **Long-term Improvements**: Preventive measures and optimizations\n4. **Monitoring Recommendations**: What to watch for\n\nBe specific and practical. Prioritize recommendations by severity."
     };
+  },
+
+  /**
+   * Get logging configuration from backend.
+   */
+  async getLoggingConfig(): Promise<{ log_level: string; available_levels: string[] }> {
+    return fetchJSON("/api/logging/config");
+  },
+
+  /**
+   * Update backend logging configuration.
+   * @param logLevel New log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+   */
+  async updateLoggingConfig(logLevel: string): Promise<{ log_level: string; available_levels: string[] }> {
+    return fetchJSON("/api/logging/config", {
+      method: "PUT",
+      body: JSON.stringify({ log_level: logLevel }),
+    });
   },
 };
 

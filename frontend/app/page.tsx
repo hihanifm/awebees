@@ -11,6 +11,7 @@ import { StatusBar } from "@/components/StatusBar";
 import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 import { useTranslation } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
 
 const LAST_PATH_KEY = "lens_last_file_paths";
 
@@ -56,7 +57,7 @@ export default function Home() {
           setBackendErrors((prev) => [...prev, error]);
         });
       } catch (err) {
-        console.error("Failed to stream errors:", err);
+        logger.error("Failed to stream errors:", err);
       }
     };
 
@@ -81,7 +82,7 @@ export default function Home() {
         await apiClient.cancelAnalysis(currentTaskId);
         setAnalyzing(false);
       } catch (err) {
-        console.error("Error cancelling analysis:", err);
+        logger.error("Error cancelling analysis:", err);
       }
     }
   };

@@ -210,8 +210,9 @@ class AppConfig:
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:34000")
     SERVE_FRONTEND: bool = os.getenv("SERVE_FRONTEND", "false").lower() == "true"
     
-    # Logging
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    # Logging - default to DEBUG in development, INFO in production
+    _default_log_level = "DEBUG" if os.getenv("ENVIRONMENT", "development").lower() in ("development", "dev") else "INFO"
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", _default_log_level)
     
     # CORS
     CORS_ORIGINS: list = [
@@ -222,6 +223,115 @@ class AppConfig:
     
     # Enable profiling
     ENABLE_PROFILING: bool = os.getenv("ENABLE_PROFILING", "false").lower() == "true"
+    
+    # Valid log levels
+    VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    
+    @classmethod
+    def get_log_level(cls) -> str:
+        """Get current log level."""
+        return cls.LOG_LEVEL.upper()
+    
+    @classmethod
+    def update_log_level(cls, log_level: str, persist: bool = True) -> None:
+        """
+        Update log level dynamically.
+        
+        Args:
+            log_level: New log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            persist: Whether to persist to .env file (default: True)
+        
+        Raises:
+            ValueError: If log level is invalid
+        """
+        import logging
+        
+        log_level = log_level.upper()
+        if log_level not in cls.VALID_LOG_LEVELS:
+            raise ValueError(f"Invalid log level: {log_level}. Must be one of {cls.VALID_LOG_LEVELS}")
+        
+        # Update class variable
+        cls.LOG_LEVEL = log_level
+        
+        # Update root logger level
+        numeric_level = getattr(logging, log_level)
+        logging.getLogger().setLevel(numeric_level)
+        
+        # Persist to .env file if requested
+        if persist:
+            cls._persist_to_env({"log_level": log_level})
+    
+    @classmethod
+    def _get_env_file_path(cls) -> Path:
+        """Get the path to the .env file."""
+        # Start from this file's location and go up to backend directory
+        backend_dir = Path(__file__).parent.parent.parent
+        return backend_dir / ".env"
+    
+    @classmethod
+    def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
+        """
+        Persist configuration updates to .env file.
+        
+        Args:
+            updates: Dictionary of config updates to persist
+        """
+        env_file = cls._get_env_file_path()
+        
+        # Mapping of config keys to environment variable names
+        env_key_mapping = {
+            "log_level": "LOG_LEVEL"
+        }
+        
+        # Read existing .env file or create empty dict
+        env_vars = {}
+        if env_file.exists():
+            with open(env_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip empty lines and comments
+                    if not line or line.startswith('#'):
+                        continue
+                    # Parse KEY=VALUE
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        env_vars[key.strip()] = value.strip()
+        
+        # Update with new values
+        for config_key, value in updates.items():
+            if config_key in env_key_mapping:
+                env_key = env_key_mapping[config_key]
+                env_vars[env_key] = str(value)
+        
+        # Write back to .env file
+        with open(env_file, 'w') as f:
+            f.write("# Lens Configuration\n")
+            f.write("# Auto-generated from settings panel\n\n")
+            
+            # Write AI settings first
+            ai_keys = ["AI_ENABLED", "OPENAI_BASE_URL", "OPENAI_API_KEY", 
+                       "OPENAI_MODEL", "OPENAI_MAX_TOKENS", "OPENAI_TEMPERATURE", 
+                       "OPENAI_TIMEOUT"]
+            has_ai_settings = any(key in env_vars for key in ai_keys)
+            if has_ai_settings:
+                f.write("# AI Configuration\n")
+                for key in ai_keys:
+                    if key in env_vars:
+                        f.write(f"{key}={env_vars[key]}\n")
+                f.write("\n")
+            
+            # Write logging settings
+            if "LOG_LEVEL" in env_vars:
+                f.write("# Logging Configuration\n")
+                f.write(f"LOG_LEVEL={env_vars['LOG_LEVEL']}\n")
+                f.write("\n")
+            
+            # Write other environment variables
+            other_keys = [k for k in env_vars.keys() if k not in ai_keys and k != "LOG_LEVEL"]
+            if other_keys:
+                f.write("# Other Settings\n")
+                for key in other_keys:
+                    f.write(f"{key}={env_vars[key]}\n")
 
 
 # Export config classes

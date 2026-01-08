@@ -299,7 +299,15 @@ def get_ai_service() -> AIService:
     """Get or create the global AI service instance."""
     global _ai_service
     if _ai_service is None:
-        _ai_service = AIService()
+        from app.core.config import AIConfig
+        _ai_service = AIService(
+            base_url=AIConfig.BASE_URL,
+            api_key=AIConfig.API_KEY,
+            model=AIConfig.MODEL,
+            max_tokens=AIConfig.MAX_TOKENS,
+            temperature=AIConfig.TEMPERATURE,
+            timeout=AIConfig.TIMEOUT
+        )
     return _ai_service
 
 

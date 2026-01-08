@@ -11,12 +11,14 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AISettings, loadAISettings, saveAISettings } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, testAIConnection, apiClient } from "@/lib/api-client";
-import { Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette, Languages } from "lucide-react";
+import { Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette, Languages, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { themes } from "@/lib/themes";
 import { loadTheme, saveTheme } from "@/lib/theme-storage";
 import { loadLanguage, saveLanguage, type Language } from "@/lib/language-storage";
 import { useTranslation } from "@/lib/i18n";
+import { loadLogLevel, saveLogLevel, type LogLevel } from "@/lib/logging-storage";
+import { logger } from "@/lib/logger";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -51,6 +53,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [isLoadingPaths, setIsLoadingPaths] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Logging state
+  const [backendLogLevel, setBackendLogLevel] = useState<string>("INFO");
+  const [frontendLogLevel, setFrontendLogLevel] = useState<LogLevel>("INFO");
+  const [isLoadingLogging, setIsLoadingLogging] = useState(false);
+
   // Load settings on mount
   useEffect(() => {
     const loadSettings = async () => {
@@ -73,7 +80,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         
         setSettings(merged);
       } catch (error) {
-        console.error("Failed to load AI settings:", error);
+        logger.error("Failed to load AI settings:", error);
       }
     };
     
@@ -83,7 +90,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         const paths = await apiClient.getInsightPaths();
         setInsightPaths(paths);
       } catch (error) {
-        console.error("Failed to load insight paths:", error);
+        logger.error("Failed to load insight paths:", error);
         toast({
           title: "Error",
           description: "Failed to load external insight paths",
@@ -103,12 +110,30 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       const savedLanguage = loadLanguage();
       setSelectedLanguage(savedLanguage);
     };
+
+    const loadLoggingSettings = async () => {
+      setIsLoadingLogging(true);
+      try {
+        // Load backend log level
+        const backendConfig = await apiClient.getLoggingConfig();
+        setBackendLogLevel(backendConfig.log_level);
+
+        // Load frontend log level
+        const frontendLevel = loadLogLevel();
+        setFrontendLogLevel(frontendLevel);
+      } catch (error) {
+        logger.error("Failed to load logging settings:", error);
+      } finally {
+        setIsLoadingLogging(false);
+      }
+    };
     
     if (open) {
       loadSettings();
       loadInsightPaths();
       loadThemeSettings();
       loadLanguageSettings();
+      loadLoggingSettings();
     }
   }, [open, toast]);
 
@@ -184,7 +209,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         description: `Added path: ${newPath.trim()}. Found ${result.insights_count} total insights.`,
       });
     } catch (error) {
-      console.error("Failed to add insight path:", error);
+      logger.error("Failed to add insight path:", error);
       toast({
         title: "Error",
         description: String(error),
@@ -202,7 +227,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         description: `Removed path: ${path}. ${result.insights_count} insights remaining.`,
       });
     } catch (error) {
-      console.error("Failed to remove insight path:", error);
+      logger.error("Failed to remove insight path:", error);
       toast({
         title: "Error",
         description: String(error),
@@ -220,7 +245,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         description: `Refreshed ${result.insights_count} insights`,
       });
     } catch (error) {
-      console.error("Failed to refresh insights:", error);
+      logger.error("Failed to refresh insights:", error);
       toast({
         title: "Error",
         description: String(error),
@@ -264,6 +289,34 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     });
   };
 
+  const handleBackendLogLevelChange = async (newLevel: string) => {
+    try {
+      await apiClient.updateLoggingConfig(newLevel);
+      setBackendLogLevel(newLevel);
+      toast({
+        title: "Success",
+        description: `Backend log level updated to ${newLevel}`,
+      });
+    } catch (error) {
+      logger.error("Failed to update backend log level:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update backend log level",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFrontendLogLevelChange = (newLevel: LogLevel) => {
+    setFrontendLogLevel(newLevel);
+    saveLogLevel(newLevel);
+    logger.setLevel(newLevel);
+    toast({
+      title: "Success",
+      description: `Frontend log level updated to ${newLevel}`,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -278,9 +331,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </DialogHeader>
 
         <Tabs defaultValue="ai" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="ai">{t("settings.ai")}</TabsTrigger>
             <TabsTrigger value="insights">{t("settings.insights")}</TabsTrigger>
+            <TabsTrigger value="logging">Logging</TabsTrigger>
             <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
           </TabsList>
 
@@ -505,6 +559,82 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <p className="text-xs text-muted-foreground">
                 {t("settings.refreshInsightsHint")}
               </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="logging" className="space-y-4 mt-4">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="h-5 w-5" />
+                <h3 className="text-lg font-semibold">Logging Configuration</h3>
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                Control logging verbosity for debugging and troubleshooting. Changes take effect immediately.
+              </p>
+
+              {isLoadingLogging ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  {/* Backend Log Level */}
+                  <div className="space-y-2">
+                    <Label htmlFor="backend-log-level">Backend Log Level</Label>
+                    <Select value={backendLogLevel} onValueChange={handleBackendLogLevelChange}>
+                      <SelectTrigger id="backend-log-level">
+                        <SelectValue placeholder="Select backend log level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DEBUG">DEBUG - Detailed diagnostic info</SelectItem>
+                        <SelectItem value="INFO">INFO - General informational messages</SelectItem>
+                        <SelectItem value="WARNING">WARNING - Warning messages only</SelectItem>
+                        <SelectItem value="ERROR">ERROR - Error messages only</SelectItem>
+                        <SelectItem value="CRITICAL">CRITICAL - Critical errors only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Controls Python backend logging. Persists to .env file.
+                    </p>
+                  </div>
+
+                  {/* Frontend Log Level */}
+                  <div className="space-y-2">
+                    <Label htmlFor="frontend-log-level">Frontend Log Level</Label>
+                    <Select value={frontendLogLevel} onValueChange={(value) => handleFrontendLogLevelChange(value as LogLevel)}>
+                      <SelectTrigger id="frontend-log-level">
+                        <SelectValue placeholder="Select frontend log level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DEBUG">DEBUG - All console output</SelectItem>
+                        <SelectItem value="INFO">INFO - Info, warnings, and errors</SelectItem>
+                        <SelectItem value="WARN">WARN - Warnings and errors only</SelectItem>
+                        <SelectItem value="ERROR">ERROR - Errors only</SelectItem>
+                        <SelectItem value="NONE">NONE - No console output</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Controls browser console logging. Saved to localStorage.
+                    </p>
+                  </div>
+
+                  {/* Log Level Info */}
+                  <div className="rounded-lg border p-4 space-y-2 bg-muted/50">
+                    <p className="text-sm font-medium">Current Levels</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Backend:</span>
+                        <span className="ml-2 font-mono font-semibold">{backendLogLevel}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Frontend:</span>
+                        <span className="ml-2 font-mono font-semibold">{frontendLogLevel}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
 

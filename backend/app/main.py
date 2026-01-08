@@ -9,12 +9,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from app.version import get_version
 from app.core.plugin_manager import get_plugin_manager
-from app.api.routes import files, insights, analyze, errors, insight_paths, playground
+from app.core.config import AppConfig
+from app.api.routes import files, insights, analyze, errors, insight_paths, playground, logging as logging_routes
 
 # Load environment variables
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging with dynamic level from AppConfig
+log_level = getattr(logging, AppConfig.LOG_LEVEL.upper(), logging.INFO)
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -107,6 +110,7 @@ app.include_router(analyze.router)
 app.include_router(errors.router)
 app.include_router(insight_paths.router)
 app.include_router(playground.router)
+app.include_router(logging_routes.router)
 
 
 @app.on_event("startup")
