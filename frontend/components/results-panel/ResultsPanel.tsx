@@ -371,7 +371,7 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                     </div>
                   )}
 
-                  {/* Auto-triggered AI Analysis Card */}
+                  {/* Auto-triggered AI Analysis Card - Success */}
                   {resultItem.result.ai_analysis && (
                     <Card className="border-blue-500 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
                       <CardHeader className="pb-3">
@@ -389,6 +389,34 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                       <CardContent>
                         <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm">
                           {resultItem.result.ai_analysis}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Auto-triggered AI Analysis Card - Error */}
+                  {resultItem.result.ai_analysis_error && (
+                    <Card className="border-red-500 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                          <span>{t("playground.aiAnalysis")} (Auto) - Error</span>
+                          <Badge variant="destructive" className="ml-auto text-xs">
+                            Failed
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <p className="text-sm text-red-900 dark:text-red-100 font-medium">
+                            AI analysis failed during automatic execution:
+                          </p>
+                          <div className="rounded-md bg-red-100 dark:bg-red-900/30 p-3 text-sm text-red-800 dark:text-red-200 font-mono whitespace-pre-wrap">
+                            {resultItem.result.ai_analysis_error}
+                          </div>
+                          <p className="text-xs text-red-700 dark:text-red-300 mt-2">
+                            You can still manually analyze this result using the "Analyze with AI" section below with different settings or a shorter prompt.
+                          </p>
                         </div>
                       </CardContent>
                     </Card>

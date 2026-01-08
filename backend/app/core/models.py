@@ -16,6 +16,7 @@ class InsightResult(BaseModel):
     ai_custom_prompt: Optional[str] = None  # Custom AI prompt if used
     ai_summary: Optional[str] = None  # AI-generated summary (populated after AI analysis)
     ai_analysis: Optional[str] = None  # AI analysis result if auto-triggered
+    ai_analysis_error: Optional[str] = None  # AI analysis error message if auto-trigger failed
 
 
 class InsightMetadata(BaseModel):

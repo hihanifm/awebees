@@ -12,6 +12,7 @@ export interface InsightResult {
   ai_custom_prompt?: string;  // Custom AI prompt if used
   ai_summary?: string;  // AI-generated summary (populated after AI analysis)
   ai_analysis?: string;  // AI analysis result if auto-triggered
+  ai_analysis_error?: string;  // AI analysis error message if auto-trigger failed
 }
 
 export interface InsightMetadata {

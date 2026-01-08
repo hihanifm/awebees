@@ -160,8 +160,12 @@ class Insight(ABC):
                     logger.info(f"AI Auto-trigger: Auto-analysis completed successfully")
                 except Exception as e:
                     # Log error but don't fail the entire analysis
-                    logger.warning(f"AI auto-analysis failed: {e}", exc_info=True)
+                    # Store error message so frontend can display it
+                    error_msg = str(e)
+                    result.ai_analysis_error = error_msg
+                    logger.warning(f"AI auto-analysis failed: {error_msg}", exc_info=True)
             else:
                 logger.warning(f"AI Auto-trigger: AI is not configured - skipping auto-analysis")
+                result.ai_analysis_error = "AI is not configured. Please enable AI in settings."
         
         return result
