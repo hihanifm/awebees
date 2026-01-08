@@ -31,6 +31,10 @@ echo "Preparing package: $VARIANT"
 rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR"
 
+# Copy VERSION file to package root
+echo "  Copying VERSION file..."
+cp "$PROJECT_ROOT/VERSION" "$PACKAGE_DIR/"
+
 # Copy backend code
 echo "  Copying backend code..."
 mkdir -p "$PACKAGE_DIR/backend"
