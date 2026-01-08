@@ -496,6 +496,62 @@ export const apiClient = {
       body: JSON.stringify({ log_level: logLevel }),
     });
   },
+
+  /**
+   * Get available models from AI server using hybrid approach.
+   * Tries direct connection first, falls back to backend proxy if CORS fails.
+   * @param baseUrl AI server base URL
+   * @param apiKey API key for authentication
+   */
+  async getAvailableModels(baseUrl: string, apiKey: string): Promise<{
+    models: string[];
+    source: 'direct' | 'proxy' | 'defaults';
+  }> {
+    // Default models as fallback
+    const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+
+    // Try direct connection first
+    try {
+      const modelsUrl = `${baseUrl.replace(/\/$/, '')}/models`;
+      const response = await fetch(modelsUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // OpenAI format: { object: "list", data: [{id: "model-name", ...}] }
+        if (data.data && Array.isArray(data.data)) {
+          const models = data.data.map((m: any) => m.id);
+          if (models.length > 0) {
+            return { models, source: 'direct' };
+          }
+        }
+      }
+    } catch (corsError) {
+      // CORS or network error, try backend proxy
+      console.log('Direct connection failed, trying backend proxy:', corsError);
+    }
+
+    // Fallback to backend proxy
+    try {
+      const response = await fetchJSON<{ models: string[] }>('/api/analyze/ai/models', {
+        method: 'POST',
+        body: JSON.stringify({ base_url: baseUrl, api_key: apiKey }),
+      });
+      if (response.models && response.models.length > 0) {
+        return { models: response.models, source: 'proxy' };
+      }
+    } catch (proxyError) {
+      console.log('Backend proxy also failed, using defaults:', proxyError);
+    }
+
+    // Both failed, use defaults
+    return { models: defaultModels, source: 'defaults' };
+  },
 };
 
 // Export individual AI functions for easier imports

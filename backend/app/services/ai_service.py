@@ -388,6 +388,59 @@ Be specific and practical."""
         except Exception as e:
             logger.error(f"AI Service: Test connection unexpected error - {type(e).__name__}: {e}", exc_info=True)
             return False, f"Unexpected error: {str(e)}"
+    
+    async def get_available_models(self) -> list[str]:
+        """
+        Fetch available models from AI server.
+        
+        Returns:
+            List of model IDs available on the server
+        """
+        if not self.is_configured():
+            logger.warning("AI Service: Cannot fetch models - service not configured")
+            return []
+        
+        try:
+            url = f"{self.base_url.rstrip('/')}/models"
+            logger.info(f"AI Service: Fetching available models from {url}")
+            
+            async with httpx.AsyncClient(timeout=10) as client:
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                response = await client.get(url, headers=headers)
+                
+                if response.status_code == 404:
+                    logger.warning("AI Service: Server does not support /models endpoint (404)")
+                    return []
+                
+                response.raise_for_status()
+                
+                data = response.json()
+                
+                # OpenAI format: { "object": "list", "data": [{"id": "model-name", ...}] }
+                if "data" in data and isinstance(data["data"], list):
+                    models = [m["id"] for m in data["data"] if "id" in m]
+                    logger.info(f"AI Service: Found {len(models)} models")
+                    logger.debug(f"AI Service: Models: {models}")
+                    return models
+                
+                logger.warning(f"AI Service: Unexpected response format: {data}")
+                return []
+        
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"AI Service: HTTP error fetching models - {e.response.status_code}")
+            return []
+        
+        except httpx.RequestError as e:
+            logger.warning(f"AI Service: Request error fetching models - {type(e).__name__}: {e}")
+            return []
+        
+        except Exception as e:
+            logger.error(f"AI Service: Unexpected error fetching models - {type(e).__name__}: {e}", exc_info=True)
+            return []
 
 
 # Global AI service instance

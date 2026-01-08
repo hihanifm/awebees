@@ -583,3 +583,43 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
             "message": f"Test failed: {str(e)}"
         }
 
+
+@router.post("/ai/models")
+async def get_available_models(config: AIConfigUpdate):
+    """
+    Fetch available models from AI server (proxy for CORS).
+    Creates a temporary AI service with provided config and fetches models.
+    This acts as a proxy when direct frontend connection fails due to CORS.
+    
+    Returns:
+        List of available model IDs
+    """
+    logger.info("AI Models API: Fetching available models via proxy")
+    logger.debug(f"AI Models API: Using base_url={config.base_url}")
+    
+    # Validate required fields
+    if not config.base_url:
+        return {"models": []}
+    
+    try:
+        # Create a temporary AI service instance with the provided config
+        from app.services.ai_service import AIService
+        
+        temp_service = AIService(
+            base_url=config.base_url,
+            api_key=config.api_key or "dummy-key",  # Some servers don't require key for /models
+            model=config.model or "gpt-4o-mini",
+            max_tokens=config.max_tokens or 2000,
+            temperature=config.temperature or 0.7,
+            timeout=10
+        )
+        
+        models = await temp_service.get_available_models()
+        
+        logger.info(f"AI Models API: Found {len(models)} models")
+        return {"models": models}
+    
+    except Exception as e:
+        logger.error(f"AI Models API: Error fetching models: {e}", exc_info=True)
+        return {"models": []}
+

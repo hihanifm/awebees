@@ -30,7 +30,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [settings, setSettings] = useState<AISettings>({
     enabled: false,
     baseUrl: "https://api.openai.com/v1",
-    apiKey: "",
+    apiKey: "sk-no-key-required",
     model: "gpt-4o-mini",
     maxTokens: 2000,
     temperature: 0.7,
@@ -58,6 +58,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [frontendLogLevel, setFrontendLogLevel] = useState<LogLevel>("INFO");
   const [isLoadingLogging, setIsLoadingLogging] = useState(false);
 
+  // Model selection state
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [modelsSource, setModelsSource] = useState<'direct' | 'proxy' | 'defaults'>('defaults');
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+
   // Load settings on mount
   useEffect(() => {
     const loadSettings = async () => {
@@ -72,7 +77,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         const merged: AISettings = {
           enabled: localSettings?.enabled ?? backendConfig.enabled ?? false,
           baseUrl: localSettings?.baseUrl ?? backendConfig.base_url ?? "https://api.openai.com/v1",
-          apiKey: localSettings?.apiKey ?? "",
+          apiKey: localSettings?.apiKey ?? (backendConfig.api_key_preview ? "" : "sk-no-key-required"),
           model: localSettings?.model ?? backendConfig.model ?? "gpt-4o-mini",
           maxTokens: localSettings?.maxTokens ?? backendConfig.max_tokens ?? 2000,
           temperature: localSettings?.temperature ?? backendConfig.temperature ?? 0.7,
@@ -127,6 +132,50 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         setIsLoadingLogging(false);
       }
     };
+
+    const loadAvailableModels = async () => {
+      // Only fetch if we have a base URL and API key
+      const localSettings = loadAISettings();
+      const baseUrl = localSettings?.baseUrl || settings.baseUrl;
+      const apiKey = localSettings?.apiKey || settings.apiKey;
+
+      if (!baseUrl || !apiKey) {
+        // Use defaults if no config yet
+        const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+        setAvailableModels(defaultModels);
+        setModelsSource('defaults');
+        // Set first model as default if no model selected
+        if (!settings.model && defaultModels.length > 0) {
+          setSettings({ ...settings, model: defaultModels[0] });
+        }
+        return;
+      }
+
+      setIsLoadingModels(true);
+      try {
+        const result = await apiClient.getAvailableModels(baseUrl, apiKey);
+        setAvailableModels(result.models);
+        setModelsSource(result.source);
+        
+        // Automatically select first model if current model is not in the list
+        if (result.models.length > 0) {
+          const currentModelExists = result.models.includes(settings.model);
+          if (!currentModelExists) {
+            setSettings({ ...settings, model: result.models[0] });
+          }
+        }
+        
+        logger.info(`Loaded ${result.models.length} models via ${result.source}`);
+      } catch (error) {
+        logger.error("Failed to load available models:", error);
+        // Fall back to defaults
+        const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+        setAvailableModels(defaultModels);
+        setModelsSource('defaults');
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
     
     if (open) {
       loadSettings();
@@ -134,8 +183,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       loadThemeSettings();
       loadLanguageSettings();
       loadLoggingSettings();
+      loadAvailableModels();
     }
-  }, [open, toast]);
+  }, [open, toast, settings.baseUrl, settings.apiKey]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -325,6 +375,49 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     });
   };
 
+  const handleRefreshModels = async () => {
+    if (!settings.baseUrl || !settings.apiKey) {
+      toast({
+        title: "Error",
+        description: "Please enter Base URL and API Key first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingModels(true);
+    try {
+      const result = await apiClient.getAvailableModels(settings.baseUrl, settings.apiKey);
+      setAvailableModels(result.models);
+      setModelsSource(result.source);
+      
+      // Automatically select first model if current model is not in the list
+      if (result.models.length > 0) {
+        const currentModelExists = result.models.includes(settings.model);
+        if (!currentModelExists) {
+          setSettings({ ...settings, model: result.models[0] });
+        }
+      }
+      
+      const sourceText = result.source === 'direct' ? 'direct connection' : 
+                        result.source === 'proxy' ? 'backend proxy' : 'defaults';
+      
+      toast({
+        title: "Models Refreshed",
+        description: `Loaded ${result.models.length} models via ${sourceText}`,
+      });
+    } catch (error) {
+      logger.error("Failed to refresh models:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh models",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -401,24 +494,49 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
             {/* Model Selection */}
             <div className="space-y-2">
-              <Label htmlFor="model">{t("settings.model")}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="model">{t("settings.model")}</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefreshModels}
+                  disabled={!settings.enabled || isLoadingModels || !settings.baseUrl}
+                  className="h-7 px-2"
+                >
+                  {isLoadingModels ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  <span className="ml-1 text-xs">Refresh</span>
+                </Button>
+              </div>
               <Select
                 value={settings.model}
                 onValueChange={(value) =>
                   setSettings({ ...settings, model: value })
                 }
-                disabled={!settings.enabled}
+                disabled={!settings.enabled || isLoadingModels}
               >
                 <SelectTrigger id="model">
                   <SelectValue placeholder="Select model" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                  <SelectItem value="gpt-4o-mini">GPT-4o-mini</SelectItem>
-                  <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                  <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                  {availableModels.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {availableModels.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {modelsSource === 'direct' && `✓ ${availableModels.length} models loaded (direct connection)`}
+                  {modelsSource === 'proxy' && `✓ ${availableModels.length} models loaded via proxy`}
+                  {modelsSource === 'defaults' && `⚠ Using default models (server unreachable)`}
+                </p>
+              )}
             </div>
 
             {/* Max Tokens */}
