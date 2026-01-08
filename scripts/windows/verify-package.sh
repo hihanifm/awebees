@@ -116,6 +116,24 @@ else
     fi
 fi
 
+# Verify VERSION file
+echo ""
+echo "Checking VERSION file..."
+if [ ! -f "$PACKAGE_DIR/VERSION" ]; then
+    echo -e "${RED}✗ ERROR: VERSION file not found in package root${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ VERSION file exists${NC}"
+    # Read and display version
+    VERSION_CONTENT=$(cat "$PACKAGE_DIR/VERSION" | tr -d '[:space:]')
+    if [ -z "$VERSION_CONTENT" ]; then
+        echo -e "${YELLOW}⚠ WARNING: VERSION file is empty${NC}"
+        WARNINGS=$((WARNINGS + 1))
+    else
+        echo -e "${GREEN}  Version: $VERSION_CONTENT${NC}"
+    fi
+fi
+
 # Verify launcher scripts
 echo ""
 echo "Checking launcher scripts..."
