@@ -130,9 +130,8 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                           className="sr-only"
                         />
                         
-                        <label 
-                          htmlFor={insight.id} 
-                          className={`text-sm font-bold text-center cursor-pointer select-none leading-tight px-1
+                        <div 
+                          className={`text-sm font-bold text-center cursor-pointer select-none leading-tight px-1 pointer-events-none
                             ${isSelected 
                               ? 'text-orange-800 dark:text-orange-200' 
                               : 'text-orange-800/80 dark:text-orange-200/70'
@@ -141,7 +140,7 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                             transition-colors duration-200`}
                         >
                           {insight.name}
-                        </label>
+                        </div>
                         
                         {/* Enhanced Tooltip */}
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 w-64 p-3 
@@ -152,9 +151,13 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[2px] border-[8px] border-transparent border-t-orange-400 dark:border-t-orange-500"></div>
                         </div>
                       </Card>
-            );
-          })}
-        </div>
+                    );
+                  })}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </div>
   );
