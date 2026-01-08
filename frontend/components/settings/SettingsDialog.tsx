@@ -185,7 +185,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       loadLoggingSettings();
       loadAvailableModels();
     }
-  }, [open, toast, settings.baseUrl, settings.apiKey]);
+  }, [open]);
 
   const handleSave = async () => {
     setIsSaving(true);
