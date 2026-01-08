@@ -188,7 +188,8 @@ if serve_frontend:
         
         # Serve other static files (images, etc.) - use a catch-all for these
         # Individual routes for common static files
-        @app.get("/favicon.ico")
+        # Support both GET and HEAD methods
+        @app.api_route("/favicon.ico", methods=["GET", "HEAD"])
         async def serve_favicon():
             favicon_path = frontend_out_dir / "favicon.ico"
             if favicon_path.exists():
@@ -196,7 +197,8 @@ if serve_frontend:
             raise HTTPException(status_code=404)
         
         # Catch-all route for serving Next.js static export (must be last)
-        @app.get("/{full_path:path}")
+        # Support both GET and HEAD methods (HEAD is used by Next.js prefetching)
+        @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
         async def serve_frontend(full_path: str):
             # Don't serve API routes as static files
             if full_path.startswith("api/"):
