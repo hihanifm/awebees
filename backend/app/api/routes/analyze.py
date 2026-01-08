@@ -389,8 +389,9 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
             detail="AI service is not configured. Please set OPENAI_API_KEY and enable AI_ENABLED=true"
         )
     
-    # Limit content to 300 lines to control API costs and token usage
-    MAX_LINES = 300
+    # Limit content to 150 lines to control API costs and token usage
+    # Reduced for models with smaller context windows (e.g., phi-4-mini: ~2K-4K tokens)
+    MAX_LINES = 150
     lines = request.content.split('\n')
     if len(lines) > MAX_LINES:
         logger.info(f"AI Analyze API: Limiting content from {len(lines)} to {MAX_LINES} lines")
