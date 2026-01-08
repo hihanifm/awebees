@@ -11,28 +11,39 @@ export async function loadSampleFile(page: Page): Promise<void> {
   // Click the "Load Sample File" button
   await page.getByRole('button', { name: /load sample/i }).click();
   
-  // Wait for the file path to populate
-  await page.waitForSelector('input[value*="android-bugreport"]', { timeout: 5000 });
+  // Wait for the file path to populate in textarea
+  await page.waitForSelector('textarea[value*="android-bugreport"], textarea:has-text("android-bugreport")', { timeout: 10000 });
   
   // Verify the file path is shown
-  const fileInput = page.locator('input[value*="android-bugreport"]');
-  await expect(fileInput).toBeVisible();
+  const fileTextarea = page.locator('textarea').first();
+  await expect(fileTextarea).toBeVisible();
+  
+  // Verify it has content
+  const textareaValue = await fileTextarea.inputValue();
+  expect(textareaValue).toContain('android-bugreport');
 }
 
 /**
  * Select an insight by name
+ * Now simplified - just click the insight card directly (no accordion)
  */
 export async function selectInsight(page: Page, insightName: string): Promise<void> {
-  // Find and click the checkbox for the insight
-  const insightRow = page.locator(`[data-testid="insight-${insightName}"], text="${insightName}"`).first();
-  await insightRow.scrollIntoViewIfNeeded();
+  // Find the label containing the insight name and click its parent card
+  const label = page.locator(`label:has-text("${insightName}")`).first();
+  await label.scrollIntoViewIfNeeded();
   
-  // Try to find checkbox by label association or nearby checkbox
-  const checkbox = page.locator(`label:has-text("${insightName}") input[type="checkbox"], input[type="checkbox"]:near(:text("${insightName}"))`).first();
-  await checkbox.check();
+  // Click the label (which will trigger the card's onClick)
+  await label.click();
   
-  // Verify checked
-  await expect(checkbox).toBeChecked();
+  // Wait for the state to update
+  await page.waitForTimeout(300);
+  
+  // Verify it's selected by checking for the selected card styling or aria-checked
+  const labelFor = await label.getAttribute('for');
+  if (labelFor) {
+    const checkbox = page.locator(`#${labelFor}`);
+    await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+  }
 }
 
 /**

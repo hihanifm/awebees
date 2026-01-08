@@ -36,8 +36,10 @@ test.describe('Core Workflow', () => {
     await loadSampleFile(page);
     
     // Verify file is loaded
-    const fileInput = page.locator('input[value*="android-bugreport"]');
-    await expect(fileInput).toBeVisible();
+    const fileTextarea = page.locator('textarea').first();
+    await expect(fileTextarea).toBeVisible();
+    const textareaValue = await fileTextarea.inputValue();
+    expect(textareaValue).toContain('android-bugreport');
     console.log('✓ Sample file loaded');
 
     // Step 2: Select insights

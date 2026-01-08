@@ -3,12 +3,6 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { useInsights } from "@/hooks/use-insights";
 import { InsightMetadata } from "@/lib/api-types";
 import { useTranslation } from "@/lib/i18n";
@@ -77,19 +71,9 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
 
   return (
     <div className="space-y-2">
-      <div className="overflow-y-auto max-h-[400px] pr-2 border rounded-md">
-        <Accordion type="multiple" className="w-full" defaultValue={sortedFolders}>
-          {sortedFolders.map((folder) => (
-            <AccordionItem key={folder} value={folder} className="px-3 border-b">
-              <AccordionTrigger className="text-sm font-semibold py-2">
-                {folder}
-                <span className="text-xs text-muted-foreground ml-2">
-                  ({groupedInsights[folder].length})
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="pb-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2 pt-1">
-                  {groupedInsights[folder].map((insight) => {
+      <div className="overflow-y-auto max-h-[400px] pr-2 border rounded-md p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+          {sortedInsights.map((insight) => {
                     const isSelected = selectedInsightIds.includes(insight.id);
                     return (
                       <Card 
@@ -152,13 +136,9 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[2px] border-[8px] border-transparent border-t-orange-400 dark:border-t-orange-500"></div>
                         </div>
                       </Card>
-                    );
-                  })}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
