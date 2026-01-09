@@ -34,9 +34,10 @@ Get up and running with LensAI in minutes! This guide follows a progressive appr
 
 **Fastest way to get started:** Use the included sample file!
 
-1. **Load the sample file**: Click the **"Load Sample File"** button on the main page
-   - This automatically loads a 57MB Android bugreport sample (pre-extracted on first startup)
-   - The file path will be pre-filled for you
+1. **Sample file is auto-loaded**: When the page loads, a sample file is automatically selected and loaded for you
+   - The file path appears in the textarea, ready to use
+   - If multiple samples are available, use the **"Select Sample"** dropdown to choose a different one
+   - Samples are automatically discovered from built-in and external insight directories
    - Perfect for testing without needing your own log files
 
 2. **Choose insights**: Select one or more insights from the list
@@ -58,7 +59,7 @@ Get up and running with LensAI in minutes! This guide follows a progressive appr
 
 **Congratulations!** You've completed your first analysis. The application is now ready for regular use.
 
-> **Using your own files?** Instead of clicking "Load Sample File", you can enter the absolute path to your log file (e.g., `/Users/username/logs/app.log` or `C:\Users\username\logs\app.log`). You can also analyze entire folders—they'll be scanned recursively.
+> **Using your own files?** You can replace the sample file path in the textarea with the absolute path to your log file (e.g., `/Users/username/logs/app.log` or `C:\Users\username\logs\app.log`). You can also analyze entire folders—they'll be scanned recursively. Simply clear the textarea and enter your file or folder path.
 >
 > **Why absolute paths?** Due to browser security restrictions, file uploads aren't available. LensAI uses a local server component (running on your machine) that needs the full file path to access files on your local filesystem. This allows processing of large files efficiently without browser memory limitations—everything runs locally, no data leaves your computer.
 

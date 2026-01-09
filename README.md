@@ -188,14 +188,16 @@ The **Playground** is an interactive environment for experimenting with ripgrep 
 
 ### Quick Start with Sample File
 
-**New to LensAI?** Try it immediately with the included Android bugreport sample:
+**New to LensAI?** Try it immediately with the included sample files:
 
 1. Start the application (see Quick Start above)
-2. Click **"Load Sample File"** button on the main page
+2. A sample file is **automatically loaded** when the page opens
+   - If multiple samples are available, use the **"Select Sample"** dropdown to choose a different one
+   - Samples are discovered from built-in and external insight directories
 3. Select one or more insights (try "Error Detector" or "Line Count")
 4. Click **"Analyze Files"** and watch real-time progress
 
-The sample file is a 57MB Android bugreport that's automatically extracted on first startup. Perfect for testing performance and exploring insights!
+Sample files are automatically extracted on first startup. Perfect for testing performance and exploring insights!
 
 **Command Line:**
 ```bash
@@ -211,7 +213,7 @@ python -m app.insights.error_detector samples/android-bugreport.txt
    - Folders will be scanned recursively
    - The last used paths will be prefilled automatically
    - Example: `/Users/username/logs/file.log` or `/var/log/app.log`
-   - **Tip:** Click "Load Sample File" to try the included Android bugreport
+   - **Tip:** A sample file is automatically loaded on startup—you can replace it with your own file path or use the "Select Sample" dropdown to choose a different sample
 
 2. **Select Insights**: 
    - Choose one or more insights to run on your files

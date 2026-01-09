@@ -25,8 +25,9 @@ A comprehensive Android bugreport from an emulator, containing:
 ### Via Web UI
 
 1. Start the Lens application
-2. Click "Load Sample File" button on the main page
-3. The sample file path will be pre-filled
+2. A sample file is automatically loaded when the page opens
+   - If multiple samples are available, use the "Select Sample" dropdown to choose a different one
+3. The sample file path will be pre-filled in the textarea
 4. Select insights and click "Analyze Files"
 
 ### Via Command Line

@@ -59,11 +59,12 @@ A comprehensive overview of LensAI capabilities, both implemented and planned.
 
 <details><summary><b>🎯 Sample Files</b></summary>
 
-- **Pre-loaded Android bugreport**: 54.6MB real-world sample
-  - 650,402 total lines
-  - 1,808 ERROR/FATAL lines
-  - Auto-extracted on first startup
-- **One-click testing**: "Load Sample File" button in UI
+- **Pre-loaded sample files**: Automatically discovered and loaded on startup
+  - Built-in Android bugreport sample (57MB, 650,402 lines, 1,808 ERROR/FATAL lines)
+  - External samples from LensInsights and other insight directories
+  - Auto-extracted compressed files (.zip, .gz) on first startup
+- **Auto-loading**: Sample file automatically selected and loaded when page opens
+- **Sample selector dropdown**: Choose from multiple available samples
 - **CLI support**: Test insights via command line with samples
 
 </details>
@@ -134,7 +135,8 @@ def process_results(filter_result):
 - **Dark mode support**: Full dark/light theme support
 - **File path input**: Multi-line textarea with auto-save
 - **Insight selection**: Organized by folders with accordions
-- **"Load Sample File" button**: Quick access to pre-loaded sample
+- **Auto-loading sample files**: Sample automatically selected and loaded on startup
+- **Sample selector dropdown**: Choose from multiple available samples
 - **Real-time progress widget**:
   - Live event stream (SSE)
   - Shows all events with scrolling
