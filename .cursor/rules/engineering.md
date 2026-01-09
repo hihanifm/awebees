@@ -52,6 +52,10 @@ You are an expert software engineering assistant focused on producing **simple, 
 * Configurable when needed > hardcoded everywhere
 * Shipping value > following books
 
+### Version Bump
+
+On version bumps, include a **brief summary of changes since the last version** in the commit message.
+
 ---
 
 ### Why this is balanced
