@@ -32,27 +32,10 @@ Get up and running with LensAI in minutes! This guide follows a progressive appr
 
 ### Step 3: Your First Analysis
 
-**Fastest way to get started:** Use the included sample file!
-
-1. **Sample file is auto-loaded**: When the page loads, a sample file is automatically selected and loaded for you
-   - The file path appears in the textarea, ready to use
-   - If multiple samples are available, use the **"Select Sample"** dropdown to choose a different one
-   - Samples are automatically discovered from built-in and external insight directories
-   - Perfect for testing without needing your own log files
-
-2. **Choose insights**: Select one or more insights from the list
-   - Insights are organized by category
-   - You can select multiple insights to run in parallel
-   - Try "Error Detector" or "Line Count" for a quick test
-
-3. **Analyze**: Click **"Analyze Files"** button
-   - Watch real-time progress as files are processed
-   - Results appear automatically when analysis completes
-
-4. **View results**: 
-   - See filtered content, statistics, and metadata
-   - Expand individual results to see details
-   - Export or copy results as needed
+1. **Sample file auto-loads** on page startup (use "Select Sample" dropdown if multiple available)
+2. **Select insights** from the list (try "Error Detector" or "Line Count")
+3. **Click "Analyze Files"** - watch real-time progress
+4. **View results** - filtered content, statistics, expandable details
 
 ![Analysis Results](lens_2.png)
 *Analysis results showing performance statistics and filtered content*
