@@ -32,13 +32,17 @@ Get up and running with LensAI in minutes! This guide follows a progressive appr
 
 ### Step 3: Your First Analysis
 
-1. **Select a file**: Enter the absolute path to a log file you want to analyze
-   - Example: `/Users/username/logs/app.log` or `C:\Users\username\logs\app.log`
-   - Tip: You can also analyze entire folders (they'll be scanned recursively)
+**Fastest way to get started:** Use the included sample file!
+
+1. **Load the sample file**: Click the **"Load Sample File"** button on the main page
+   - This automatically loads a 57MB Android bugreport sample (pre-extracted on first startup)
+   - The file path will be pre-filled for you
+   - Perfect for testing without needing your own log files
 
 2. **Choose insights**: Select one or more insights from the list
    - Insights are organized by category
    - You can select multiple insights to run in parallel
+   - Try "Error Detector" or "Line Count" for a quick test
 
 3. **Analyze**: Click **"Analyze Files"** button
    - Watch real-time progress as files are processed
@@ -53,6 +57,10 @@ Get up and running with LensAI in minutes! This guide follows a progressive appr
 *Analysis results showing performance statistics and filtered content*
 
 **Congratulations!** You've completed your first analysis. The application is now ready for regular use.
+
+> **Using your own files?** Instead of clicking "Load Sample File", you can enter the absolute path to your log file (e.g., `/Users/username/logs/app.log` or `C:\Users\username\logs\app.log`). You can also analyze entire folders—they'll be scanned recursively.
+>
+> **Why absolute paths?** Due to browser security restrictions, file uploads aren't available. LensAI uses a local server component (running on your machine) that needs the full file path to access files on your local filesystem. This allows processing of large files efficiently without browser memory limitations—everything runs locally, no data leaves your computer.
 
 ---
 
