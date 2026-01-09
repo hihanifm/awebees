@@ -24,6 +24,8 @@
     "filePathsPlaceholder": "파일 또는 폴더 경로를 입력하세요 (한 줄에 하나씩)\n예시:\n/Users/username/logs/file.log\n/var/log/app.log",
     "filePathsHint": "서버의 로그 파일 또는 폴더의 절대 경로를 입력하세요 (예: /Users/username/logs/file.log 또는 /var/log/app.log). 폴더는 재귀적으로 스캔됩니다.",
     "loadSampleFile": "샘플 파일 로드",
+    "selectSample": "샘플 선택",
+    "selectSamplePlaceholder": "샘플 파일 선택...",
     "selectInsights": "인사이트 선택",
     "analyzeFiles": "파일 분석",
     "analyzing": "분석 중...",

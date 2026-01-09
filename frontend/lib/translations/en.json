@@ -24,6 +24,8 @@
     "filePathsPlaceholder": "Enter file or folder paths (one per line)\nExample:\n/Users/username/logs/file.log\n/var/log/app.log",
     "filePathsHint": "Enter absolute paths to log files or folders on the server (e.g., /Users/username/logs/file.log or /var/log/app.log). Folders will be scanned recursively.",
     "loadSampleFile": "Load Sample File",
+    "selectSample": "Select Sample",
+    "selectSamplePlaceholder": "Choose a sample file...",
     "selectInsights": "Select Insights",
     "analyzeFiles": "Analyze Files",
     "analyzing": "Analyzing...",

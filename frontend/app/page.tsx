@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
@@ -48,6 +49,8 @@ export default function Home() {
   const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
   const [loadingSample, setLoadingSample] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [availableSamples, setAvailableSamples] = useState<any[]>([]);
+  const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
 
   // Stream backend errors on mount
   useEffect(() => {
@@ -76,6 +79,29 @@ export default function Home() {
     }
   }, []);
 
+  // Load available samples on mount
+  useEffect(() => {
+    const loadSamples = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/files/samples`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.samples && data.samples.length > 0) {
+            setAvailableSamples(data.samples);
+            // Auto-select first sample if only one available
+            if (data.samples.length === 1) {
+              setSelectedSampleId(data.samples[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        logger.error("Failed to load samples:", err);
+      }
+    };
+    
+    loadSamples();
+  }, []);
+
   const handleCancel = async () => {
     if (currentTaskId) {
       try {
@@ -90,23 +116,29 @@ export default function Home() {
   const handleLoadSample = async () => {
     setLoadingSample(true);
     setError(null);
+    
+    // Determine which sample to load
+    let sampleToLoad: any = null;
+    
+    if (selectedSampleId) {
+      sampleToLoad = availableSamples.find(s => s.id === selectedSampleId);
+    } else if (availableSamples.length > 0) {
+      // Fallback to first available sample if none selected
+      sampleToLoad = availableSamples[0];
+    }
+    
+    if (!sampleToLoad) {
+      setError("No sample selected");
+      setLoadingSample(false);
+      return;
+    }
+    
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/files/samples`);
-      if (!response.ok) {
-        throw new Error("Failed to load sample files");
-      }
-      const data = await response.json();
-      
-      if (data.samples && data.samples.length > 0) {
-        const sample = data.samples[0]; // Get first available sample
-        if (sample.exists) {
-          setFilePaths(sample.path);
-          localStorage.setItem(LAST_PATH_KEY, sample.path);
-        } else {
-          setError("Sample file not extracted yet. Please restart the server.");
-        }
+      if (sampleToLoad.exists) {
+        setFilePaths(sampleToLoad.path);
+        localStorage.setItem(LAST_PATH_KEY, sampleToLoad.path);
       } else {
-        setError("No sample files available");
+        setError("Sample file not extracted yet. Please restart the server.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load sample file");
@@ -218,19 +250,51 @@ export default function Home() {
                 rows={2}
                 disabled={analyzing}
               />
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {t("app.filePathsHint")}
-                </p>
-                <Button
-                  onClick={handleLoadSample}
-                  disabled={analyzing || loadingSample}
-                  variant="secondary"
-                  size="sm"
-                  className="ml-4 whitespace-nowrap bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 text-foreground border border-primary/30 font-bold"
-                >
-                  {loadingSample ? t("common.loading") : t("app.loadSampleFile")}
-                </Button>
+              <div className="space-y-2">
+                {availableSamples.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-muted-foreground whitespace-nowrap">
+                      {t("app.selectSample")}:
+                    </label>
+                    <Select
+                      value={selectedSampleId || ""}
+                      onValueChange={setSelectedSampleId}
+                      disabled={analyzing || loadingSample}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t("app.selectSamplePlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSamples.map((sample) => (
+                          <SelectItem key={sample.id} value={sample.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{sample.name}</span>
+                              {sample.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {sample.description}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {t("app.filePathsHint")}
+                  </p>
+                  <Button
+                    onClick={handleLoadSample}
+                    disabled={analyzing || loadingSample || (availableSamples.length > 1 && !selectedSampleId)}
+                    variant="secondary"
+                    size="sm"
+                    className="ml-4 whitespace-nowrap bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 text-foreground border border-primary/30 font-bold"
+                  >
+                    {loadingSample ? t("common.loading") : t("app.loadSampleFile")}
+                  </Button>
+                </div>
               </div>
             </div>
           </section>

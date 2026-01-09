@@ -28,44 +28,46 @@ def extract_sample_files():
         backend_dir = Path(__file__).parent.parent
         samples_dir = backend_dir / "samples"
         
-        # Sample file paths
+        # Extract built-in samples
         zip_path = samples_dir / "android-bugreport.zip"
         txt_path = samples_dir / "android-bugreport.txt"
         
         # Check if sample directory and zip exist
         if not samples_dir.exists():
             logger.warning(f"Samples directory not found: {samples_dir}")
-            return
+        elif zip_path.exists():
+            # Extract if not already extracted
+            if not txt_path.exists():
+                logger.info(f"Extracting sample file: {zip_path.name}")
+                logger.info(f"This may take a moment (extracting ~57MB)...")
+                
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    # Extract only the .txt file, skip __MACOSX folder
+                    for member in zip_ref.namelist():
+                        if member.endswith('.txt') and not member.startswith('__MACOSX'):
+                            # Extract with original name then rename
+                            extracted_path = samples_dir / member
+                            zip_ref.extract(member, samples_dir)
+                            
+                            # Rename to simplified name if different
+                            if extracted_path.name != txt_path.name:
+                                extracted_path.rename(txt_path)
+                            
+                            file_size_mb = txt_path.stat().st_size / (1024 * 1024)
+                            logger.info(f"✓ Sample file extracted: {txt_path.name} ({file_size_mb:.1f}MB)")
+                            logger.info(f"✓ Sample file location: {txt_path}")
+                            break
+            else:
+                file_size_mb = txt_path.stat().st_size / (1024 * 1024)
+                logger.info(f"✓ Sample file ready: {txt_path.name} ({file_size_mb:.1f}MB)")
+                logger.debug(f"  Location: {txt_path}")
         
-        if not zip_path.exists():
-            logger.warning(f"Sample zip file not found: {zip_path}")
-            return
-        
-        # Extract if not already extracted
-        if not txt_path.exists():
-            logger.info(f"Extracting sample file: {zip_path.name}")
-            logger.info(f"This may take a moment (extracting ~57MB)...")
-            
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                # Extract only the .txt file, skip __MACOSX folder
-                for member in zip_ref.namelist():
-                    if member.endswith('.txt') and not member.startswith('__MACOSX'):
-                        # Extract with original name then rename
-                        extracted_path = samples_dir / member
-                        zip_ref.extract(member, samples_dir)
-                        
-                        # Rename to simplified name if different
-                        if extracted_path.name != txt_path.name:
-                            extracted_path.rename(txt_path)
-                        
-                        file_size_mb = txt_path.stat().st_size / (1024 * 1024)
-                        logger.info(f"✓ Sample file extracted: {txt_path.name} ({file_size_mb:.1f}MB)")
-                        logger.info(f"✓ Sample file location: {txt_path}")
-                        break
-        else:
-            file_size_mb = txt_path.stat().st_size / (1024 * 1024)
-            logger.info(f"✓ Sample file ready: {txt_path.name} ({file_size_mb:.1f}MB)")
-            logger.debug(f"  Location: {txt_path}")
+        # Extract samples from external insight paths
+        # This will trigger extraction during discovery
+        from app.core.sample_discovery import discover_all_samples
+        logger.info("Discovering and extracting samples from external insight paths...")
+        all_samples = discover_all_samples()
+        logger.info(f"Sample extraction complete. Total samples available: {len(all_samples)}")
     
     except Exception as e:
         logger.error(f"Failed to extract sample files: {e}", exc_info=True)

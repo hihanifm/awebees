@@ -69,13 +69,32 @@ The extracted `.txt` file is gitignored and only exists locally after extraction
 
 ## Adding More Samples
 
-To add additional sample files:
+### Built-in Samples (This Directory)
+
+To add additional sample files to the built-in samples:
 
 1. Place the compressed file (`.zip` or `.gz`) in this directory
-2. Update `backend/app/main.py` startup event to extract it
+2. Update `backend/app/core/constants.py` to add the sample to `SAMPLE_FILES` dictionary
 3. Update this README with documentation
-4. Add the path to `backend/app/core/constants.py`
-5. Update the frontend UI if needed
+
+### External Samples (LensInsights)
+
+You can also add sample files to external insight directories (e.g., LensInsights):
+
+1. Create a `samples/` subdirectory in your external insight directory
+2. Place sample files (`.txt`, `.log`, `.zip`, `.gz`) in the `samples/` directory
+3. Optionally create metadata JSON files (e.g., `my-sample.json`) with:
+   ```json
+   {
+     "name": "My Sample",
+     "description": "Description of the sample",
+     "size_mb": 5.2,
+     "recommended_insights": ["error_detector", "line_count"]
+   }
+   ```
+4. Lens will automatically discover and extract samples from all configured insight paths
+
+External samples are automatically discovered and appear in the Lens UI alongside built-in samples. Users can select from multiple samples using a dropdown selector.
 
 ## Notes
 
@@ -83,4 +102,5 @@ To add additional sample files:
 - Extraction only happens once (skipped if `.txt` already exists)
 - Keep compressed versions in git, ignore extracted versions
 - Large files (>50MB uncompressed) should be stored compressed
+- Samples from external insight paths are automatically discovered and available in the UI
 
