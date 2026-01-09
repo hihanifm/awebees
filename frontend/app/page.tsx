@@ -47,7 +47,6 @@ export default function Home() {
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
-  const [loadingSample, setLoadingSample] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [availableSamples, setAvailableSamples] = useState<any[]>([]);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
@@ -79,7 +78,7 @@ export default function Home() {
     }
   }, []);
 
-  // Load available samples on mount
+  // Load available samples on mount and auto-select first one
   useEffect(() => {
     const loadSamples = async () => {
       try {
@@ -88,9 +87,15 @@ export default function Home() {
           const data = await response.json();
           if (data.samples && data.samples.length > 0) {
             setAvailableSamples(data.samples);
-            // Auto-select first sample if only one available
-            if (data.samples.length === 1) {
-              setSelectedSampleId(data.samples[0].id);
+            // Auto-select first available sample
+            const firstSample = data.samples.find((s: any) => s.exists) || data.samples[0];
+            if (firstSample) {
+              setSelectedSampleId(firstSample.id);
+              // Auto-load the first sample
+              if (firstSample.exists) {
+                setFilePaths(firstSample.path);
+                localStorage.setItem(LAST_PATH_KEY, firstSample.path);
+              }
             }
           }
         }
@@ -101,6 +106,17 @@ export default function Home() {
     
     loadSamples();
   }, []);
+
+  // Auto-load sample when selection changes
+  useEffect(() => {
+    if (selectedSampleId && availableSamples.length > 0) {
+      const selectedSample = availableSamples.find(s => s.id === selectedSampleId);
+      if (selectedSample && selectedSample.exists) {
+        setFilePaths(selectedSample.path);
+        localStorage.setItem(LAST_PATH_KEY, selectedSample.path);
+      }
+    }
+  }, [selectedSampleId, availableSamples]);
 
   const handleCancel = async () => {
     if (currentTaskId) {
@@ -113,39 +129,6 @@ export default function Home() {
     }
   };
 
-  const handleLoadSample = async () => {
-    setLoadingSample(true);
-    setError(null);
-    
-    // Determine which sample to load
-    let sampleToLoad: any = null;
-    
-    if (selectedSampleId) {
-      sampleToLoad = availableSamples.find(s => s.id === selectedSampleId);
-    } else if (availableSamples.length > 0) {
-      // Fallback to first available sample if none selected
-      sampleToLoad = availableSamples[0];
-    }
-    
-    if (!sampleToLoad) {
-      setError("No sample selected");
-      setLoadingSample(false);
-      return;
-    }
-    
-    try {
-      if (sampleToLoad.exists) {
-        setFilePaths(sampleToLoad.path);
-        localStorage.setItem(LAST_PATH_KEY, sampleToLoad.path);
-      } else {
-        setError("Sample file not extracted yet. Please restart the server.");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load sample file");
-    } finally {
-      setLoadingSample(false);
-    }
-  };
 
   const handleAnalyze = async () => {
     if (selectedInsightIds.length === 0) {
@@ -250,52 +233,39 @@ export default function Home() {
                 rows={2}
                 disabled={analyzing}
               />
-              <div className="space-y-2">
-                {availableSamples.length > 1 && (
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-muted-foreground whitespace-nowrap">
-                      {t("app.selectSample")}:
-                    </label>
-                    <Select
-                      value={selectedSampleId || ""}
-                      onValueChange={setSelectedSampleId}
-                      disabled={analyzing || loadingSample}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t("app.selectSamplePlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableSamples.map((sample) => (
-                          <SelectItem key={sample.id} value={sample.id}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{sample.name}</span>
-                              {sample.description && (
-                                <span className="text-xs text-muted-foreground">
-                                  {sample.description}
-                                </span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    {t("app.filePathsHint")}
-                  </p>
-                  <Button
-                    onClick={handleLoadSample}
-                    disabled={analyzing || loadingSample || (availableSamples.length > 1 && !selectedSampleId)}
-                    variant="secondary"
-                    size="sm"
-                    className="ml-4 whitespace-nowrap bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 text-foreground border border-primary/30 font-bold"
+              {availableSamples.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">
+                    {t("app.selectSample")}:
+                  </label>
+                  <Select
+                    value={selectedSampleId || ""}
+                    onValueChange={setSelectedSampleId}
+                    disabled={analyzing}
                   >
-                    {loadingSample ? t("common.loading") : t("app.loadSampleFile")}
-                  </Button>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={t("app.selectSamplePlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSamples.map((sample) => (
+                        <SelectItem key={sample.id} value={sample.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{sample.name}</span>
+                            {sample.description && (
+                              <span className="text-xs text-muted-foreground">
+                                {sample.description}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {t("app.filePathsHint")}
+              </p>
             </div>
           </section>
 

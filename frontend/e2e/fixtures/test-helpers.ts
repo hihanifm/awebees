@@ -6,21 +6,28 @@ import { Page, expect } from '@playwright/test';
 
 /**
  * Load the sample file in the application
+ * Samples are now auto-loaded on page load, so we just wait for it to appear
  */
 export async function loadSampleFile(page: Page): Promise<void> {
-  // Click the "Load Sample File" button
-  await page.getByRole('button', { name: /load sample/i }).click();
-  
-  // Wait for the file path to populate in textarea
-  await page.waitForSelector('textarea[value*="android-bugreport"], textarea:has-text("android-bugreport")', { timeout: 10000 });
-  
-  // Verify the file path is shown
+  // Wait for the textarea to be visible first
   const fileTextarea = page.locator('textarea').first();
-  await expect(fileTextarea).toBeVisible();
+  await expect(fileTextarea).toBeVisible({ timeout: 10000 });
+  
+  // Wait for the file path to populate in textarea (auto-loaded on mount)
+  // The first available sample is automatically selected and loaded
+  // Wait for content to appear by checking the textarea has a file path
+  await expect(async () => {
+    const textareaValue = await fileTextarea.inputValue();
+    // Accept any sample file path (could be android-bugreport or dumpstate_log, etc.)
+    expect(textareaValue.length).toBeGreaterThan(0);
+    expect(textareaValue).toMatch(/\.(txt|log)$/); // Should end with .txt or .log
+  }).toPass({ timeout: 15000 });
   
   // Verify it has content
   const textareaValue = await fileTextarea.inputValue();
-  expect(textareaValue).toContain('android-bugreport');
+  expect(textareaValue.length).toBeGreaterThan(0);
+  // Verify it looks like a file path
+  expect(textareaValue).toMatch(/\.(txt|log)$/);
 }
 
 /**
