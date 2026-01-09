@@ -19,6 +19,7 @@
   },
   "app": {
     "title": "LensAI",
+    "home": "홈",
     "tagline": "복잡한 데이터에서 인사이트를 추출하는 모듈식 엔진!",
     "enterFilePaths": "파일 또는 폴더 경로 입력",
     "filePathsPlaceholder": "파일 또는 폴더 경로를 입력하세요 (한 줄에 하나씩)\n예시:\n/Users/username/logs/file.log\n/var/log/app.log",

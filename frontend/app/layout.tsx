@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { TopNavigation } from "@/components/TopNavigation";
 import { loadTheme } from "@/lib/theme-storage";
 import { loadLanguage, type Language } from "@/lib/language-storage";
 import { initLanguage } from "@/lib/i18n";
@@ -68,8 +69,9 @@ export default function RootLayout({
   return (
     <html lang={language}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-10`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-10 pt-16`}
       >
+        <TopNavigation />
         {children}
         <Toaster />
       </body>

@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Code, Server, Info, CheckCircle2, AlertCircle, Activity, Settings, FlaskRound } from "lucide-react";
+import { Code, Server, Info, CheckCircle2, AlertCircle, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { useTranslation } from "@/lib/i18n";
 
 interface VersionResponse {
@@ -19,10 +17,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const MODE = process.env.NODE_ENV === "production" ? "PROD" : "DEV";
 
 interface StatusBarProps {
-  onOpenSettings?: () => void;
+  // No props needed - settings handled by TopNavigation
 }
 
-export function StatusBar({ onOpenSettings }: StatusBarProps) {
+export function StatusBar({}: StatusBarProps) {
   const { t } = useTranslation();
   const [version, setVersion] = useState<string>("...");
   const [versionLoading, setVersionLoading] = useState(true);
@@ -86,33 +84,6 @@ export function StatusBar({ onOpenSettings }: StatusBarProps) {
     <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-gradient-to-r from-primary/5 via-background/95 to-accent/5 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-10 max-w-screen-2xl items-center justify-between px-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
-          {/* Playground Link */}
-          <Link href="/playground" className="no-underline">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 hover:bg-primary/10 flex items-center gap-1.5"
-              title={t("statusBar.playgroundTooltip")}
-            >
-              <FlaskRound className="h-3.5 w-3.5" />
-              <span className="text-xs">{t("playground.title")}</span>
-            </Button>
-          </Link>
-
-          {/* Settings Button */}
-          {onOpenSettings && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onOpenSettings}
-              className="h-7 px-2 hover:bg-primary/10 flex items-center gap-1.5"
-              title={t("statusBar.settingsTooltip")}
-            >
-              <Settings className="h-3.5 w-3.5" />
-              <span className="text-xs">{t("common.settings")}</span>
-            </Button>
-          )}
-
           {/* Version */}
           <div className="flex items-center gap-1.5">
             <Code className="h-3.5 w-3.5" />

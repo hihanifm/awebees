@@ -7,7 +7,6 @@ import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatusBar } from "@/components/StatusBar";
 import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
@@ -47,7 +46,6 @@ export default function Home() {
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [availableSamples, setAvailableSamples] = useState<any[]>([]);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
 
@@ -205,14 +203,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 font-sans">
-      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
-        <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            {t("app.title")}
-          </h1>
-          <p className="text-foreground/80 mt-2 font-medium">{t("app.tagline")}</p>
-        </div>
-
+      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border pt-8">
         {/* Backend Errors Banner */}
         {backendErrors.length > 0 && (
           <section>
@@ -311,18 +302,14 @@ export default function Home() {
               <ResultsPanel 
                 analysisResponse={analysisResponse} 
                 loading={analyzing}
-                onOpenSettings={() => setSettingsOpen(true)}
               />
             </section>
           )}
         </div>
       </main>
 
-      {/* Settings Dialog */}
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-
-      {/* Status Bar with Settings Button */}
-      <StatusBar onOpenSettings={() => setSettingsOpen(true)} />
+      {/* Status Bar */}
+      <StatusBar />
     </div>
   );
 }

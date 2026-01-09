@@ -19,6 +19,7 @@
   },
   "app": {
     "title": "LensAI",
+    "home": "Home",
     "tagline": "A modular engine for extracting insights from messy data!",
     "enterFilePaths": "Enter File or Folder Paths",
     "filePathsPlaceholder": "Enter file or folder paths (one per line)\nExample:\n/Users/username/logs/file.log\n/var/log/app.log",

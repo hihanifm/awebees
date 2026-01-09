@@ -8,14 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { AnalysisResponse } from "@/lib/api-types";
 import { analyzeWithAI, getAIConfig } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
-import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, Settings, AlertCircle, Check } from "lucide-react";
+import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, AlertCircle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
 
 interface ResultsPanelProps {
   analysisResponse: AnalysisResponse;
   loading?: boolean;
-  onOpenSettings?: () => void;
 }
 
 interface AIAnalysisState {
@@ -25,7 +24,7 @@ interface AIAnalysisState {
   executionTime?: number; // Time taken in seconds
 }
 
-export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: ResultsPanelProps) {
+export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
   const { t } = useTranslation();
   const [aiStates, setAiStates] = useState<Record<string, AIAnalysisState>>({});
   const [promptTypes, setPromptTypes] = useState<Record<string, string>>({});
@@ -465,17 +464,6 @@ export function ResultsPanel({ analysisResponse, loading, onOpenSettings }: Resu
                                       <li>Provide your API Key</li>
                                     </ul>
                                   </div>
-                                  {onOpenSettings && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={onOpenSettings}
-                                      className="mt-2 border-amber-300 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
-                                    >
-                                      <Settings className="mr-2 h-4 w-4" />
-                                      Open Settings
-                                    </Button>
-                                  )}
                                 </div>
                               </div>
                             </div>

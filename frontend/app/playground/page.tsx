@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -13,9 +14,7 @@ import { PromptManager } from "@/components/playground/PromptManager";
 import { apiClient, getAIConfig } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
 import { FilterResult, AISystemPrompts } from "@/lib/api-types";
-import { Play, Sparkles, ArrowLeft, Settings, AlertCircle, Search, FileText, X } from "lucide-react";
-import Link from "next/link";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { Play, Sparkles, AlertCircle, Search, FileText, X, ArrowLeft } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
 const STORAGE_KEYS = {
@@ -57,7 +56,6 @@ export default function PlaygroundPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiExecutionTime, setAiExecutionTime] = useState<number | undefined>(undefined);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [defaultPrompts, setDefaultPrompts] = useState<AISystemPrompts>({
     summarize: "",
@@ -549,15 +547,6 @@ export default function PlaygroundPage() {
                             <li>Provide your API Key</li>
                           </ul>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSettingsOpen(true)}
-                          className="mt-2 border-amber-300 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
-                        >
-                          <Settings className="mr-2 h-4 w-4" />
-                          Open Settings
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -662,15 +651,6 @@ export default function PlaygroundPage() {
                           <li>{t("playground.provideAPIKey")}</li>
                         </ul>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSettingsOpen(true)}
-                        className="mt-2 border-amber-300 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
-                      >
-                        <Settings className="mr-2 h-4 w-4" />
-                        {t("playground.openSettings")}
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -695,8 +675,7 @@ export default function PlaygroundPage() {
         </Tabs>
       </main>
 
-      <StatusBar onOpenSettings={() => setSettingsOpen(true)} />
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <StatusBar />
     </div>
   );
 }
