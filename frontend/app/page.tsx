@@ -243,16 +243,16 @@ export default function Home() {
                     onValueChange={setSelectedSampleId}
                     disabled={analyzing}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full text-left">
                       <SelectValue placeholder={t("app.selectSamplePlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {availableSamples.map((sample) => (
                         <SelectItem key={sample.id} value={sample.id}>
-                          <div className="flex flex-col">
+                          <div className="flex flex-col items-start text-left">
                             <span className="font-medium">{sample.name}</span>
                             {sample.description && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground text-left">
                                 {sample.description}
                               </span>
                             )}
