@@ -21,9 +21,9 @@ Get up and running with LensAI in minutes! This guide follows a progressive appr
 2. Navigate to the **"Insights"** tab
 3. In the "Insight Paths" section, enter the path to your LensInsights repository:
    ```
-   <local-github-url>
+   <local-path>
    ```
-   *(Replace `<local-github-url>` with the actual path to your LensInsights repository, e.g., `/Users/username/LensInsights` or `C:\Users\username\LensInsights`)*
+   *(Replace `<local-path>` with the actual path to your LensInsights repository, e.g., `/Users/username/LensInsights` or `C:\Users\username\LensInsights`)*
 4. Click **"Add Path"**
 5. Click **"Refresh"** to load all insights from the repository
 
