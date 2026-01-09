@@ -158,11 +158,15 @@ class PluginManager:
                         insight_config = getattr(module, 'INSIGHT_CONFIG')
                         process_results_fn = getattr(module, 'process_results', None)
                         
-                        # Create ConfigBasedInsight instance
+                        # Create ConfigBasedInsight instance with file path info for ID generation
+                        # For external insights, insights_root is the external root path
                         instance = ConfigBasedInsight(
                             config=insight_config,
                             process_results_fn=process_results_fn,
-                            module_name=module_name
+                            module_name=module_name,
+                            file_path=file_path,
+                            insights_root=root_path,
+                            source=source
                         )
                         
                         # Override folder from config if specified
@@ -269,11 +273,14 @@ class PluginManager:
                         insight_config = getattr(module, 'INSIGHT_CONFIG')
                         process_results_fn = getattr(module, 'process_results', None)
                         
-                        # Create ConfigBasedInsight instance
+                        # Create ConfigBasedInsight instance with file path info for ID generation
                         instance = ConfigBasedInsight(
                             config=insight_config,
                             process_results_fn=process_results_fn,
-                            module_name=module_name
+                            module_name=module_name,
+                            file_path=file_path,
+                            insights_root=root_path,
+                            source=source
                         )
                         
                         # Override folder from config if specified
@@ -344,17 +351,27 @@ class PluginManager:
             folder: Folder name where the insight is located (None for root-level)
             source: Source identifier (built-in or external path)
         """
+        # IDs are now auto-generated from file paths, so they should be unique by construction
+        # If somehow a conflict occurs, log an error and skip registration
         if insight.id in self._insights:
-            warning_msg = f"Insight {insight.id} is already registered, overwriting"
-            logger.warning(warning_msg)
+            existing_source = self._insight_sources.get(insight.id)
+            error_msg = (
+                f"Duplicate insight ID '{insight.id}' detected. "
+                f"This should not happen as IDs are generated from file paths. "
+                f"Existing: {existing_source}, New: {source}. "
+                f"Skipping registration of duplicate."
+            )
+            logger.error(error_msg)
             self._errors.append(ErrorEvent(
                 type="duplicate_id",
                 message=f"Duplicate insight ID: {insight.id}",
-                severity="warning",
-                details=f"Insight with ID '{insight.id}' was already registered and is being overwritten",
+                severity="error",
+                details=error_msg,
                 folder=folder,
                 insight_id=insight.id
             ))
+            return
+        
         self._insights[insight.id] = insight
         self._insight_folders[insight.id] = folder
         self._insight_sources[insight.id] = source

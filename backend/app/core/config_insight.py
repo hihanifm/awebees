@@ -2,6 +2,8 @@
 
 import re
 import logging
+import hashlib
+from pathlib import Path
 from typing import List, Optional, Callable, Awaitable, Dict, Any
 import asyncio
 
@@ -22,7 +24,7 @@ class ConfigBasedInsight(Insight):
     Example:
         INSIGHT_CONFIG = {
             "metadata": {
-                "id": "my_insight",
+                # ID is auto-generated from file path - no need to specify
                 "name": "My Insight",
                 "description": "Detects something interesting",
                 "folder": "general"
@@ -48,7 +50,10 @@ class ConfigBasedInsight(Insight):
         self,
         config: Dict[str, Any],
         process_results_fn: Optional[Callable[[FilterResult], Dict[str, Any]]] = None,
-        module_name: Optional[str] = None
+        module_name: Optional[str] = None,
+        file_path: Optional[Path] = None,
+        insights_root: Optional[Path] = None,
+        source: str = "built-in"
     ):
         """
         Initialize config-based insight.
@@ -57,6 +62,9 @@ class ConfigBasedInsight(Insight):
             config: INSIGHT_CONFIG dictionary with metadata and filters
             process_results_fn: Optional function to post-process filtered results
             module_name: Optional module name for logging
+            file_path: Path to the insight file (for auto-generating ID)
+            insights_root: Root directory of insights (for auto-generating ID)
+            source: Source identifier ("built-in" or external path)
         """
         self._config = config
         self._process_results_fn = process_results_fn
@@ -67,7 +75,26 @@ class ConfigBasedInsight(Insight):
         
         # Extract metadata
         metadata = config.get("metadata", {})
-        self._id = metadata.get("id")
+        
+        # Warn if ID is provided (deprecated)
+        if "id" in metadata:
+            logger.warning(
+                f"ID field in config is deprecated and will be ignored. "
+                f"ID is auto-generated from file path. Found ID: '{metadata.get('id')}'"
+            )
+        
+        # Generate ID from file path if available, otherwise use fallback
+        if file_path and insights_root:
+            self._id = self._generate_id_from_path(file_path, insights_root, source)
+        else:
+            # Fallback: try to use ID from config if provided (for backward compatibility during transition)
+            self._id = metadata.get("id", "unknown_insight")
+            if self._id == "unknown_insight":
+                logger.warning(
+                    f"Could not generate ID from file path (file_path or insights_root not provided). "
+                    f"Using fallback ID. Please ensure file_path and insights_root are passed to constructor."
+                )
+        
         self._name = metadata.get("name")
         self._description = metadata.get("description", "")
         self._folder = metadata.get("folder")
@@ -111,8 +138,7 @@ class ConfigBasedInsight(Insight):
             raise ValueError("Config must contain 'metadata' section")
         
         metadata = self._config["metadata"]
-        if "id" not in metadata:
-            raise ValueError("Config metadata must contain 'id'")
+        # ID is no longer required - it's auto-generated from file path
         if "name" not in metadata:
             raise ValueError("Config metadata must contain 'name'")
         
@@ -122,6 +148,52 @@ class ConfigBasedInsight(Insight):
         filters = self._config["filters"]
         if "line_pattern" not in filters:
             raise ValueError("Config filters must contain 'line_pattern'")
+    
+    @staticmethod
+    def _normalize_for_id(text: str) -> str:
+        """Normalize text for use in ID: lowercase, alphanumeric + underscores only."""
+        return re.sub(r'[^a-z0-9]+', '_', text.lower()).strip('_')
+    
+    @staticmethod
+    def _generate_id_from_path(
+        file_path: Path,
+        insights_root: Path,
+        source: str
+    ) -> str:
+        """
+        Generate unique ID from file path.
+        
+        Args:
+            file_path: Full path to insight file
+            insights_root: Root of insights directory
+            source: "built-in" or external path
+            
+        Returns:
+            Generated unique ID
+        """
+        # Get relative path from insights root
+        try:
+            relative_path = file_path.relative_to(insights_root)
+        except ValueError:
+            # File not under root (external), use absolute path
+            relative_path = file_path
+        
+        # Remove .py extension
+        relative_stem = relative_path.with_suffix('')
+        
+        # Convert path parts to ID components
+        if source == "built-in":
+            # Built-in: use all path components
+            parts = [p for p in relative_stem.parts if p != '.']
+            normalized_parts = [ConfigBasedInsight._normalize_for_id(p) for p in parts]
+            return '_'.join(normalized_parts) if normalized_parts else 'insight'
+        else:
+            # External: include source hash for uniqueness
+            source_hash = hashlib.md5(source.encode()).hexdigest()[:8]
+            parts = [p for p in relative_stem.parts if p != '.']
+            normalized_parts = [ConfigBasedInsight._normalize_for_id(p) for p in parts]
+            base_id = '_'.join(normalized_parts) if normalized_parts else 'insight'
+            return f"ext_{source_hash}_{base_id}"
     
     def _parse_regex_flags(self, flags_str: str) -> int:
         """
@@ -169,7 +241,7 @@ class ConfigBasedInsight(Insight):
     
     @property
     def id(self) -> str:
-        """Return insight ID from config."""
+        """Return insight ID (auto-generated from file path)."""
         return self._id
     
     @property

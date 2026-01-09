@@ -12,7 +12,7 @@ class Insight(ABC):
     @property
     @abstractmethod
     def id(self) -> str:
-        """Unique identifier for this insight."""
+        """Unique identifier for this insight (auto-generated from file path)."""
         pass
     
     @property

@@ -2,7 +2,6 @@
 
 INSIGHT_CONFIG = {
     "metadata": {
-        "id": "error_detector",
         "name": "Error Detector",
         "description": "Detects ERROR and FATAL log lines in log files"
     },

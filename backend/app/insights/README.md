@@ -22,6 +22,8 @@ Lens supports two ways to create insights:
 
 Config-based insights are perfect for filtering-based analysis. They eliminate boilerplate and let you focus on the logic.
 
+**Important**: IDs are automatically generated from file paths - you don't need to specify them in your config. This ensures uniqueness and eliminates conflicts when working with multiple insights.
+
 ### Minimal Example
 
 ```python
@@ -29,7 +31,7 @@ Config-based insights are perfect for filtering-based analysis. They eliminate b
 
 INSIGHT_CONFIG = {
     "metadata": {
-        "id": "my_insight",
+        # ID is auto-generated from file path - no need to specify
         "name": "My Insight",
         "description": "Finds interesting patterns"
     },
@@ -62,7 +64,7 @@ logger = logging.getLogger(__name__)
 
 INSIGHT_CONFIG = {
     "metadata": {
-        "id": "error_summary",
+        # ID is auto-generated from file path - no need to specify
         "name": "Error Summary",
         "description": "Analyzes and summarizes error patterns"
     },
@@ -125,7 +127,7 @@ if __name__ == "__main__":
 ```python
 INSIGHT_CONFIG = {
     "metadata": {
-        "id": "unique_id",        # Required: Unique identifier (lowercase, underscores)
+        # ID is auto-generated from file path - no need to specify
         "name": "Display Name",   # Required: Human-readable name
         "description": "..."      # Required: What this insight does
     },
@@ -139,6 +141,11 @@ INSIGHT_CONFIG = {
 - ⚡ Ripgrep mode (10-100x faster, auto-falls back if not installed)
 - 🔤 Case-insensitive matching (ERROR, Error, error all match)
 - 📁 Processes all files in given paths
+- 🆔 **ID is auto-generated from file path** - no need to specify it
+
+**Note**: The ID is automatically generated from your file's location. For example:
+- File at `app/insights/android/crash_detector.py` → ID: `android_crash_detector`
+- File at `app/insights/error_detector.py` → ID: `error_detector`
 
 #### Optional: File Filtering
 
@@ -241,7 +248,7 @@ Add AI configuration to your insight:
 ```python
 INSIGHT_CONFIG = {
     "metadata": {
-        "id": "ai_insight",
+        # ID is auto-generated from file path - no need to specify
         "name": "AI-Enhanced Insight",
         "description": "Detects errors with AI analysis"
     },
@@ -344,7 +351,7 @@ See [AI Setup Guide](../../docs/AI_SETUP.md) for:
 
 INSIGHT_CONFIG = {
     "metadata": {
-        "id": "android_crash_ai",
+        # ID is auto-generated from file path - no need to specify
         "name": "Android Crash Analyzer (AI)",
         "description": "Analyzes Android crashes with AI recommendations"
     },
