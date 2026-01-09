@@ -49,6 +49,16 @@ bump_version() {
     local bump_type=$1
     local current_version=$(get_current_version)
     
+    # Run navigation test before bumping
+    echo "Running navigation tests to verify critical links..."
+    cd "$PROJECT_ROOT/frontend"
+    if ! npm run test:e2e:navigation; then
+        echo "Error: Navigation tests failed. Please fix the issues before bumping version."
+        exit 1
+    fi
+    cd "$PROJECT_ROOT"
+    echo "Navigation tests passed ✓"
+    
     # Remove any pre-release suffix for bumping
     local base_version=$(echo "$current_version" | cut -d'-' -f1)
     IFS='.' read -r -a version_parts <<< "$base_version"
