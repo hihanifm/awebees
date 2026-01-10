@@ -11,7 +11,6 @@ router = APIRouter(prefix="/api/help", tags=["help"])
 
 
 def get_project_root() -> Path:
-    """Get the project root directory."""
     # From backend/app/api/routes/help.py -> backend/app/api/routes -> backend/app/api -> backend/app -> backend -> project_root
     current_file = Path(__file__)
     return current_file.parent.parent.parent.parent.parent
@@ -19,12 +18,6 @@ def get_project_root() -> Path:
 
 @router.get("/", response_class=PlainTextResponse)
 async def get_help():
-    """
-    Get the Quick Start guide markdown content from QUICK_START.md.
-    
-    Returns:
-        The QUICK_START.md file content as plain text.
-    """
     try:
         project_root = get_project_root()
         quickstart_path = project_root / "QUICK_START.md"
@@ -56,15 +49,6 @@ async def get_help():
 
 @router.get("/docs/{file_path:path}")
 async def get_help_doc(file_path: str):
-    """
-    Serve markdown documentation files referenced in the help documentation.
-    
-    Args:
-        file_path: Relative path to the markdown file (e.g., README.md, docs/AI_SETUP.md)
-    
-    Returns:
-        The markdown file content as plain text.
-    """
     try:
         project_root = get_project_root()
         
@@ -130,15 +114,6 @@ async def get_help_doc(file_path: str):
 
 @router.get("/images/{image_name}")
 async def get_help_image(image_name: str):
-    """
-    Serve images referenced in the help documentation.
-    
-    Args:
-        image_name: Name of the image file (e.g., lens_1.png)
-    
-    Returns:
-        The image file as a FileResponse.
-    """
     try:
         project_root = get_project_root()
         image_path = project_root / image_name

@@ -18,13 +18,11 @@ class Insight(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Display name for this insight."""
         pass
     
     @property
     @abstractmethod
     def description(self) -> str:
-        """Description of what this insight does."""
         pass
     
     @abstractmethod
@@ -34,41 +32,14 @@ class Insight(ABC):
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
-        """
-        Analyze the provided log files.
-        
-        Args:
-            file_paths: List of file paths to analyze
-            cancellation_event: Optional asyncio.Event to check for cancellation
-            progress_callback: Optional async callback to emit progress events
-            
-        Returns:
-            InsightResult with the analysis results
-            
-        Raises:
-            CancelledError: If the operation is cancelled
-        
-        """
         pass
     
     @property
     def ai_enabled(self) -> bool:
-        """
-        Whether AI processing is supported for this insight.
-        
-        Returns:
-            True if AI can analyze this insight's results (default: True)
-        """
         return True
     
     @property
     def ai_auto(self) -> bool:
-        """
-        Whether to automatically trigger AI after analysis.
-        
-        Returns:
-            True to auto-trigger AI, False for manual only (default: False)
-        """
         return False
     
     @property
@@ -83,22 +54,10 @@ class Insight(ABC):
     
     @property
     def ai_custom_prompt(self) -> Optional[str]:
-        """
-        Custom AI prompt for this insight (if ai_prompt_type is "custom").
-        
-        Returns:
-            Custom prompt string or None
-        """
         return None
     
     @property
     def ai_prompt_variables(self) -> Optional[dict]:
-        """
-        Variables for AI prompt substitution.
-        
-        Returns:
-            Dictionary of variables or None
-        """
         return None
     
     async def analyze_with_ai(
@@ -108,20 +67,7 @@ class Insight(ABC):
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
         """
-        Analyze files and optionally trigger AI analysis.
-        
-        This is a wrapper around analyze() that:
-        - Calls analyze() to get filtered results  
-        - If ai_auto is true, automatically calls AI analysis
-        - Returns InsightResult with ai_analysis field populated
-        
-        Args:
-            file_paths: List of file paths to analyze
-            cancellation_event: Optional asyncio.Event to check for cancellation
-            progress_callback: Optional async callback to emit progress events
-            
-        Returns:
-            InsightResult with analysis results and optional AI analysis
+        Wrapper around analyze() that automatically triggers AI analysis if ai_auto is True.
         """
         # Call regular analyze
         result = await self.analyze(file_paths, cancellation_event, progress_callback)

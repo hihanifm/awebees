@@ -24,6 +24,5 @@ SAMPLE_FILES = {
 
 
 def get_built_in_samples_dir() -> Path:
-    """Get the path to the built-in samples directory."""
     return SAMPLES_DIR
 

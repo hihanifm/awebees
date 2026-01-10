@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 def extract_sample_files():
-    """Extract sample files on first startup if not already extracted."""
     try:
         # Get backend directory (app/main.py -> app/ -> backend/)
         backend_dir = Path(__file__).parent.parent
@@ -118,7 +117,6 @@ app.include_router(help.router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize plugin manager and discover insights on startup."""
     logger.info("Initializing plugin manager...")
     plugin_manager = get_plugin_manager()
     
@@ -144,7 +142,6 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup on shutdown."""
     logger.info("Shutting down...")
     logger.info("Shutdown complete")
 
@@ -157,7 +154,6 @@ async def health():
 
 @app.get("/api/version")
 async def version():
-    """Get the application version."""
     version_str = get_version()
     logger.info(f"Version endpoint called: {version_str}")
     return {"version": version_str}
@@ -165,7 +161,6 @@ async def version():
 
 @app.get("/api/profiling")
 async def profiling_status():
-    """Get profiling status (whether profiling is enabled)."""
     profiling_enabled = os.getenv("ENABLE_PROFILING", "false").lower() in ("true", "1", "yes")
     return {"enabled": profiling_enabled}
 

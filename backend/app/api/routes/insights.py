@@ -14,13 +14,11 @@ router = APIRouter(prefix="/api/insights", tags=["insights"])
 
 
 class InsightsResponse(BaseModel):
-    """Response with list of available insights."""
     insights: List[InsightMetadata]
 
 
 @router.get("", response_model=InsightsResponse)
 async def list_insights():
-    """Get list of all available insights."""
     logger.debug("Insights API: Received request to list insights")
     plugin_manager = get_plugin_manager()
     insights = plugin_manager.list_insights()

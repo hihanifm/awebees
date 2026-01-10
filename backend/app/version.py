@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_version() -> str:
-    """Get the application version from VERSION file."""
     # Try multiple possible locations for the VERSION file
     # This handles both development and packaged (Windows) environments
     

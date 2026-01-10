@@ -12,7 +12,6 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 def is_ripgrep_available() -> bool:
-    """Check if ripgrep is installed and available."""
     return shutil.which("rg") is not None
 
 def build_ripgrep_command(
@@ -23,20 +22,6 @@ def build_ripgrep_command(
     context_before: int = 0,
     context_after: int = 0
 ) -> str:
-    """
-    Build a ripgrep command string for display purposes.
-    
-    Args:
-        pattern: Regex pattern to search for
-        file_path: Path to the file to search
-        case_insensitive: If True, use case-insensitive matching
-        max_count: Maximum number of matches
-        context_before: Number of lines to show before match
-        context_after: Number of lines to show after match
-        
-    Returns:
-        Command string that can be displayed to users
-    """
     cmd_parts = ["rg", pattern, file_path, "--no-heading", "--no-line-number", "--text"]
     
     if case_insensitive:
@@ -61,24 +46,6 @@ def ripgrep_search(
     context_before: int = 0,
     context_after: int = 0
 ) -> Iterator[str]:
-    """
-    Search for pattern in file using ripgrep.
-    
-    Args:
-        file_path: Path to the file to search
-        pattern: Regex pattern to search for
-        case_insensitive: If True, use case-insensitive matching (default: True)
-        max_count: Maximum number of matches (None for unlimited)
-        context_before: Number of lines to show before match
-        context_after: Number of lines to show after match
-        
-    Yields:
-        Lines matching the pattern
-        
-    Raises:
-        FileNotFoundError: If ripgrep is not installed
-        subprocess.CalledProcessError: If ripgrep fails
-    """
     if not is_ripgrep_available():
         raise FileNotFoundError("ripgrep (rg) is not installed")
     

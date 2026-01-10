@@ -57,20 +57,10 @@ Be specific and practical. Prioritize recommendations by severity."""
     
     @classmethod
     def is_configured(cls) -> bool:
-        """Check if AI is properly configured."""
         return bool(cls.API_KEY) and cls.ENABLED
     
     @classmethod
     def to_dict(cls, include_sensitive: bool = False) -> Dict[str, Any]:
-        """
-        Convert configuration to dictionary.
-        
-        Args:
-            include_sensitive: Whether to include sensitive data (API key)
-        
-        Returns:
-            Configuration as dictionary
-        """
         config = {
             "enabled": cls.ENABLED,
             "base_url": cls.BASE_URL,
@@ -95,7 +85,6 @@ Be specific and practical. Prioritize recommendations by severity."""
     
     @classmethod
     def _get_env_file_path(cls) -> Path:
-        """Get the path to the .env file."""
         # Start from this file's location and go up to backend directory
         backend_dir = Path(__file__).parent.parent.parent
         return backend_dir / ".env"
@@ -347,7 +336,6 @@ class AppConfig:
     
     @classmethod
     def get_log_level(cls) -> str:
-        """Get current log level."""
         return cls.LOG_LEVEL.upper()
     
     @classmethod
@@ -381,7 +369,6 @@ class AppConfig:
     
     @classmethod
     def _get_env_file_path(cls) -> Path:
-        """Get the path to the .env file."""
         # Start from this file's location and go up to backend directory
         backend_dir = Path(__file__).parent.parent.parent
         return backend_dir / ".env"

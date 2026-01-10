@@ -38,7 +38,6 @@ class SampleInfo:
         self.recommended_insights = recommended_insights or []
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for API response."""
         return {
             "id": self.id,
             "name": self.name,

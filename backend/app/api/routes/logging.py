@@ -13,29 +13,20 @@ logger = logging.getLogger(__name__)
 
 
 class LoggingConfigUpdate(BaseModel):
-    """Request model for updating logging configuration."""
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     
     @validator("log_level")
     def validate_log_level(cls, v):
-        """Ensure log level is uppercase."""
         return v.upper()
 
 
 class LoggingConfigResponse(BaseModel):
-    """Response model for logging configuration."""
     log_level: str
     available_levels: list[str]
 
 
 @router.get("/config", response_model=LoggingConfigResponse)
 async def get_logging_config():
-    """
-    Get current logging configuration.
-    
-    Returns:
-        Current log level and available log levels
-    """
     logger.debug("Getting logging configuration")
     return LoggingConfigResponse(
         log_level=AppConfig.get_log_level(),
@@ -45,18 +36,6 @@ async def get_logging_config():
 
 @router.put("/config", response_model=LoggingConfigResponse)
 async def update_logging_config(config: LoggingConfigUpdate):
-    """
-    Update logging configuration.
-    
-    Args:
-        config: New logging configuration
-        
-    Returns:
-        Updated logging configuration
-        
-    Raises:
-        HTTPException: If log level is invalid
-    """
     try:
         logger.info(f"Updating log level to: {config.log_level}")
         AppConfig.update_log_level(config.log_level, persist=True)

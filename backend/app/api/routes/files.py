@@ -49,12 +49,10 @@ def normalize_path(path: str) -> str:
 
 
 class FileSelectRequest(BaseModel):
-    """Request to select files/folders."""
     paths: List[str]
 
 
 class FileSelectResponse(BaseModel):
-    """Response with selected files."""
     files: List[str]
     count: int
 

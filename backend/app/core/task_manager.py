@@ -103,7 +103,6 @@ class TaskManager:
             logger.debug(f"TaskManager: Cleaned up task {task_id}")
     
     def cleanup_old_tasks(self):
-        """Remove completed/cancelled tasks older than cleanup_interval."""
         current_time = time.time()
         tasks_to_remove = []
         
@@ -125,7 +124,6 @@ _task_manager: Optional[TaskManager] = None
 
 
 def get_task_manager() -> TaskManager:
-    """Get the global task manager instance."""
     global _task_manager
     if _task_manager is None:
         _task_manager = TaskManager()

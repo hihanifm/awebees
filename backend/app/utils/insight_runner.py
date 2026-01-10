@@ -43,7 +43,6 @@ def check_venv_and_reexecute():
 
 
 def print_progress(message: str, verbose: bool = False):
-    """Print progress message to console."""
     if verbose:
         print(f"[PROGRESS] {message}", file=sys.stderr)
     else:

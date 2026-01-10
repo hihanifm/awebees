@@ -28,7 +28,6 @@ class InsightPathsConfig:
         self.load()
     
     def load(self) -> None:
-        """Load paths from config file."""
         if self.config_file.exists():
             try:
                 with open(self.config_file, 'r') as f:
@@ -42,7 +41,6 @@ class InsightPathsConfig:
             logger.info("No insight paths config file found, starting with empty list")
     
     def save(self) -> None:
-        """Save paths to config file."""
         try:
             # Ensure parent directory exists
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
@@ -54,16 +52,9 @@ class InsightPathsConfig:
             logger.error(f"Failed to save insight paths config: {e}")
     
     def get_paths(self) -> List[str]:
-        """Get all external paths."""
         return self._paths.copy()
     
     def add_path(self, path: str) -> None:
-        """
-        Add a new external path.
-        
-        Args:
-            path: Directory path to add
-        """
         if path not in self._paths:
             self._paths.append(path)
             self.save()
@@ -72,12 +63,6 @@ class InsightPathsConfig:
             logger.warning(f"Path already exists: {path}")
     
     def remove_path(self, path: str) -> None:
-        """
-        Remove an external path.
-        
-        Args:
-            path: Directory path to remove
-        """
         if path in self._paths:
             self._paths.remove(path)
             self.save()
@@ -86,7 +71,6 @@ class InsightPathsConfig:
             logger.warning(f"Path not found: {path}")
     
     def clear_paths(self) -> None:
-        """Clear all external paths."""
         self._paths.clear()
         self.save()
         logger.info("Cleared all external insight paths")

@@ -23,27 +23,23 @@ router = APIRouter(prefix="/api/analyze", tags=["analyze"])
 
 
 class AnalysisRequest(BaseModel):
-    """Request to execute analysis."""
     insight_ids: List[str]
     file_paths: List[str]
 
 
 class AnalysisResultItem(BaseModel):
-    """Result item for a single insight."""
     insight_id: str
     result: InsightResult
     execution_time: float = 0.0  # Execution time in seconds
 
 
 class AnalysisResponse(BaseModel):
-    """Response with analysis results."""
     results: List[AnalysisResultItem]
     total_time: float = 0.0  # Total execution time in seconds
     insights_count: int = 0  # Number of insights executed
 
 
 def _format_sse_event(data: dict) -> str:
-    """Format data as SSE event."""
     # Convert datetime objects to ISO format strings for JSON serialization
     def json_serial(obj):
         if isinstance(obj, datetime):
@@ -59,7 +55,6 @@ async def _run_analysis_with_progress(
     request: AnalysisRequest,
     progress_queue: asyncio.Queue
 ) -> AnalysisResponse:
-    """Run analysis and emit progress events."""
     task_manager = get_task_manager()
     task = task_manager.get_task(task_id)
     if not task:
@@ -186,7 +181,6 @@ async def _stream_analysis_events(
     request: AnalysisRequest,
     progress_queue: asyncio.Queue
 ) -> AsyncGenerator[str, None]:
-    """Stream analysis progress events as SSE."""
     try:
         # Emit immediate event to signal analysis has started
         yield _format_sse_event(ProgressEvent(
@@ -357,7 +351,6 @@ async def analyze(request: AnalysisRequest):
 # ============================================================================
 
 class AIAnalyzeRequest(BaseModel):
-    """Request for AI analysis."""
     content: str
     prompt_type: str = "explain"  # summarize, explain, recommend, custom
     custom_prompt: Optional[str] = None
@@ -365,7 +358,6 @@ class AIAnalyzeRequest(BaseModel):
 
 
 class AIConfigUpdate(BaseModel):
-    """Request to update AI configuration."""
     enabled: Optional[bool] = None
     base_url: Optional[str] = None
     api_key: Optional[str] = None
@@ -401,7 +393,6 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
         limited_content = request.content
     
     async def stream_ai_response() -> AsyncGenerator[str, None]:
-        """Generate SSE stream from AI service."""
         try:
             ai_service = get_ai_service()
             

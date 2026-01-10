@@ -17,7 +17,6 @@ router = APIRouter(prefix="/api/playground", tags=["playground"])
 
 
 class PlaygroundFilterRequest(BaseModel):
-    """Request to filter a file with ripgrep."""
     file_path: str
     pattern: str
     custom_flags: Optional[str] = None  # Custom ripgrep flags
@@ -28,7 +27,6 @@ class PlaygroundFilterRequest(BaseModel):
 
 
 class FilterResult(BaseModel):
-    """Result of a playground filter operation."""
     lines: List[str]
     total_count: int
     truncated: bool
@@ -38,21 +36,6 @@ class FilterResult(BaseModel):
 
 @router.post("/filter", response_model=FilterResult)
 async def filter_file(request: PlaygroundFilterRequest):
-    """
-    Execute ripgrep filter on a single file.
-    
-    This endpoint allows users to experiment with ripgrep patterns
-    on their files in real-time.
-    
-    Args:
-        request: Filter request with file path and pattern
-        
-    Returns:
-        Filtered results with metadata
-        
-    Raises:
-        HTTPException: If file is invalid or ripgrep fails
-    """
     logger.info(f"Playground Filter: pattern='{request.pattern}', file='{request.file_path}'")
     
     # Validate file path

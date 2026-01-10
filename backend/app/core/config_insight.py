@@ -130,7 +130,6 @@ class ConfigBasedInsight(Insight):
             logger.debug(f"ConfigBasedInsight AI: enabled={self._ai_enabled}, auto={self._ai_auto}, prompt_type={self._ai_prompt_type}")
     
     def _validate_config(self) -> None:
-        """Validate config structure and required fields."""
         if not isinstance(self._config, dict):
             raise ValueError("Config must be a dictionary")
         
@@ -241,52 +240,38 @@ class ConfigBasedInsight(Insight):
     
     @property
     def id(self) -> str:
-        """Return insight ID (auto-generated from file path)."""
         return self._id
     
     @property
     def name(self) -> str:
-        """Return insight name from config."""
         return self._name
     
     @property
     def description(self) -> str:
-        """Return insight description from config."""
         return self._description
     
     @property
     def folder(self) -> Optional[str]:
-        """Return insight folder from config."""
         return self._folder
     
     @property
     def ai_enabled(self) -> bool:
-        """Whether AI processing is supported for this insight."""
         return self._ai_enabled
     
     @property
     def ai_auto(self) -> bool:
-        """Whether to automatically trigger AI after analysis."""
         return self._ai_auto
     
     @property
     def ai_prompt_type(self) -> str:
-        """Default AI prompt type for this insight."""
         return self._ai_prompt_type
     
     @property
     def ai_custom_prompt(self) -> Optional[str]:
-        """Custom AI prompt for this insight (if ai_prompt_type is "custom")."""
         return self._ai_custom_prompt
     
     @property
     def ai_prompt_variables(self) -> Optional[dict]:
-        """
-        Variables for AI prompt substitution.
-        
-        Returns:
-            Dictionary of variables including result metadata and insight info
-        """
         # These will be populated at runtime from the analysis result
         return {
             "insight_name": self._name,

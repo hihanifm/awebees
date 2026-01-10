@@ -17,7 +17,6 @@ router = APIRouter(prefix="/api/errors", tags=["errors"])
 
 
 def _format_sse_event(data: dict) -> str:
-    """Format data as SSE event."""
     # Convert datetime objects to ISO format strings for JSON serialization
     def json_serial(obj):
         if isinstance(obj, datetime):
@@ -29,7 +28,6 @@ def _format_sse_event(data: dict) -> str:
 
 
 async def _stream_errors() -> AsyncGenerator[str, None]:
-    """Stream backend errors as SSE."""
     try:
         plugin_manager = get_plugin_manager()
         

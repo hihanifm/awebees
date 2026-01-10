@@ -26,19 +26,16 @@ class FilterResult:
     """Result of filtering operations with filtered lines grouped by file."""
     
     def __init__(self):
-        """Initialize empty filter result."""
         self._lines_by_file: Dict[str, List[str]] = {}
         self._commands_by_file: Dict[str, str] = {}  # Store execution command per file
         self._execution_method: Optional[str] = None  # Store execution method used
     
     def add_line(self, file_path: str, line: str) -> None:
-        """Add a filtered line for a file."""
         if file_path not in self._lines_by_file:
             self._lines_by_file[file_path] = []
         self._lines_by_file[file_path].append(line)
     
     def set_command(self, file_path: str, command: str) -> None:
-        """Set the execution command for a file."""
         self._commands_by_file[file_path] = command
     
     def set_execution_method(self, method: str) -> None:
@@ -46,34 +43,27 @@ class FilterResult:
         self._execution_method = method
     
     def get_command(self, file_path: str) -> Optional[str]:
-        """Get the execution command for a file."""
         return self._commands_by_file.get(file_path)
     
     def get_commands(self) -> Dict[str, str]:
-        """Get all execution commands grouped by file path."""
         return self._commands_by_file.copy()
     
     def get_execution_method(self) -> Optional[str]:
-        """Get the execution method used."""
         return self._execution_method
     
     def get_lines(self) -> List[str]:
-        """Get all filtered lines as a flat list."""
         all_lines = []
         for lines in self._lines_by_file.values():
             all_lines.extend(lines)
         return all_lines
     
     def get_lines_by_file(self) -> Dict[str, List[str]]:
-        """Get filtered lines grouped by file path."""
         return self._lines_by_file.copy()
     
     def get_file_count(self) -> int:
-        """Get number of files with matching lines."""
         return len(self._lines_by_file)
     
     def get_total_line_count(self) -> int:
-        """Get total number of filtered lines."""
         return sum(len(lines) for lines in self._lines_by_file.values())
 
 
@@ -81,18 +71,11 @@ class FileFilter:
     """Builder class for filtering files from folders with regex patterns."""
     
     def __init__(self, file_paths: List[str]):
-        """
-        Initialize file filter with file/folder paths.
-        
-        Args:
-            file_paths: List of file or folder paths
-        """
         self._file_paths = file_paths
         self._filtered_files: Optional[List[str]] = None
         self._file_patterns: List[str] = []
     
     def _list_files_sync(self, folder_path: str) -> List[str]:
-        """Synchronously list files in a folder (helper for sync contexts)."""
         folder = Path(folder_path)
         if not folder.is_dir():
             return []
@@ -365,7 +348,6 @@ class LineFilter:
         file_path: str,
         cancellation_event: Optional[asyncio.Event] = None
     ) -> tuple[List[str], str]:
-        """Filter lines using line-by-line reading mode."""
         matching_lines = []
         total_lines_checked = 0
         
@@ -390,7 +372,6 @@ class LineFilter:
         file_path: str,
         cancellation_event: Optional[asyncio.Event] = None
     ) -> tuple[List[str], str]:
-        """Filter lines using chunk-based reading mode."""
         matching_lines = []
         chunk_buffer = ""  # Buffer for incomplete lines at chunk boundaries
         chunk_count = 0
@@ -450,7 +431,6 @@ class LineFilter:
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> tuple[List[str], str]:
-        """Filter lines using ripgrep for ultra-fast pattern matching."""
         matching_lines = []
         
         logger.debug(f"LineFilter: Starting ripgrep filtering for {file_path}")
@@ -475,7 +455,6 @@ class LineFilter:
             loop = asyncio.get_event_loop()
             
             def run_ripgrep():
-                """Run ripgrep search and collect results."""
                 results = []
                 try:
                     for line in ripgrep_search(

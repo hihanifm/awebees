@@ -48,7 +48,6 @@ class PluginManager:
         self._discover_insights_recursive(insights_path, insights_path, source="built-in")
     
     def discover_all_insights(self) -> None:
-        """Discover insights from built-in and all external paths."""
         # Clear existing insights
         self._insights.clear()
         self._insight_folders.clear()
@@ -423,20 +422,12 @@ class PluginManager:
         ]
     
     def get_all_insights(self) -> Dict[str, Insight]:
-        """Get all registered insights as a dictionary."""
         return self._insights.copy()
     
     def get_errors(self) -> List[ErrorEvent]:
-        """
-        Get all errors collected during insight discovery.
-        
-        Returns:
-            List of error events
-        """
         return self._errors.copy()
     
     def clear_errors(self) -> None:
-        """Clear all tracked errors."""
         self._errors.clear()
 
 
@@ -445,7 +436,6 @@ _plugin_manager: PluginManager = None
 
 
 def get_plugin_manager() -> PluginManager:
-    """Get the global plugin manager instance."""
     global _plugin_manager
     if _plugin_manager is None:
         _plugin_manager = PluginManager()

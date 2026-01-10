@@ -44,11 +44,9 @@ class AIService:
             logger.warning("AI Service: No API key configured. AI features will be disabled.")
     
     def is_configured(self) -> bool:
-        """Check if AI service is properly configured."""
         return bool(self.api_key)
     
     def get_system_prompt(self, prompt_type: str) -> str:
-        """Get predefined system prompt by type."""
         prompts = {
             "summarize": """You are a log analysis assistant. Summarize the following log analysis results concisely.
 Focus on:
@@ -448,7 +446,6 @@ _ai_service: Optional[AIService] = None
 
 
 def get_ai_service() -> AIService:
-    """Get or create the global AI service instance."""
     global _ai_service
     if _ai_service is None:
         from app.core.config import AIConfig
@@ -464,7 +461,6 @@ def get_ai_service() -> AIService:
 
 
 def reset_ai_service():
-    """Reset the global AI service instance (useful for testing or config changes)."""
     global _ai_service
     _ai_service = None
 

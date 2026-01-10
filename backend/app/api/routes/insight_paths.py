@@ -15,24 +15,20 @@ router = APIRouter(prefix="/api/insight-paths", tags=["insight-paths"])
 
 
 class InsightPathRequest(BaseModel):
-    """Request model for adding/removing insight paths."""
     path: str
 
 
 class InsightPathsResponse(BaseModel):
-    """Response model for listing insight paths."""
     paths: List[str]
 
 
 class InsightSourceInfo(BaseModel):
-    """Model for insight source information."""
     insight_id: str
     source: str
 
 
 @router.get("/", response_model=InsightPathsResponse)
 async def get_insight_paths():
-    """Get all configured external insight paths."""
     try:
         config = InsightPathsConfig()
         return InsightPathsResponse(paths=config.get_paths())
@@ -43,18 +39,6 @@ async def get_insight_paths():
 
 @router.post("/add")
 async def add_insight_path(request: InsightPathRequest):
-    """
-    Add a new external insight path.
-    
-    Args:
-        request: Request containing the path to add
-        
-    Returns:
-        Success message with status
-        
-    Raises:
-        HTTPException: If path is invalid or addition fails
-    """
     try:
         path = Path(request.path)
         
@@ -96,15 +80,6 @@ async def add_insight_path(request: InsightPathRequest):
 
 @router.post("/remove")
 async def remove_insight_path(request: InsightPathRequest):
-    """
-    Remove an external insight path.
-    
-    Args:
-        request: Request containing the path to remove
-        
-    Returns:
-        Success message with status
-    """
     try:
         # Remove path
         config = InsightPathsConfig()
@@ -129,12 +104,6 @@ async def remove_insight_path(request: InsightPathRequest):
 
 @router.post("/refresh")
 async def refresh_insights():
-    """
-    Manually refresh insights from all paths.
-    
-    Returns:
-        Status message with insights count
-    """
     try:
         plugin_manager = get_plugin_manager()
         plugin_manager.discover_all_insights()
@@ -154,12 +123,6 @@ async def refresh_insights():
 
 @router.get("/sources")
 async def get_insight_sources():
-    """
-    Get source information for all insights.
-    
-    Returns:
-        List of insights with their source paths
-    """
     try:
         plugin_manager = get_plugin_manager()
         sources = []
