@@ -508,51 +508,49 @@ export default function PlaygroundPage() {
             </section>
 
             {/* Step 4: AI Prompts */}
-            {filterResult && filterResult.lines.length > 0 && (
-              <section className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">
-                  4. {t("playground.configureAIPrompts")}
-                </h2>
-                <PromptManager
-                  systemPrompt={systemPrompt}
-                  userPrompt={userPrompt}
-                  onSystemPromptChange={setSystemPrompt}
-                  onUserPromptChange={setUserPrompt}
-                  defaultPrompts={defaultPrompts}
-                />
-                <Button
-                  onClick={handleFilterAIAnalyze}
-                  disabled={aiStreaming || !systemPrompt.trim() || !userPrompt.trim()}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
-                >
-                  <Sparkles className="h-4 w-4 mr-2 text-white" />
-                  {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
-                </Button>
-                {configError && (
-                  <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                          AI Configuration Required
-                        </p>
-                        <p className="text-sm text-amber-800 dark:text-amber-200">
-                          {configError}
-                        </p>
-                        <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                          <p>To use AI analysis, please configure:</p>
-                          <ul className="list-disc list-inside space-y-0.5 ml-2">
-                            <li>Enable AI processing</li>
-                            <li>Set the AI Base URL (e.g., https://api.openai.com/v1)</li>
-                            <li>Provide your API Key</li>
-                          </ul>
-                        </div>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold text-foreground">
+                4. {t("playground.configureAIPrompts")}
+              </h2>
+              <PromptManager
+                systemPrompt={systemPrompt}
+                userPrompt={userPrompt}
+                onSystemPromptChange={setSystemPrompt}
+                onUserPromptChange={setUserPrompt}
+                defaultPrompts={defaultPrompts}
+              />
+              <Button
+                onClick={handleFilterAIAnalyze}
+                disabled={aiStreaming || !filterResult || filterResult.lines.length === 0 || !systemPrompt.trim() || !userPrompt.trim()}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:shadow-md font-bold justify-center"
+              >
+                <Sparkles className="h-4 w-4 mr-2 text-white" />
+                {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
+              </Button>
+              {configError && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                        AI Configuration Required
+                      </p>
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        {configError}
+                      </p>
+                      <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                        <p>To use AI analysis, please configure:</p>
+                        <ul className="list-disc list-inside space-y-0.5 ml-2">
+                          <li>Enable AI processing</li>
+                          <li>Set the AI Base URL (e.g., https://api.openai.com/v1)</li>
+                          <li>Provide your API Key</li>
+                        </ul>
                       </div>
                     </div>
                   </div>
-                )}
-              </section>
-            )}
+                </div>
+              )}
+            </section>
 
             {/* Step 5: AI Response */}
             {(aiResponse || aiStreaming || aiError) && (
@@ -627,7 +625,7 @@ export default function PlaygroundPage() {
               <Button
                 onClick={handleTextAIAnalyze}
                 disabled={aiStreaming || !textInput.trim() || !systemPrompt.trim() || !userPrompt.trim()}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:shadow-md font-bold justify-center"
               >
                 <Sparkles className="h-4 w-4 mr-2 text-white" />
                 {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
