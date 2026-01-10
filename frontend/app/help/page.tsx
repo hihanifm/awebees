@@ -15,14 +15,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 let mermaidInitialized = false;
 
 // Image Component with Error Handling
+// Note: This component is used within ReactMarkdown's img component.
+// ReactMarkdown wraps images in <p> tags, but our p component checks for img elements
+// and doesn't wrap them, so block-level elements (like div) are safe to return.
 function MarkdownImage({ src, alt, ...props }: { src?: string; alt?: string; [key: string]: any }) {
   const [imageError, setImageError] = useState(false);
   
   if (!src) return null;
   
   if (imageError) {
+    // Return a block-level element - the p component will detect img and not wrap it
     return (
-      <div className="rounded-lg border border-border bg-muted p-4 flex items-center gap-2 text-muted-foreground my-6">
+      <div className="rounded-lg border border-border bg-muted p-4 flex items-center gap-2 text-muted-foreground my-4">
         <span className="text-sm">⚠️ Image not found: {alt || src}</span>
       </div>
     );
@@ -32,7 +36,7 @@ function MarkdownImage({ src, alt, ...props }: { src?: string; alt?: string; [ke
     <img 
       src={src} 
       alt={alt || ''} 
-      className="max-w-full h-auto rounded-lg border border-border shadow-sm my-6" 
+      className="max-w-full h-auto rounded-lg border border-border shadow-sm my-4 block" 
       onError={() => setImageError(true)}
       {...props} 
     />
@@ -569,9 +573,20 @@ export default function HelpPage() {
                   },
                   // Paragraphs with better spacing
                   p({ node, children, ...props }) {
-                    if (node?.children?.some((child: any) => child.type === 'element' && child.tagName === 'pre')) {
-                      return <>{children}</>;
+                    // Don't wrap if paragraph contains block-level elements (pre, img)
+                    // ReactMarkdown wraps images in <p> by default, but we want block-level rendering
+                    if (node?.children && Array.isArray(node.children)) {
+                      const hasBlockElement = node.children.some((child: any) => 
+                        child && child.type === 'element' && 
+                        (child.tagName === 'pre' || child.tagName === 'img')
+                      );
+                      
+                      if (hasBlockElement) {
+                        // Return children without p wrapper for block elements
+                        return <>{children}</>;
+                      }
                     }
+                    
                     return (
                       <p className="text-foreground leading-7 mb-4" {...props}>
                         {children}
@@ -702,10 +717,12 @@ export default function HelpPage() {
                       </a>
                     );
                   },
-                  // Images
+                  // Images - render as block-level element
                   img({ node, src, alt, ...props }) {
                     // In markdown, src is always a string (URL), but TypeScript types are broad
                     const srcString = typeof src === 'string' ? src : undefined;
+                    // The p component checks for img elements and won't wrap them
+                    // MarkdownImage handles its own error state and returns appropriate elements
                     return <MarkdownImage src={srcString} alt={alt} {...props} />;
                   },
                   // Lists
