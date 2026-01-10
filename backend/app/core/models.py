@@ -32,16 +32,17 @@ class InsightMetadata(BaseModel):
 
 class ProgressEvent(BaseModel):
     """Progress event for real-time analysis updates."""
-    type: str  # file_verification, insight_start, file_open, file_chunk, insight_progress, insight_complete, analysis_complete, cancelled, error
+    type: str  # file_verification, insight_start, file_open, file_chunk, insight_progress, insight_complete, analysis_complete, cancelled, error, path_result
     message: str
     task_id: str
     insight_id: Optional[str] = None
-    file_path: Optional[str] = None
+    file_path: Optional[str] = None  # Original user input path (for path_result events)
     file_index: Optional[int] = None
     total_files: Optional[int] = None
     chunk_info: Optional[str] = None
     lines_processed: Optional[int] = None  # Number of lines processed so far
     file_size_mb: Optional[float] = None  # File size in MB
+    data: Optional[Dict[str, Any]] = None  # Additional data (e.g., InsightResult for path_result events)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 

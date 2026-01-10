@@ -134,19 +134,28 @@ def main_config_standalone(
                     print("No file paths provided. Exiting.", file=sys.stderr)
                     sys.exit(1)
         
-        # Run the insight with AI auto-trigger support
-        result = asyncio.run(run_insight_with_ai_standalone(insight, input_file_paths, verbose=verbose))
+        # Run the insight for each path separately
+        all_results = []
+        for path in input_file_paths:
+            result = asyncio.run(run_insight_with_ai_standalone(insight, path, verbose=verbose))
+            all_results.append(result)
         
-        # Print results to stdout
-        print(format_result(result))
-        
-        # Print AI analysis in separate box if available
-        if result.ai_analysis:
-            print("\n" + "="*80)
-            print("AI ANALYSIS")
-            print("="*80 + "\n")
-            print(result.ai_analysis)
-            print("\n" + "="*80 + "\n")
+        # Print results for each path
+        for idx, result in enumerate(all_results, 1):
+            if len(all_results) > 1:
+                print(f"\n{'='*80}", file=sys.stdout)
+                print(f"RESULT {idx}/{len(all_results)}: {input_file_paths[idx-1]}", file=sys.stdout)
+                print(f"{'='*80}\n", file=sys.stdout)
+            
+            print(format_result(result), file=sys.stdout)
+            
+            # Print AI analysis in separate box if available
+            if result.ai_analysis:
+                print("\n" + "="*80, file=sys.stdout)
+                print("AI ANALYSIS", file=sys.stdout)
+                print("="*80 + "\n", file=sys.stdout)
+                print(result.ai_analysis, file=sys.stdout)
+                print("\n" + "="*80 + "\n", file=sys.stdout)
         
         # Exit with success
         sys.exit(0)

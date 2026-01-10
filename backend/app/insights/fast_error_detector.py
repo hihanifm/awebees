@@ -11,8 +11,17 @@ INSIGHT_CONFIG = {
         "name": "Fast Error Detector (ripgrep)",
         "description": "Ultra-fast ERROR/FATAL detection using ripgrep - 10-100x faster than Python regex"
     },
-    "filters": {
-        "file_patterns": [r"dumpstate-", r"bugreport-", r"dumpstate.txt"],
-        "line_pattern": r"\b(ERROR|FATAL)\b"
-    }
+    "file_filters": [
+        {
+            "id": "dumpstate_files",
+            "file_patterns": [r"dumpstate-", r"bugreport-", r"dumpstate.txt"],
+            "line_filters": [
+                {
+                    "id": "errors",
+                    "pattern": r"\b(ERROR|FATAL)\b",
+                    "reading_mode": "ripgrep"
+                }
+            ]
+        }
+    ]
 }

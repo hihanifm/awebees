@@ -28,7 +28,7 @@ class Insight(ABC):
     @abstractmethod
     async def analyze(
         self,
-        file_paths: List[str],
+        user_path: str,
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
@@ -53,7 +53,7 @@ class Insight(ABC):
     
     async def analyze_with_ai(
         self,
-        file_paths: List[str],
+        user_path: str,
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
@@ -61,7 +61,7 @@ class Insight(ABC):
         Wrapper around analyze() that automatically triggers AI analysis if ai_auto is True.
         """
         # Call regular analyze
-        result = await self.analyze(file_paths, cancellation_event, progress_callback)
+        result = await self.analyze(user_path, cancellation_event, progress_callback)
         
         # Set AI metadata on result
         result.ai_enabled = self.ai_enabled

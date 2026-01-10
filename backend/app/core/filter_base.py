@@ -525,30 +525,76 @@ class FilterBasedInsight(Insight):
         # Subclasses must implement this to format filtered lines into InsightResult
         raise NotImplementedError("Subclasses must implement _process_filtered_lines")
     
+    def _get_path_files(self, user_path: str) -> List[str]:
+        """Get files for a single user path (if folder, list recursively; if file, use directly)."""
+        from pathlib import Path
+        path_obj = Path(user_path)
+        if not path_obj.exists():
+            logger.warning(f"{self.__class__.__name__}: Path does not exist: {user_path}")
+            return []
+        
+        if path_obj.is_file():
+            return [str(path_obj.resolve())]
+        elif path_obj.is_dir():
+            files = [str(p.resolve()) for p in path_obj.rglob("*") if p.is_file()]
+            return sorted(files)
+        else:
+            return []
+    
     async def analyze(
         self,
-        file_paths: List[str],
+        user_path: str,
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
         import time
         start_time = time.time()
-        logger.info(f"{self.__class__.__name__}: Starting analysis of {len(file_paths)} path(s)")
+        logger.info(f"{self.__class__.__name__}: Starting analysis of path: {user_path}")
+        
+        # Get files for this path
+        path_files = self._get_path_files(user_path)
+        if not path_files:
+            logger.warning(f"{self.__class__.__name__}: No files found for path: {user_path}")
+            from app.core.models import InsightResult
+            return InsightResult(
+                result_type="text",
+                content=f"No files found for path: {user_path}",
+                metadata={"user_path": user_path}
+            )
+        
+        # Apply file filtering if patterns provided (before creating FileFilter)
+        file_patterns = self.file_filter_patterns
+        if file_patterns:
+            logger.info(f"{self.__class__.__name__}: Applying file filter patterns: {file_patterns}")
+            # Filter files by filename patterns
+            import re
+            compiled_patterns = [re.compile(pattern) for pattern in file_patterns]
+            filtered_path_files = []
+            for file_path in path_files:
+                file_name = Path(file_path).name
+                if any(pattern.search(file_name) for pattern in compiled_patterns):
+                    filtered_path_files.append(file_path)
+            path_files = filtered_path_files
+            logger.info(f"{self.__class__.__name__}: {len(path_files)} file(s) matched file filter patterns")
+        else:
+            logger.debug(f"{self.__class__.__name__}: No file filter patterns, processing all files")
+        
+        if not path_files:
+            logger.warning(f"{self.__class__.__name__}: No files matched file filter patterns for path: {user_path}")
+            from app.core.models import InsightResult
+            return InsightResult(
+                result_type="text",
+                content=f"No files matched file filter patterns for path: {user_path}",
+                metadata={"user_path": user_path}
+            )
+        
         logger.debug(f"{self.__class__.__name__}: Line filter pattern: '{self.line_filter_pattern}'")
         logger.debug(f"{self.__class__.__name__}: Reading mode: {self.reading_mode.value}")
         if self.reading_mode == ReadingMode.CHUNKS:
             logger.debug(f"{self.__class__.__name__}: Chunk size: {self.chunk_size:,} bytes")
         
-        # Create file filter
-        file_filter = FileFilter(file_paths)
-        
-        # Apply file filtering if patterns provided
-        file_patterns = self.file_filter_patterns
-        if file_patterns:
-            logger.info(f"{self.__class__.__name__}: Applying file filter patterns: {file_patterns}")
-            file_filter.filter_files(*file_patterns)
-        else:
-            logger.debug(f"{self.__class__.__name__}: No file filter patterns, processing all files/folders")
+        # Create file filter with already-filtered files
+        file_filter = FileFilter(path_files)
         
         # Create line filter with optional regex flags
         regex_flags = 0
@@ -576,8 +622,13 @@ class FilterBasedInsight(Insight):
         logger.debug(f"{self.__class__.__name__}: Processing filtered lines")
         result = await self._process_filtered_lines(filter_result)
         
+        # Add user_path to metadata
+        if result.metadata is None:
+            result.metadata = {}
+        result.metadata["user_path"] = user_path
+        
         total_elapsed = time.time() - start_time
-        logger.info(f"{self.__class__.__name__}: Analysis complete in {total_elapsed:.2f}s")
+        logger.info(f"{self.__class__.__name__}: Analysis complete for path '{user_path}' in {total_elapsed:.2f}s")
         
         return result
 

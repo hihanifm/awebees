@@ -679,7 +679,7 @@ class TestFilterBasedInsight:
         file_path = test_file("test.txt", "line 1\nmatch\nline 3")
         
         insight = self.ConcreteFilterInsight()
-        result = await insight.analyze([file_path])
+        result = await insight.analyze(file_path)
         
         assert result.result_type == "text"
         assert "match" in result.content
@@ -697,7 +697,7 @@ class TestFilterBasedInsight:
                 return [r"\.txt$"]
         
         insight = FilteredInsight()
-        result = await insight.analyze([temp_dir])
+        result = await insight.analyze(temp_dir)
         
         # Should only process .txt files
         assert result.metadata["count"] == 1
@@ -712,7 +712,7 @@ class TestFilterBasedInsight:
         insight = self.ConcreteFilterInsight()
         
         with pytest.raises(CancelledError):
-            await insight.analyze([file_path], cancellation_event)
+            await insight.analyze(file_path, cancellation_event)
     
     @pytest.mark.asyncio
     async def test_analyze_with_progress_callback(self, temp_dir, test_file, progress_callback):
@@ -720,7 +720,7 @@ class TestFilterBasedInsight:
         file_path = test_file("test.txt", "line 1\nmatch\nline 3")
         
         insight = self.ConcreteFilterInsight()
-        result = await insight.analyze([file_path], progress_callback=progress_callback)
+        result = await insight.analyze(file_path, progress_callback=progress_callback)
         
         assert progress_callback.called
         assert result is not None
@@ -736,7 +736,7 @@ class TestFilterBasedInsight:
                 return ReadingMode.CHUNKS
         
         insight = ChunksInsight()
-        result = await insight.analyze([file_path])
+        result = await insight.analyze(file_path)
         
         assert result.metadata["count"] == 1
     
@@ -750,7 +750,7 @@ class TestFilterBasedInsight:
                 self.regex_flags = re.IGNORECASE
         
         insight = CaseInsight()
-        result = await insight.analyze([file_path])
+        result = await insight.analyze(file_path)
         
         assert result.metadata["count"] == 1
     
@@ -760,7 +760,7 @@ class TestFilterBasedInsight:
         file_path = test_file("test.txt", "line 1\nmatch\nline 3\nmatch again\nline 5")
         
         insight = self.ConcreteFilterInsight()
-        result = await insight.analyze([file_path])
+        result = await insight.analyze(file_path)
         
         assert result.metadata["count"] == 2
         assert result.content.count("match") == 2
@@ -930,10 +930,11 @@ class TestEdgeCases:
         assert isinstance(files, list)
     
     @pytest.mark.asyncio
-    async def test_filter_based_insight_with_no_files(self):
-        """Test FilterBasedInsight with empty file list."""
+    async def test_filter_based_insight_with_nonexistent_path(self):
+        """Test FilterBasedInsight with non-existent path."""
         insight = TestFilterBasedInsight.ConcreteFilterInsight()
-        result = await insight.analyze([])
+        result = await insight.analyze("/nonexistent/path/12345")
         
-        assert result.metadata["count"] == 0
-        assert result.content == ""
+        # Should return empty result with user_path in metadata
+        assert result.result_type == "text"
+        assert result.metadata["user_path"] == "/nonexistent/path/12345"

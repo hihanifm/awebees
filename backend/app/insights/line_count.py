@@ -23,14 +23,25 @@ class LineCount(Insight):
     
     async def analyze(
         self,
-        file_paths: List[str],
+        user_path: str,
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
         # Uses efficient line-by-line processing to handle large files
         import time
         start_time = time.time()
-        logger.info(f"LineCount: Starting analysis of {len(file_paths)} file(s)")
+        
+        # Get files for this path
+        file_paths = self._get_path_files(user_path)
+        if not file_paths:
+            logger.warning(f"LineCount: No files found for path: {user_path}")
+            return InsightResult(
+                result_type="text",
+                content=f"No files found for path: {user_path}",
+                metadata={"user_path": user_path}
+            )
+        
+        logger.info(f"LineCount: Starting analysis of path '{user_path}' with {len(file_paths)} file(s)")
         
         file_results = []
         total_lines = 0
@@ -127,11 +138,12 @@ class LineCount(Insight):
                 })
         
         total_elapsed = time.time() - start_time
-        logger.info(f"LineCount: Analysis complete - {total_lines:,} total lines across {len(file_paths)} file(s) in {total_elapsed:.2f}s")
+        logger.info(f"LineCount: Analysis complete for path '{user_path}' - {total_lines:,} total lines across {len(file_paths)} file(s) in {total_elapsed:.2f}s")
         
         # Format results
         result_text = f"Line Count Summary\n"
         result_text += f"{'=' * 50}\n\n"
+        result_text += f"Path: {user_path}\n"
         result_text += f"Files analyzed: {len(file_paths)}\n\n"
         result_text += f"Total across all files:\n"
         result_text += f"  Total lines: {total_lines:,}\n"
@@ -153,6 +165,7 @@ class LineCount(Insight):
             result_type="text",
             content=result_text,
             metadata={
+                "user_path": user_path,
                 "total_lines": total_lines,
                 "total_empty": total_empty,
                 "total_non_empty": total_non_empty,

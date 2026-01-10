@@ -42,7 +42,7 @@ export interface AnalysisRequest {
 
 export interface AnalysisResultItem {
   insight_id: string;
-  result: InsightResult;
+  results: InsightResult[];  // One InsightResult per user path
   execution_time: number; // Execution time in seconds
 }
 
@@ -62,7 +62,8 @@ export type ProgressEventType =
   | "analysis_complete"
   | "cancelled"
   | "error"
-  | "result";
+  | "result"
+  | "path_result";
 
 export interface ProgressEvent {
   type: string;

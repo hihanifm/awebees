@@ -53,23 +53,18 @@ def print_progress(message: str, verbose: bool = False):
 
 async def run_insight_standalone(
     insight: Insight,
-    file_paths: List[str],
+    user_path: str,
     verbose: bool = False,
     show_progress: bool = True
 ) -> InsightResult:
-    # Run an insight standalone (outside of FastAPI server)
-    if not file_paths:
-        raise ValueError("No file paths provided")
-    
-    # Validate file paths exist
+    # Run an insight standalone (outside of FastAPI server) for a single path
     import os
-    invalid_paths = [path for path in file_paths if not os.path.exists(path)]
-    if invalid_paths:
-        raise FileNotFoundError(f"File(s) not found: {', '.join(invalid_paths)}")
+    if not os.path.exists(user_path):
+        raise FileNotFoundError(f"Path not found: {user_path}")
     
     print(f"\n{'='*70}", file=sys.stderr)
     print(f"Running: {insight.name} ({insight.id})", file=sys.stderr)
-    print(f"Files: {len(file_paths)}", file=sys.stderr)
+    print(f"Path: {user_path}", file=sys.stderr)
     print(f"{'='*70}\n", file=sys.stderr)
     
     # Simple progress callback for standalone execution
@@ -78,9 +73,9 @@ async def run_insight_standalone(
             print_progress(event.message, verbose=verbose)
     
     try:
-        # Run the insight analysis
+        # Run the insight analysis for this path
         result = await insight.analyze(
-            file_paths=file_paths,
+            user_path=user_path,
             cancellation_event=None,  # No cancellation for standalone runs
             progress_callback=progress_callback if show_progress else None
         )
@@ -96,23 +91,18 @@ async def run_insight_standalone(
 
 async def run_insight_with_ai_standalone(
     insight: Insight,
-    file_paths: List[str],
+    user_path: str,
     verbose: bool = False,
     show_progress: bool = True
 ) -> InsightResult:
     # Similar to run_insight_standalone but calls analyze_with_ai() which auto-triggers AI if ai_auto=true
-    if not file_paths:
-        raise ValueError("No file paths provided")
-    
-    # Validate file paths exist
     import os
-    invalid_paths = [path for path in file_paths if not os.path.exists(path)]
-    if invalid_paths:
-        raise FileNotFoundError(f"File(s) not found: {', '.join(invalid_paths)}")
+    if not os.path.exists(user_path):
+        raise FileNotFoundError(f"Path not found: {user_path}")
     
     print(f"\n{'='*70}", file=sys.stderr)
     print(f"Running: {insight.name} ({insight.id})", file=sys.stderr)
-    print(f"Files: {len(file_paths)}", file=sys.stderr)
+    print(f"Path: {user_path}", file=sys.stderr)
     print(f"{'='*70}\n", file=sys.stderr)
     
     # Simple progress callback for standalone execution
@@ -121,9 +111,9 @@ async def run_insight_with_ai_standalone(
             print_progress(event.message, verbose=verbose)
     
     try:
-        # Call analyze_with_ai instead of analyze
+        # Call analyze_with_ai for this path
         result = await insight.analyze_with_ai(
-            file_paths=file_paths,
+            user_path=user_path,
             cancellation_event=None,  # No cancellation for standalone runs
             progress_callback=progress_callback if show_progress else None
         )
@@ -158,7 +148,7 @@ def format_result(result: InsightResult) -> str:
     return "\n".join(output)
 
 
-def main_standalone(insight: Insight, file_paths: List[str], verbose: bool = False, check_venv: bool = True):
+def main_standalone(insight: Insight, user_path: str, verbose: bool = False, check_venv: bool = True):
     # Main entry point for standalone insight execution (handles async execution and result display)
     import sys
     
@@ -178,9 +168,9 @@ def main_standalone(insight: Insight, file_paths: List[str], verbose: bool = Fal
         except ImportError:
             check_venv_and_reexecute()
     
-    # Run the insight
+    # Run the insight for this path
     try:
-        result = asyncio.run(run_insight_standalone(insight, file_paths, verbose=verbose))
+        result = asyncio.run(run_insight_standalone(insight, user_path, verbose=verbose))
         
         # Print results to stdout
         print(format_result(result))

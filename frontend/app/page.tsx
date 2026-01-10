@@ -163,11 +163,11 @@ export default function Home() {
         timestamp: new Date().toISOString(),
       }]);
 
-      // First, select files (expands folders to file list)
+      // Validate paths (selectFiles validates and returns paths as-is, no expansion)
       const selectResponse = await apiClient.selectFiles(paths);
 
       if (selectResponse.files.length === 0) {
-        setError("No valid files found in the provided paths");
+        setError("No valid paths found");
         setAnalyzing(false);
         return;
       }
@@ -175,7 +175,7 @@ export default function Home() {
       // Extract task ID from first progress event
       let taskIdExtracted = false;
 
-      // Then, run analysis with progress tracking
+      // Run analysis with progress tracking (API will call analyze() once per path)
       const response = await apiClient.analyzeWithProgress(
         selectedInsightIds,
         selectResponse.files,
@@ -185,9 +185,12 @@ export default function Home() {
             setCurrentTaskId(event.task_id);
             taskIdExtracted = true;
           }
+          // Note: path_result events are collected by the API and included in the final result event
+          // We could handle them here for incremental UI updates, but for now we wait for the final result
         }
       );
 
+      // Set final response (contains all path results)
       setAnalysisResponse(response);
     } catch (err) {
       if (err instanceof Error && err.message === "Analysis cancelled") {

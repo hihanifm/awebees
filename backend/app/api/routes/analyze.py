@@ -29,7 +29,7 @@ class AnalysisRequest(BaseModel):
 
 class AnalysisResultItem(BaseModel):
     insight_id: str
-    result: InsightResult
+    results: List[InsightResult]  # One InsightResult per user path
     execution_time: float = 0.0  # Execution time in seconds
 
 
@@ -111,15 +111,48 @@ async def _run_analysis_with_progress(
             
             try:
                 insight_start_time = time.time()
-                result = await insight.analyze_with_ai(
-                    request.file_paths,
-                    cancellation_event=task.cancellation_event,
-                    progress_callback=progress_callback
-                )
+                
+                # Process each user path separately - call analyze() multiple times
+                path_results = []
+                total_elapsed = 0.0
+                
+                for user_path in request.file_paths:
+                    # Check for cancellation
+                    if task.cancellation_event.is_set():
+                        await progress_queue.put(ProgressEvent(
+                            type="cancelled",
+                            message="Analysis cancelled",
+                            task_id=task_id
+                        ))
+                        task_manager.update_task_status(task_id, "cancelled")
+                        raise CancelledError("Analysis cancelled")
+                    
+                    # Call analyze() for this single path (insight handles getting files)
+                    path_start_time = time.time()
+                    path_result = await insight.analyze_with_ai(
+                        user_path,
+                        cancellation_event=task.cancellation_event,
+                        progress_callback=progress_callback
+                    )
+                    path_elapsed = time.time() - path_start_time
+                    total_elapsed += path_elapsed
+                    
+                    path_results.append(path_result)
+                    
+                    # Emit path_result event (when this path completes)
+                    await progress_queue.put(ProgressEvent(
+                        type="path_result",
+                        message=f"Completed analysis for path: {user_path}",
+                        task_id=task_id,
+                        insight_id=insight_id,
+                        file_path=user_path,
+                        data=path_result.model_dump()
+                    ))
+                
                 insight_elapsed = time.time() - insight_start_time
                 results.append(AnalysisResultItem(
                     insight_id=insight_id,
-                    result=result,
+                    results=path_results,  # List of InsightResults (one per path)
                     execution_time=insight_elapsed
                 ))
                 
@@ -317,14 +350,24 @@ async def analyze(request: AnalysisRequest):
                 logger.warning(f"Analyze API: Insight '{insight_id}' not found in plugin manager")
                 raise HTTPException(status_code=404, detail=f"Insight not found: {insight_id}")
             
-            logger.info(f"Analyze API: Executing '{insight.name}' (ID: {insight_id}) on {len(request.file_paths)} file(s)")
-            result = await insight.analyze_with_ai(request.file_paths, cancellation_event=None)
+            # Process each user path separately - call analyze() multiple times
+            path_results = []
+            total_elapsed = 0.0
+            
+            for user_path in request.file_paths:
+                logger.info(f"Analyze API: Executing '{insight.name}' (ID: {insight_id}) on path: {user_path}")
+                path_start_time = time.time()
+                path_result = await insight.analyze_with_ai(user_path, cancellation_event=None)
+                path_elapsed = time.time() - path_start_time
+                total_elapsed += path_elapsed
+                path_results.append(path_result)
+            
             insight_elapsed = time.time() - insight_start_time
             logger.info(f"Analyze API: Completed '{insight.name}' in {insight_elapsed:.2f}s")
             
             results.append(AnalysisResultItem(
                 insight_id=insight_id,
-                result=result,
+                results=path_results,  # List of InsightResults (one per path)
                 execution_time=insight_elapsed
             ))
         except HTTPException:
