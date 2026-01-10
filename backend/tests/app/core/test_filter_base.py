@@ -456,7 +456,7 @@ class TestLineFilter:
     async def test_filter_lines_multiple_files(self, temp_dir, test_file):
         """Test filter_lines() with multiple files."""
         file1 = test_file("file1.txt", "line 1\nmatch\nline 3")
-        file2 = test_file("file2.txt", "line 1\nno match\nline 3")
+        file2 = test_file("file2.txt", "line 1\nno pattern\nline 3")
         file3 = test_file("file3.txt", "line 1\nmatch again\nline 3")
         
         line_filter = LineFilter(pattern=r"match", reading_mode=ReadingMode.LINES)
@@ -547,7 +547,7 @@ class TestLineFilter:
         assert len(file_open_events) >= 1
     
     @pytest.mark.asyncio
-    async def test_filter_lines_handles_file_errors_gracefully(self, temp_dir):
+    async def test_filter_lines_handles_file_errors_gracefully(self, temp_dir, test_file):
         """Test that file errors don't crash the entire operation."""
         # Use non-existent file
         nonexistent_file = str(Path(temp_dir) / "nonexistent.txt")
@@ -809,7 +809,8 @@ class TestEdgeCases:
         result.add_line(long_path, "line 1")
         
         assert result.get_file_count() == 1
-        assert len(result.get_files()) == 1
+        assert len(result.get_lines_by_file()) == 1
+        assert long_path in result.get_lines_by_file()
     
     def test_file_filter_with_empty_paths_list(self):
         """Test FileFilter with empty paths list."""
