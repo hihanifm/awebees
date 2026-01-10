@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class LineCount(Insight):
-    """Counts lines in log files."""
-    
     @property
     def id(self) -> str:
         return "line_count"
@@ -32,17 +30,7 @@ class LineCount(Insight):
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
-        """
-        Analyze files and count lines.
-        
-        Uses efficient line-by-line processing to handle large files.
-        
-        Args:
-            file_paths: List of file paths to analyze
-            
-        Returns:
-            InsightResult with line count summary
-        """
+        # Uses efficient line-by-line processing to handle large files
         import time
         start_time = time.time()
         logger.info(f"LineCount: Starting analysis of {len(file_paths)} file(s)")

@@ -21,18 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 def load_config_from_file(file_path: str) -> tuple[dict, Optional[callable]]:
-    """
-    Load INSIGHT_CONFIG and optional process_results function from a Python file.
-    
-    Args:
-        file_path: Path to Python file containing INSIGHT_CONFIG
-        
-    Returns:
-        Tuple of (config dict, process_results function or None)
-        
-    Raises:
-        ValueError: If file doesn't contain INSIGHT_CONFIG
-    """
     file_path = Path(file_path).resolve()
     
     if not file_path.exists():
@@ -77,15 +65,6 @@ def main_config_standalone(
     verbose: bool = False,
     check_venv: bool = True
 ):
-    """
-    Main entry point for standalone config-based insight execution.
-    
-    Args:
-        file_path: Path to the config-based insight file
-        input_file_paths: Optional list of file paths to analyze (overrides CLI args)
-        verbose: Enable verbose output
-        check_venv: If True, check for venv and re-execute if needed
-    """
     # Configure logging for standalone execution
     log_level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(

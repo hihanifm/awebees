@@ -57,18 +57,7 @@ async def run_insight_standalone(
     verbose: bool = False,
     show_progress: bool = True
 ) -> InsightResult:
-    """
-    Run an insight standalone (outside of FastAPI server).
-    
-    Args:
-        insight: Insight instance to run
-        file_paths: List of file paths to analyze
-        verbose: If True, print detailed progress messages
-        show_progress: If True, print progress updates to stderr
-        
-    Returns:
-        InsightResult from the analysis
-    """
+    # Run an insight standalone (outside of FastAPI server)
     if not file_paths:
         raise ValueError("No file paths provided")
     
@@ -111,21 +100,7 @@ async def run_insight_with_ai_standalone(
     verbose: bool = False,
     show_progress: bool = True
 ) -> InsightResult:
-    """
-    Run an insight with AI auto-trigger support.
-    
-    Similar to run_insight_standalone but calls analyze_with_ai()
-    which will automatically trigger AI analysis if ai_auto=true.
-    
-    Args:
-        insight: Insight instance to run
-        file_paths: List of file paths to analyze
-        verbose: If True, print detailed progress messages
-        show_progress: If True, print progress updates to stderr
-        
-    Returns:
-        InsightResult from the analysis (with ai_analysis if auto-triggered)
-    """
+    # Similar to run_insight_standalone but calls analyze_with_ai() which auto-triggers AI if ai_auto=true
     if not file_paths:
         raise ValueError("No file paths provided")
     
@@ -163,15 +138,6 @@ async def run_insight_with_ai_standalone(
 
 
 def format_result(result: InsightResult) -> str:
-    """
-    Format an InsightResult for console output.
-    
-    Args:
-        result: InsightResult to format
-        
-    Returns:
-        Formatted string representation
-    """
     output = []
     
     if result.result_type == "text":
@@ -193,17 +159,7 @@ def format_result(result: InsightResult) -> str:
 
 
 def main_standalone(insight: Insight, file_paths: List[str], verbose: bool = False, check_venv: bool = True):
-    """
-    Main entry point for standalone insight execution.
-    
-    Handles async execution and result display.
-    
-    Args:
-        insight: Insight instance to run
-        file_paths: List of file paths to analyze
-        verbose: Enable verbose output
-        check_venv: If True, check for venv and re-execute if needed
-    """
+    # Main entry point for standalone insight execution (handles async execution and result display)
     import sys
     
     # Configure logging for standalone execution
