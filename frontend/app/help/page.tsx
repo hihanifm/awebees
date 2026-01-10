@@ -222,6 +222,8 @@ export default function HelpPage() {
       }
       
       let content = await response.text();
+      logger.info(`📄 Received content (${content.length} chars) for path: "${docPath || '(home)'}"`);
+      logger.info(`📝 Content preview (first 200 chars): ${content.substring(0, 200).replace(/\n/g, '\\n')}`);
       
       const transformContent = (text: string) => {
         // Transform relative image paths to use the backend API endpoint
@@ -298,24 +300,26 @@ export default function HelpPage() {
     const pathKey = pathToFetch || "__HOME__";
     
     // Only fetch if this is a different path than what we last fetched
-    if (lastFetchedPathRef.current === pathKey) {
+    const lastFetched = lastFetchedPathRef.current;
+    logger.info(`🔄 Document stack changed - Stack length: ${documentStack.length}`);
+    logger.info(`📄 Current document: path="${pathToFetch || '(home - Quick Start)'}", title="${currentDoc?.title || ''}"`);
+    logger.info(`📚 Full stack: ${documentStack.map((d, i) => `${i}: "${d.path || '(home)'}" (${d.title})`).join(' → ')}`);
+    logger.info(`🔍 Path check: lastFetched="${lastFetched}", currentPathKey="${pathKey}"`);
+    
+    if (lastFetched === pathKey) {
       logger.debug(`⏸️ Path unchanged: "${pathToFetch || '(home)'}", skipping fetch (already loaded)`);
       return;
     }
     
     // If already fetching, log it but continue with new fetch
     if (fetchingRef.current) {
-      logger.warn(`⚠️ Fetch already in progress for "${lastFetchedPathRef.current}", but path changed to "${pathKey}" - starting new fetch`);
+      logger.warn(`⚠️ Fetch already in progress for "${lastFetched}", but path changed to "${pathKey}" - starting new fetch`);
     }
     
-    logger.info(`🔄 Document stack changed - Stack length: ${documentStack.length}`);
-    logger.info(`📄 Current document: path="${pathToFetch || '(home - Quick Start)'}", title="${currentDoc?.title || ''}"`);
-    logger.info(`📚 Full stack: ${documentStack.map((d, i) => `${i}: "${d.path || '(home)'}" (${d.title})`).join(' → ')}`);
     logger.info(`📥 Starting fetch for document: "${pathToFetch || '(home - Quick Start)'}" (key: "${pathKey}")`);
     logger.info(`🔗 API URL will be: ${pathToFetch ? `/api/help/docs/${pathToFetch}` : '/api/help'}`);
     
-    // Set refs BEFORE fetch to prevent duplicate requests
-    lastFetchedPathRef.current = pathKey;
+    // Set fetching flag to prevent duplicate requests
     fetchingRef.current = true;
     
     // Clear previous content while loading new one
@@ -324,13 +328,13 @@ export default function HelpPage() {
     fetchMarkdownContent(pathToFetch)
       .then(() => {
         logger.info(`✅ Successfully loaded document: "${pathToFetch || '(home - Quick Start)'}"`);
+        // Only update ref AFTER successful fetch
+        lastFetchedPathRef.current = pathKey;
       })
       .catch((err) => {
         logger.error(`❌ Failed to load document: "${pathToFetch || '(home - Quick Start)'}"`, err);
         // Reset ref on error so we can retry
-        if (lastFetchedPathRef.current === pathKey) {
-          lastFetchedPathRef.current = null;
-        }
+        lastFetchedPathRef.current = null;
       })
       .finally(() => {
         fetchingRef.current = false;
@@ -550,6 +554,9 @@ export default function HelpPage() {
                   },
                   // Links
                   a({ node, href, children, ...props }) {
+                    // Log all links for debugging
+                    logger.debug(`🔗 Rendering link: href="${href}", children="${String(children).substring(0, 50)}"`);
+                    
                     // Handle internal document links
                     if (href?.startsWith('internal-doc://')) {
                       const docPath = href.replace('internal-doc://', '').trim();
@@ -557,14 +564,43 @@ export default function HelpPage() {
                       const linkText = String(children).trim();
                       const docTitle = linkText || docPath.split('/').pop()?.replace('.md', '') || 'Documentation';
                       
+                      logger.info(`🔗 Rendering internal link:`);
+                      logger.info(`   href="${href}"`);
+                      logger.info(`   extractedPath="${docPath}"`);
+                      logger.info(`   linkText="${linkText}"`);
+                      logger.info(`   docTitle="${docTitle}"`);
+                      
+                      // Ensure docPath is not empty
+                      if (!docPath || docPath === '') {
+                        logger.error(`❌ ERROR: Internal link has empty path! href="${href}"`);
+                        return (
+                          <a href="#" className="text-red-500" {...props}>
+                            {children} [ERROR: Empty path]
+                          </a>
+                        );
+                      }
+                      
                       return (
                         <a
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation(); // Prevent event bubbling
+                            
                             const clickedPath = docPath; // Capture in closure
                             const clickedTitle = docTitle;
-                            logger.info(`🔗 Internal link clicked: path="${clickedPath}", title="${clickedTitle}"`);
+                            
+                            logger.info(`🔗 Internal link clicked:`);
+                            logger.info(`   Original href: "${href}"`);
+                            logger.info(`   Extracted path: "${clickedPath}"`);
+                            logger.info(`   Link text: "${linkText}"`);
+                            logger.info(`   Document title: "${clickedTitle}"`);
+                            logger.info(`   Current stack before update: ${JSON.stringify(documentStack.map(d => ({ path: d.path, title: d.title })))}`);
+                            
+                            if (!clickedPath || clickedPath === '') {
+                              logger.error(`❌ ERROR: Cannot navigate to empty path!`);
+                              return;
+                            }
                             
                             setDocumentStack(prev => {
                               // Check if this document is already in the stack to avoid duplicates
@@ -578,8 +614,12 @@ export default function HelpPage() {
                               } else {
                                 // Add new document to stack
                                 logger.info(`➕ Adding new document to stack: path="${clickedPath}", title="${clickedTitle}"`);
+                                logger.info(`   Previous stack length: ${prev.length}`);
+                                logger.info(`   Previous last path: "${prev[prev.length - 1]?.path || '(none)'}"`);
                                 const newStack = [...prev, { path: clickedPath, title: clickedTitle }];
-                                logger.info(`📚 New stack: ${newStack.map((d, i) => `${i}: "${d.path || '(home)'}" (${d.title})`).join(' → ')}`);
+                                logger.info(`   New stack length: ${newStack.length}`);
+                                logger.info(`   New stack paths: ${newStack.map((d, i) => `${i}: "${d.path || '(home)'}"`).join(' → ')}`);
+                                logger.info(`   Last document in new stack: path="${newStack[newStack.length - 1].path}", title="${newStack[newStack.length - 1].title}"`);
                                 return newStack;
                               }
                             });
