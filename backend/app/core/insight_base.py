@@ -35,30 +35,21 @@ class Insight(ABC):
         pass
     
     @property
-    def ai_enabled(self) -> bool:
-        return True
+    def ai_enabled(self) -> bool: return True
     
     @property
-    def ai_auto(self) -> bool:
-        return False
+    def ai_auto(self) -> bool: return False
     
     @property
     def ai_prompt_type(self) -> str:
-        """
-        Default AI prompt type for this insight.
-        
-        Returns:
-            One of: "summarize", "explain", "recommend", "custom" (default: "explain")
-        """
+        # One of: "summarize", "explain", "recommend", "custom" (default: "explain")
         return "explain"
     
     @property
-    def ai_custom_prompt(self) -> Optional[str]:
-        return None
+    def ai_custom_prompt(self) -> Optional[str]: return None
     
     @property
-    def ai_prompt_variables(self) -> Optional[dict]:
-        return None
+    def ai_prompt_variables(self) -> Optional[dict]: return None
     
     async def analyze_with_ai(
         self,

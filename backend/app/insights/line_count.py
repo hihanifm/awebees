@@ -13,16 +13,13 @@ logger = logging.getLogger(__name__)
 
 class LineCount(Insight):
     @property
-    def id(self) -> str:
-        return "line_count"
+    def id(self) -> str: return "line_count"
     
     @property
-    def name(self) -> str:
-        return "Line Count"
+    def name(self) -> str: return "Line Count"
     
     @property
-    def description(self) -> str:
-        return "Counts total lines, empty lines, and non-empty lines in log files"
+    def description(self) -> str: return "Counts total lines, empty lines, and non-empty lines in log files"
     
     async def analyze(
         self,

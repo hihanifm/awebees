@@ -37,8 +37,7 @@ class SampleInfo:
         self.source = source
         self.recommended_insights = recommended_insights or []
     
-    def to_dict(self) -> Dict[str, Any]:
-        return {
+    def to_dict(self) -> Dict[str, Any]: return {
             "id": self.id,
             "name": self.name,
             "description": self.description,
@@ -51,16 +50,6 @@ class SampleInfo:
 
 
 def extract_zip_file(zip_path: Path, samples_dir: Path) -> Optional[Path]:
-    """
-    Extract a ZIP file to the samples directory.
-    
-    Args:
-        zip_path: Path to the ZIP file
-        samples_dir: Directory to extract to
-        
-    Returns:
-        Path to extracted file, or None if extraction failed
-    """
     try:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             # Extract only text/log files, skip __MACOSX folder
@@ -87,16 +76,6 @@ def extract_zip_file(zip_path: Path, samples_dir: Path) -> Optional[Path]:
 
 
 def extract_gz_file(gz_path: Path, samples_dir: Path) -> Optional[Path]:
-    """
-    Extract a GZ file to the samples directory.
-    
-    Args:
-        gz_path: Path to the GZ file
-        samples_dir: Directory to extract to
-        
-    Returns:
-        Path to extracted file, or None if extraction failed
-    """
     try:
         base_name = gz_path.stem
         target_path = samples_dir / f"{base_name}.txt"
@@ -117,15 +96,6 @@ def extract_gz_file(gz_path: Path, samples_dir: Path) -> Optional[Path]:
 
 
 def load_sample_metadata(sample_path: Path) -> Optional[Dict[str, Any]]:
-    """
-    Load sample metadata from a JSON file if it exists.
-    
-    Args:
-        sample_path: Path to the sample file
-        
-    Returns:
-        Dictionary with metadata, or None if no metadata file exists
-    """
     metadata_path = sample_path.parent / f"{sample_path.stem}.json"
     
     if metadata_path.exists():
@@ -139,15 +109,6 @@ def load_sample_metadata(sample_path: Path) -> Optional[Dict[str, Any]]:
 
 
 def infer_sample_metadata(sample_path: Path) -> Dict[str, Any]:
-    """
-    Infer sample metadata from filename and file size.
-    
-    Args:
-        sample_path: Path to the sample file
-        
-    Returns:
-        Dictionary with inferred metadata
-    """
     name = sample_path.stem.replace('_', ' ').replace('-', ' ').title()
     size_mb = sample_path.stat().st_size / (1024 * 1024) if sample_path.exists() else 0
     description = f"Sample file: {sample_path.name}"
@@ -160,16 +121,6 @@ def infer_sample_metadata(sample_path: Path) -> Dict[str, Any]:
 
 
 def discover_samples_from_path(insight_path: str, source_label: str) -> List[SampleInfo]:
-    """
-    Discover sample files from an insight path.
-    
-    Args:
-        insight_path: Path to the insight directory
-        source_label: Label for the source (e.g., "built-in" or "external: /path")
-        
-    Returns:
-        List of SampleInfo objects
-    """
     samples = []
     samples_dir = Path(insight_path) / "samples"
     
@@ -287,12 +238,6 @@ def discover_samples_from_path(insight_path: str, source_label: str) -> List[Sam
 
 
 def discover_all_samples() -> List[SampleInfo]:
-    """
-    Discover all sample files from built-in and external insight paths.
-    
-    Returns:
-        List of all discovered SampleInfo objects
-    """
     all_samples = []
     
     # Discover built-in samples

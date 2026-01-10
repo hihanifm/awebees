@@ -55,17 +55,7 @@ class ConfigBasedInsight(Insight):
         insights_root: Optional[Path] = None,
         source: str = "built-in"
     ):
-        """
-        Initialize config-based insight.
-        
-        Args:
-            config: INSIGHT_CONFIG dictionary with metadata and filters
-            process_results_fn: Optional function to post-process filtered results
-            module_name: Optional module name for logging
-            file_path: Path to the insight file (for auto-generating ID)
-            insights_root: Root directory of insights (for auto-generating ID)
-            source: Source identifier ("built-in" or external path)
-        """
+        # file_path and insights_root are used for auto-generating ID from file path
         self._config = config
         self._process_results_fn = process_results_fn
         self._module_name = module_name or "ConfigBasedInsight"
@@ -150,7 +140,7 @@ class ConfigBasedInsight(Insight):
     
     @staticmethod
     def _normalize_for_id(text: str) -> str:
-        """Normalize text for use in ID: lowercase, alphanumeric + underscores only."""
+        # Normalize text for use in ID: lowercase, alphanumeric + underscores only
         return re.sub(r'[^a-z0-9]+', '_', text.lower()).strip('_')
     
     @staticmethod
@@ -159,17 +149,6 @@ class ConfigBasedInsight(Insight):
         insights_root: Path,
         source: str
     ) -> str:
-        """
-        Generate unique ID from file path.
-        
-        Args:
-            file_path: Full path to insight file
-            insights_root: Root of insights directory
-            source: "built-in" or external path
-            
-        Returns:
-            Generated unique ID
-        """
         # Get relative path from insights root
         try:
             relative_path = file_path.relative_to(insights_root)
@@ -195,15 +174,7 @@ class ConfigBasedInsight(Insight):
             return f"ext_{source_hash}_{base_id}"
     
     def _parse_regex_flags(self, flags_str: str) -> int:
-        """
-        Parse regex flags from string to int.
-        
-        Args:
-            flags_str: Comma-separated flag names (e.g., "IGNORECASE,MULTILINE")
-            
-        Returns:
-            Combined regex flags as integer
-        """
+        # Parse comma-separated flag names (e.g., "IGNORECASE,MULTILINE") to integer flags
         if not flags_str:
             return 0
         
@@ -218,15 +189,7 @@ class ConfigBasedInsight(Insight):
         return flags
     
     def _parse_reading_mode(self, mode_str: str) -> ReadingMode:
-        """
-        Parse reading mode from string.
-        
-        Args:
-            mode_str: "lines", "chunks", or "ripgrep"
-            
-        Returns:
-            ReadingMode enum value
-        """
+        # Parse reading mode string ("lines", "chunks", or "ripgrep") to ReadingMode enum
         mode_str = mode_str.lower()
         if mode_str == "lines":
             return ReadingMode.LINES
@@ -239,36 +202,28 @@ class ConfigBasedInsight(Insight):
             return ReadingMode.RIPGREP
     
     @property
-    def id(self) -> str:
-        return self._id
+    def id(self) -> str: return self._id
     
     @property
-    def name(self) -> str:
-        return self._name
+    def name(self) -> str: return self._name
     
     @property
-    def description(self) -> str:
-        return self._description
+    def description(self) -> str: return self._description
     
     @property
-    def folder(self) -> Optional[str]:
-        return self._folder
+    def folder(self) -> Optional[str]: return self._folder
     
     @property
-    def ai_enabled(self) -> bool:
-        return self._ai_enabled
+    def ai_enabled(self) -> bool: return self._ai_enabled
     
     @property
-    def ai_auto(self) -> bool:
-        return self._ai_auto
+    def ai_auto(self) -> bool: return self._ai_auto
     
     @property
-    def ai_prompt_type(self) -> str:
-        return self._ai_prompt_type
+    def ai_prompt_type(self) -> str: return self._ai_prompt_type
     
     @property
-    def ai_custom_prompt(self) -> Optional[str]:
-        return self._ai_custom_prompt
+    def ai_custom_prompt(self) -> Optional[str]: return self._ai_custom_prompt
     
     @property
     def ai_prompt_variables(self) -> Optional[dict]:
@@ -284,17 +239,6 @@ class ConfigBasedInsight(Insight):
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
-        """
-        Analyze files using configured filters.
-        
-        Args:
-            file_paths: List of file or folder paths to analyze
-            cancellation_event: Optional asyncio.Event to check for cancellation
-            progress_callback: Optional async callback to emit progress events
-            
-        Returns:
-            InsightResult with analysis results
-        """
         import time
         start_time = time.time()
         logger.info(f"{self._module_name}: Starting analysis of {len(file_paths)} path(s)")
@@ -386,15 +330,6 @@ class ConfigBasedInsight(Insight):
         )
     
     def _default_format(self, filter_result: FilterResult) -> tuple[str, Dict[str, Any]]:
-        """
-        Default formatting for filtered results.
-        
-        Args:
-            filter_result: FilterResult with filtered lines
-            
-        Returns:
-            Tuple of (content string, metadata dict)
-        """
         lines_by_file = filter_result.get_lines_by_file()
         total_lines = filter_result.get_total_line_count()
         file_count = filter_result.get_file_count()

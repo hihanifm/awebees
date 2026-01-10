@@ -39,17 +39,14 @@ class FilterResult:
         self._commands_by_file[file_path] = command
     
     def set_execution_method(self, method: str) -> None:
-        """Set the execution method used (ripgrep, python_lines, python_chunks, custom)."""
+        # Valid values: ripgrep, python_lines, python_chunks, custom
         self._execution_method = method
     
-    def get_command(self, file_path: str) -> Optional[str]:
-        return self._commands_by_file.get(file_path)
+    def get_command(self, file_path: str) -> Optional[str]: return self._commands_by_file.get(file_path)
     
-    def get_commands(self) -> Dict[str, str]:
-        return self._commands_by_file.copy()
+    def get_commands(self) -> Dict[str, str]: return self._commands_by_file.copy()
     
-    def get_execution_method(self) -> Optional[str]:
-        return self._execution_method
+    def get_execution_method(self) -> Optional[str]: return self._execution_method
     
     def get_lines(self) -> List[str]:
         all_lines = []
@@ -57,14 +54,11 @@ class FilterResult:
             all_lines.extend(lines)
         return all_lines
     
-    def get_lines_by_file(self) -> Dict[str, List[str]]:
-        return self._lines_by_file.copy()
+    def get_lines_by_file(self) -> Dict[str, List[str]]: return self._lines_by_file.copy()
     
-    def get_file_count(self) -> int:
-        return len(self._lines_by_file)
+    def get_file_count(self) -> int: return len(self._lines_by_file)
     
-    def get_total_line_count(self) -> int:
-        return sum(len(lines) for lines in self._lines_by_file.values())
+    def get_total_line_count(self) -> int: return sum(len(lines) for lines in self._lines_by_file.values())
 
 
 class FileFilter:
@@ -495,65 +489,28 @@ class FilterBasedInsight(Insight):
     
     @property
     def file_filter_patterns(self) -> Optional[List[str]]:
-        """
-        Return file filter patterns for folders.
-        
-        Returns None to skip file filtering (process all files in folders).
-        Return a list of regex patterns to filter files (OR logic).
-        
-        Returns:
-            Optional list of regex patterns for filtering files in folders
-        """
+        # None = skip file filtering, List[str] = regex patterns for file filtering (OR logic)
         return None
     
     @property
     def line_filter_pattern(self) -> str:
-        """
-        Return regex pattern for filtering lines.
-        
-        Returns:
-            Regex pattern string for line filtering
-        """
         raise NotImplementedError("Subclasses must implement line_filter_pattern")
     
     @property
     def reading_mode(self) -> ReadingMode:
-        """
-        Return reading mode for file processing.
-        
-        Returns:
-            - ReadingMode.RIPGREP (default): Ultra-fast pattern matching (10-100x faster), auto-falls back to lines if not installed
-            - ReadingMode.CHUNKS: Chunked reading for large files (250MB+), memory efficient
-            - ReadingMode.LINES: Line-by-line processing, most compatible
-        """
+        # Valid: RIPGREP (default, 10-100x faster), CHUNKS (250MB+), LINES (most compatible)
         return ReadingMode.RIPGREP
     
     @property
     def chunk_size(self) -> int:
-        """
-        Return chunk size for CHUNKS reading mode.
-        
-        Returns:
-            Chunk size in bytes (default: 1MB)
-        """
+        # Chunk size in bytes (default: 1MB = 1048576)
         return 1048576
     
     async def _process_filtered_lines(
         self,
         filter_result: FilterResult
     ) -> InsightResult:
-        """
-        Process filtered lines and return InsightResult.
-        
-        Subclasses must implement this method to format the filtered lines
-        into an InsightResult.
-        
-        Args:
-            filter_result: FilterResult containing filtered lines
-            
-        Returns:
-            InsightResult with formatted output
-        """
+        # Subclasses must implement this to format filtered lines into InsightResult
         raise NotImplementedError("Subclasses must implement _process_filtered_lines")
     
     async def analyze(
@@ -562,17 +519,6 @@ class FilterBasedInsight(Insight):
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
-        """
-        Analyze files using file and line filtering.
-        
-        Args:
-            file_paths: List of file or folder paths to analyze
-            cancellation_event: Optional asyncio.Event to check for cancellation
-            progress_callback: Optional async callback to emit progress events
-            
-        Returns:
-            InsightResult with analysis results
-        """
         import time
         start_time = time.time()
         logger.info(f"{self.__class__.__name__}: Starting analysis of {len(file_paths)} path(s)")

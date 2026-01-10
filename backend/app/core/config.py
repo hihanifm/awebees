@@ -56,8 +56,7 @@ Be specific and practical. Prioritize recommendations by severity."""
     }
     
     @classmethod
-    def is_configured(cls) -> bool:
-        return bool(cls.API_KEY) and cls.ENABLED
+    def is_configured(cls) -> bool: return bool(cls.API_KEY) and cls.ENABLED
     
     @classmethod
     def to_dict(cls, include_sensitive: bool = False) -> Dict[str, Any]:
@@ -91,12 +90,6 @@ Be specific and practical. Prioritize recommendations by severity."""
     
     @classmethod
     def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
-        """
-        Persist AI configuration updates to .env file.
-        
-        Args:
-            updates: Dictionary of config updates to persist
-        """
         import logging
         import tempfile
         import shutil
@@ -335,21 +328,11 @@ class AppConfig:
     VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     
     @classmethod
-    def get_log_level(cls) -> str:
-        return cls.LOG_LEVEL.upper()
+    def get_log_level(cls) -> str: return cls.LOG_LEVEL.upper()
     
     @classmethod
     def update_log_level(cls, log_level: str, persist: bool = True) -> None:
-        """
-        Update log level dynamically.
-        
-        Args:
-            log_level: New log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-            persist: Whether to persist to .env file (default: True)
-        
-        Raises:
-            ValueError: If log level is invalid
-        """
+        # Valid log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
         import logging
         
         log_level = log_level.upper()
@@ -375,12 +358,6 @@ class AppConfig:
     
     @classmethod
     def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
-        """
-        Persist configuration updates to .env file.
-        
-        Args:
-            updates: Dictionary of config updates to persist
-        """
         env_file = cls._get_env_file_path()
         
         # Mapping of config keys to environment variable names
