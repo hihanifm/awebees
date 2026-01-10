@@ -30,7 +30,7 @@ export function TopNavigation({ className }: TopNavigationProps) {
           className
         )}
       >
-        <div className="mx-auto flex h-full w-full items-center justify-between px-6">
+        <div className="mx-auto flex h-full w-full items-center px-6 relative">
           {/* Logo and App Name */}
           <Link href="/" className="flex items-center gap-3 no-underline hover:opacity-80 transition-opacity">
             <img
@@ -48,8 +48,8 @@ export function TopNavigation({ className }: TopNavigationProps) {
             </div>
           </Link>
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-1">
+          {/* Navigation Tabs - Centered */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1">
             {/* Home Tab */}
             <Link
               href="/"
@@ -77,8 +77,10 @@ export function TopNavigation({ className }: TopNavigationProps) {
             >
               {t("playground.title")}
             </Link>
+          </div>
 
-            {/* Settings Tab */}
+          {/* Settings Tab - Right */}
+          <div className="ml-auto flex items-center">
             <button
               onClick={() => setSettingsOpen(true)}
               className={cn(
