@@ -14,6 +14,31 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 // Initialize Mermaid once
 let mermaidInitialized = false;
 
+// Image Component with Error Handling
+function MarkdownImage({ src, alt, ...props }: { src?: string; alt?: string; [key: string]: any }) {
+  const [imageError, setImageError] = useState(false);
+  
+  if (!src) return null;
+  
+  if (imageError) {
+    return (
+      <div className="rounded-lg border border-border bg-muted p-4 flex items-center gap-2 text-muted-foreground my-6">
+        <span className="text-sm">⚠️ Image not found: {alt || src}</span>
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={src} 
+      alt={alt || ''} 
+      className="max-w-full h-auto rounded-lg border border-border shadow-sm my-6" 
+      onError={() => setImageError(true)}
+      {...props} 
+    />
+  );
+}
+
 // Mermaid Diagram Component
 function MermaidDiagram({ diagram }: { diagram: string }) {
   const [svg, setSvg] = useState<string>("");
@@ -28,6 +53,11 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
       mermaid.initialize({
         startOnLoad: false,
         theme: 'default',
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+          curve: 'basis',
+        },
         themeVariables: {
           primaryColor: '#f59e0b',
           primaryTextColor: '#fff',
@@ -39,6 +69,8 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
           mainBkg: '#ffffff',
           secondBkg: '#f3f4f6',
           textColor: '#1f2937',
+          fontSize: '16px',
+          fontFamily: 'inherit',
         },
       });
       mermaidInitialized = true;
@@ -52,7 +84,29 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
         
         // Render the diagram
         const { svg: renderedSvg } = await mermaid.render(diagramIdRef.current, diagram.trim());
-        setSvg(renderedSvg);
+        // Process SVG to make it responsive and larger
+        let processedSvg = renderedSvg;
+        
+        // Remove fixed width and height to allow responsive scaling
+        processedSvg = processedSvg.replace(/width="[^"]*"/g, '');
+        processedSvg = processedSvg.replace(/height="[^"]*"/g, '');
+        
+        // Add responsive styling - check if style attribute exists
+        if (processedSvg.includes('style=')) {
+          // Append to existing style
+          processedSvg = processedSvg.replace(
+            /style="([^"]*)"/,
+            'style="$1 width: 100%; max-width: 100%; height: auto; min-width: 800px;"'
+          );
+        } else {
+          // Add new style attribute
+          processedSvg = processedSvg.replace(
+            /<svg/,
+            '<svg style="width: 100%; max-width: 100%; height: auto; min-width: 800px;"'
+          );
+        }
+        
+        setSvg(processedSvg);
       } catch (err) {
         logger.error("Error rendering Mermaid diagram:", err);
         setError(err instanceof Error ? err.message : "Failed to render diagram");
@@ -85,20 +139,31 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
   }
 
   return (
-    <div className="my-6 flex justify-center overflow-x-auto bg-background rounded-lg border border-border p-4">
+    <div className="my-8 w-full">
       {svg ? (
         <div 
-          className="mermaid-container"
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+          className="mermaid-container w-full flex justify-center overflow-x-auto bg-background rounded-lg border border-border p-6"
+          style={{ minHeight: '400px' }}
+        >
+          <div 
+            className="w-full max-w-5xl"
+            dangerouslySetInnerHTML={{ __html: svg }}
+            style={{ 
+              display: 'flex', 
+              justifyContent: 'center',
+            }}
+          />
+        </div>
       ) : !error ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-          <span className="text-sm">Rendering diagram...</span>
+        <div className="rounded-md border border-border bg-muted p-6 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+            <span className="text-sm">Rendering diagram...</span>
+          </div>
         </div>
       ) : null}
       {error && (
-        <div className="w-full">
+        <div className="w-full my-6">
           <div className="rounded-md border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
             <p className="text-sm text-red-600 dark:text-red-400 mb-2">
               Failed to render diagram: {error}
@@ -137,7 +202,32 @@ export default function HelpPage() {
           throw new Error(`Failed to load help content: ${response.status} ${errorText}`);
         }
         
-        const content = await response.text();
+        let content = await response.text();
+        
+        // Transform relative image paths to use the backend API endpoint
+        // Replace markdown image syntax: ![alt](image.png) with ![alt](/api/help/images/image.png)
+        content = content.replace(
+          /!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|svg|webp))\)/gi,
+          (match, alt, imagePath) => {
+            // If it's already an absolute URL (http/https), leave it as is
+            if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+              return match;
+            }
+            // If it's already an absolute path starting with /api/help/images, leave it as is
+            if (imagePath.startsWith('/api/help/images')) {
+              return match;
+            }
+            // Otherwise, convert relative path to API endpoint
+            // Extract just the filename (handle paths like ./image.png or images/image.png)
+            const imageName = imagePath.split('/').pop()?.split('\\').pop() || imagePath;
+            // Use relative path if baseUrl is empty (same origin), otherwise use full URL
+            const imageApiPath = baseUrl 
+              ? `${baseUrl}/api/help/images/${imageName}`
+              : `/api/help/images/${imageName}`;
+            return `![${alt}](${imageApiPath})`;
+          }
+        );
+        
         setMarkdownContent(content);
         logger.info(`Successfully loaded help content (${content.length} characters)`);
       } catch (err) {
@@ -295,14 +385,7 @@ export default function HelpPage() {
                   },
                   // Images
                   img({ node, src, alt, ...props }) {
-                    return (
-                      <img 
-                        src={src} 
-                        alt={alt} 
-                        className="max-w-full h-auto rounded-lg border border-border my-6 shadow-sm" 
-                        {...props} 
-                      />
-                    );
+                    return <MarkdownImage src={src} alt={alt} {...props} />;
                   },
                   // Lists
                   ul({ node, children, ...props }) {

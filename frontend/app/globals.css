@@ -410,3 +410,38 @@
       );
   }
 }
+
+/* Mermaid diagram styling */
+.mermaid-container {
+  width: 100%;
+}
+
+.mermaid-container svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-width: 600px;
+}
+
+.mermaid-container .nodeLabel,
+.mermaid-container .edgeLabel {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+}
+
+.mermaid-container .node rect,
+.mermaid-container .node circle,
+.mermaid-container .node ellipse,
+.mermaid-container .node polygon {
+  stroke-width: 2px !important;
+}
+
+.mermaid-container .cluster rect {
+  stroke-width: 2px !important;
+}
+
+/* Make text more readable in diagrams */
+.mermaid-container text {
+  font-size: 16px !important;
+  font-family: var(--font-sans) !important;
+}
