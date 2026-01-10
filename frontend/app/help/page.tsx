@@ -247,7 +247,7 @@ export default function HelpPage() {
           }
         );
         
-        // Transform internal markdown file links to use special handler
+        // Normalize internal markdown file links (keep .md extension for detection)
         // Match markdown links: [text](file.md) or [text](path/to/file.md)
         text = text.replace(
           /\[([^\]]+)\]\(([^)]+\.md)\)/gi,
@@ -256,21 +256,22 @@ export default function HelpPage() {
             if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
               return match;
             }
-            // Skip if already transformed
-            if (filePath.startsWith('/api/help/docs/') || filePath.startsWith('internal-doc://')) {
-              logger.debug(`Link already transformed, skipping: "${filePath}"`);
+            // Skip if already an absolute API path
+            if (filePath.startsWith('/api/help/docs/')) {
+              logger.debug(`Link already has API path, skipping: "${filePath}"`);
               return match;
             }
-            // Transform to internal link handler
-            // Remove leading ./ or ../ if present, and normalize path separators
+            // Normalize path - remove leading ./ or ../ if present, normalize separators
+            // Keep it as a relative path so ReactMarkdown parses it correctly
             let normalizedPath = filePath
               .replace(/^\.\//g, '')
               .replace(/^\.\.\//g, '')
               .replace(/\\/g, '/') // Normalize Windows paths
               .trim();
             
-            logger.info(`🔄 Transforming markdown link: "${filePath}" -> "internal-doc://${normalizedPath}" (link text: "${linkText}")`);
-            return `[${linkText}](internal-doc://${normalizedPath})`;
+            logger.info(`🔄 Normalizing markdown link: "${filePath}" -> "${normalizedPath}" (link text: "${linkText}")`);
+            // Return with normalized path - ReactMarkdown will parse it as href
+            return `[${linkText}](${normalizedPath})`;
           }
         );
         
@@ -559,16 +560,17 @@ export default function HelpPage() {
                     // Log all links for debugging
                     logger.debug(`🔗 Rendering link: href="${href}", children="${String(children).substring(0, 50)}"`);
                     
-                    // Handle internal document links
-                    if (href?.startsWith('internal-doc://')) {
-                      const docPath = href.replace('internal-doc://', '').trim();
+                    // Handle internal document links - check if href ends with .md
+                    // This catches links like [text](README.md), [text](docs/file.md), etc.
+                    if (href && typeof href === 'string' && href.endsWith('.md') && !href.startsWith('http://') && !href.startsWith('https://')) {
+                      const docPath = href.trim();
                       // Extract title from link text, or derive from filename
                       const linkText = String(children).trim();
                       const docTitle = linkText || docPath.split('/').pop()?.replace('.md', '') || 'Documentation';
                       
-                      logger.info(`🔗 Rendering internal link:`);
+                      logger.info(`🔗 Rendering internal markdown link:`);
                       logger.info(`   href="${href}"`);
-                      logger.info(`   extractedPath="${docPath}"`);
+                      logger.info(`   docPath="${docPath}"`);
                       logger.info(`   linkText="${linkText}"`);
                       logger.info(`   docTitle="${docTitle}"`);
                       
@@ -592,12 +594,11 @@ export default function HelpPage() {
                             const clickedPath = docPath; // Capture in closure
                             const clickedTitle = docTitle;
                             
-                            logger.info(`🔗 Internal link clicked:`);
+                            logger.info(`🔗 Internal markdown link clicked:`);
                             logger.info(`   Original href: "${href}"`);
                             logger.info(`   Extracted path: "${clickedPath}"`);
                             logger.info(`   Link text: "${linkText}"`);
                             logger.info(`   Document title: "${clickedTitle}"`);
-                            logger.info(`   Current stack before update: ${JSON.stringify(documentStack.map(d => ({ path: d.path, title: d.title })))}`);
                             
                             if (!clickedPath || clickedPath === '') {
                               logger.error(`❌ ERROR: Cannot navigate to empty path!`);
