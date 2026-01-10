@@ -221,9 +221,9 @@ export default function HelpPage() {
   const [documentStack, setDocumentStack] = useState<Array<{ path: string; title: string }>>([
     { path: "", title: "Quick Start Guide" }
   ]);
+  const [mermaidDiagrams, setMermaidDiagrams] = useState<Array<{ id: string; content: string }>>([]);
   const fetchingRef = useRef(false);
   const lastFetchedPathRef = useRef<string | null>(null);
-  const mermaidDiagramsRef = useRef<Map<string, string>>(new Map());
   
   const fetchMarkdownContent = useCallback(async (docPath: string) => {
     try {
@@ -261,24 +261,33 @@ export default function HelpPage() {
       logger.info(`📄 Received content (${content.length} chars) for path: "${docPath || '(home)'}"`);
       logger.info(`📝 Content preview (first 200 chars): ${content.substring(0, 200).replace(/\n/g, '\\n')}`);
       
-      // Clear previous diagrams for this document
-      mermaidDiagramsRef.current.clear();
+      // Extract Mermaid diagrams from raw markdown before ReactMarkdown parses it
+      const mermaidBlocks: Array<{ id: string; content: string }> = [];
       
       const transformContent = (text: string) => {
-        // Extract Mermaid diagrams and store them in the ref
-        // Replace with regular mermaid code blocks (ReactMarkdown will handle them)
+        // Extract all Mermaid diagrams and store them
         text = text.replace(
           /```mermaid\s*\n([\s\S]*?)```/gi,
           (match, diagramContent) => {
             const diagramText = diagramContent.trim();
-            const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-            mermaidDiagramsRef.current.set(diagramId, diagramText);
+            const diagramId = `mermaid-${mermaidBlocks.length}`;
+            mermaidBlocks.push({ id: diagramId, content: diagramText });
             logger.info(`📊 Extracted Mermaid diagram "${diagramId}": ${diagramText.length} chars`);
             logger.debug(`   Diagram preview: ${diagramText.substring(0, 200)}...`);
-            // Keep as regular mermaid code block - we'll detect it by className
-            return `\`\`\`mermaid\n${diagramText}\n\`\`\``;
+            // Remove mermaid block from markdown (replace with empty line to preserve spacing)
+            return '\n\n';
           }
         );
+        
+        // Store extracted diagrams in state (set immediately after transformation)
+        if (mermaidBlocks.length > 0) {
+          setMermaidDiagrams(mermaidBlocks);
+          logger.info(`📊 Stored ${mermaidBlocks.length} Mermaid diagram(s) to render separately`);
+        } else {
+          setMermaidDiagrams([]);
+        }
+        
+        return text;
         
         // Transform relative image paths to use the backend API endpoint
         text = text.replace(
@@ -509,7 +518,7 @@ export default function HelpPage() {
             </div>
           )}
 
-          {!loading && !error && markdownContent && (
+              {!loading && !error && markdownContent && (
             <div className="max-w-none space-y-6">
               {/* Debug: Show current document path */}
               {documentStack.length > 0 && (
@@ -517,9 +526,22 @@ export default function HelpPage() {
                   📄 <strong>Current document:</strong> <code className="px-2 py-1 bg-background rounded font-mono text-primary">{documentStack[documentStack.length - 1].path || '(home - QUICK_START.md)'}</code>
                   <span className="ml-2 text-muted-foreground">
                     | Content length: {markdownContent.length} chars
+                    {mermaidDiagrams.length > 0 && ` | Mermaid diagrams: ${mermaidDiagrams.length}`}
                   </span>
                 </div>
               )}
+              
+              {/* Render Mermaid diagrams separately (extracted before ReactMarkdown parsing) */}
+              {mermaidDiagrams.length > 0 && (
+                <div className="space-y-6">
+                  {mermaidDiagrams.map((diagram, index) => (
+                    <div key={diagram.id}>
+                      <MermaidDiagram diagram={diagram.content} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              
               <ReactMarkdown
                 key={documentStack.length > 0 ? documentStack[documentStack.length - 1].path || 'home' : 'home'}
                 components={{
@@ -547,7 +569,6 @@ export default function HelpPage() {
                   },
                   // Paragraphs with better spacing
                   p({ node, children, ...props }) {
-                    // Don't render paragraph if it contains a code block (handled by pre)
                     if (node?.children?.some((child: any) => child.type === 'element' && child.tagName === 'pre')) {
                       return <>{children}</>;
                     }
@@ -559,110 +580,10 @@ export default function HelpPage() {
                   },
                   // Inline code
                   code({ node, className, children, ...props }: any) {
-                    // Check if this is inline code by checking if there's no language class
                     const classNameStr = Array.isArray(className) 
                       ? className.join(' ') 
                       : (typeof className === 'string' ? className : '');
                     
-                    // Check if this is a Mermaid diagram block
-                    const isMermaid = classNameStr && (classNameStr.includes('language-mermaid') || classNameStr.includes('mermaid'));
-                    
-                    if (isMermaid && !props.inline) {
-                      // Extract diagram text - ReactMarkdown v9 should pass text content in children
-                      let diagramText = '';
-                      
-                      // Method 1: Direct string (most common)
-                      if (typeof children === 'string') {
-                        diagramText = children.trim();
-                        logger.debug(`   Extracted from string children: ${diagramText.length} chars`);
-                      } 
-                      // Method 2: Array of strings
-                      else if (Array.isArray(children)) {
-                        diagramText = children
-                          .filter((c: any) => c !== null && c !== undefined)
-                          .map((c: any) => {
-                            if (typeof c === 'string') return c;
-                            if (typeof c === 'number') return String(c);
-                            // Try to extract from React elements
-                            if (c && typeof c === 'object') {
-                              if (c.props?.children) {
-                                if (typeof c.props.children === 'string') return c.props.children;
-                                if (Array.isArray(c.props.children)) {
-                                  return c.props.children.filter((x: any) => typeof x === 'string').join('');
-                                }
-                              }
-                              if (c.children) {
-                                if (typeof c.children === 'string') return c.children;
-                                if (Array.isArray(c.children)) {
-                                  return c.children.filter((x: any) => typeof x === 'string').join('');
-                                }
-                              }
-                            }
-                            return '';
-                          })
-                          .filter(Boolean)
-                          .join('')
-                          .trim();
-                        logger.debug(`   Extracted from array children: ${diagramText.length} chars`);
-                      }
-                      // Method 3: Extract from node AST structure (fallback)
-                      if ((!diagramText || diagramText.length < 10) && node) {
-                        const extractFromNode = (n: any): string => {
-                          if (!n) return '';
-                          if (typeof n === 'string') return n;
-                          if (n.type === 'text' && n.value) return n.value;
-                          if (Array.isArray(n)) {
-                            return n.map(extractFromNode).filter(Boolean).join('');
-                          }
-                          if (n.children) {
-                            return extractFromNode(n.children);
-                          }
-                          return '';
-                        };
-                        diagramText = extractFromNode(node).trim();
-                        logger.debug(`   Extracted from node AST: ${diagramText.length} chars`);
-                      }
-                      
-                      // Final trim
-                      diagramText = diagramText.trim();
-                      
-                      logger.info(`📊 Mermaid block code detected`);
-                      logger.info(`   className: "${classNameStr}"`);
-                      logger.info(`   diagram length: ${diagramText.length} chars`);
-                      logger.debug(`   children type: ${typeof children}, isArray: ${Array.isArray(children)}`);
-                      logger.debug(`   node present: ${!!node}`);
-                      
-                      if (diagramText && diagramText.length > 10) {
-                        logger.info(`   ✅ Diagram text extracted successfully: "${diagramText.substring(0, 100)}..."`);
-                        // Return MermaidDiagram component with the extracted text
-                        return <MermaidDiagram diagram={diagramText} />;
-                      } else {
-                        logger.error(`   ❌ Failed to extract diagram text!`);
-                        logger.error(`   Extracted: "${diagramText}" (length: ${diagramText.length})`);
-                        logger.error(`   children:`, children);
-                        logger.error(`   node:`, node ? JSON.stringify(node).substring(0, 500) : 'null');
-                        // Show error in UI with debugging info
-                        return (
-                          <div className="rounded-lg border border-red-300 bg-red-50 p-4 my-4 dark:border-red-800 dark:bg-red-950">
-                            <p className="text-sm text-red-600 dark:text-red-400 mb-2">
-                              ⚠️ Mermaid diagram detected but could not extract content
-                            </p>
-                            <p className="text-xs text-red-500 mb-2">
-                              Extracted length: {diagramText.length} chars
-                            </p>
-                            <pre className="mt-2 text-xs bg-red-100 dark:bg-red-900 p-2 rounded overflow-x-auto max-h-48">
-                              {`children type: ${typeof children}\n`}
-                              {`children isArray: ${Array.isArray(children)}\n`}
-                              {`node present: ${!!node}\n`}
-                              {`className: ${classNameStr}\n`}
-                              {`Extracted text: "${diagramText}"`}
-                            </pre>
-                          </div>
-                        );
-                      }
-                    }
-                    
-                    // Check if inline code
                     const isInline = !classNameStr || !classNameStr.includes('language-');
                     
                     if (isInline) {
@@ -673,38 +594,15 @@ export default function HelpPage() {
                       );
                     }
                     
-                    // For block code (non-mermaid), just return code element (pre handles wrapper)
+                    // For block code, just return code element (pre handles wrapper)
                     return (
                       <code className={className} {...props}>
                         {children}
                       </code>
                     );
                   },
-                  // Code blocks wrapper - handle mermaid here
+                  // Code blocks wrapper (mermaid already extracted)
                   pre({ node, children, ...props }: any) {
-                    // If code component returned MermaidDiagram, children will be a React element (not code)
-                    // Check if children is a single React element that's not a code element
-                    if (children && typeof children === 'object' && !Array.isArray(children)) {
-                      // If it's not a code element (which would be a regular code block), it might be MermaidDiagram
-                      if (children.type && children.type !== 'code' && typeof children.type !== 'string') {
-                        // This is likely a custom component (MermaidDiagram) - return it without pre wrapper
-                        logger.debug(`   pre component: Detected custom component (likely MermaidDiagram), unwrapping`);
-                        return <>{children}</>;
-                      }
-                    }
-                    
-                    // Check if children array contains a custom component (MermaidDiagram)
-                    if (Array.isArray(children) && children.length === 1) {
-                      const child = children[0];
-                      if (child && typeof child === 'object' && child.type && 
-                          child.type !== 'code' && typeof child.type !== 'string') {
-                        // Custom component detected - return it without pre wrapper
-                        logger.debug(`   pre component: Detected custom component in array, unwrapping`);
-                        return <>{child}</>;
-                      }
-                    }
-                    
-                    // Regular code block - wrap with pre element
                     return (
                       <pre className="rounded-lg border border-border bg-muted p-4 overflow-x-auto my-4 text-sm font-mono" {...props}>
                         {children}
