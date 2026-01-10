@@ -493,7 +493,7 @@ export default function HelpPage() {
                   // Paragraphs with better spacing
                   p({ node, children, ...props }) {
                     // Don't render paragraph if it contains a code block (handled by pre)
-                    if (node.children?.some((child: any) => child.type === 'element' && child.tagName === 'pre')) {
+                    if (node?.children?.some((child: any) => child.type === 'element' && child.tagName === 'pre')) {
                       return <>{children}</>;
                     }
                     return (
@@ -503,8 +503,10 @@ export default function HelpPage() {
                     );
                   },
                   // Inline code
-                  code({ node, inline, className, children, ...props }) {
-                    if (inline) {
+                  code({ node, className, children, ...props }: any) {
+                    // Check if this is inline code by checking if parent is a paragraph or if there's no className
+                    const isInline = !className || (typeof className === 'string' && !className.includes('language-'));
+                    if (isInline) {
                       return (
                         <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground border border-border" {...props}>
                           {children}
@@ -521,7 +523,7 @@ export default function HelpPage() {
                   // Code blocks wrapper - handle mermaid here
                   pre({ node, children, ...props }) {
                     // Check if this is a mermaid diagram by examining the node
-                    if (node.children && node.children.length > 0) {
+                    if (node?.children && node.children.length > 0) {
                       const codeChild = node.children[0] as any;
                       if (codeChild && codeChild.type === 'element' && codeChild.tagName === 'code') {
                         const className = codeChild.properties?.className;
@@ -647,7 +649,9 @@ export default function HelpPage() {
                   },
                   // Images
                   img({ node, src, alt, ...props }) {
-                    return <MarkdownImage src={src} alt={alt} {...props} />;
+                    // In markdown, src is always a string (URL), but TypeScript types are broad
+                    const srcString = typeof src === 'string' ? src : undefined;
+                    return <MarkdownImage src={srcString} alt={alt} {...props} />;
                   },
                   // Lists
                   ul({ node, children, ...props }) {
