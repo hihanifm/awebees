@@ -54,6 +54,80 @@ async def get_help():
         )
 
 
+@router.get("/docs/{file_path:path}")
+async def get_help_doc(file_path: str):
+    """
+    Serve markdown documentation files referenced in the help documentation.
+    
+    Args:
+        file_path: Relative path to the markdown file (e.g., README.md, docs/AI_SETUP.md)
+    
+    Returns:
+        The markdown file content as plain text.
+    """
+    try:
+        project_root = get_project_root()
+        
+        # Security: Normalize path and prevent directory traversal
+        # Remove any leading slashes and resolve relative to project root
+        normalized_path = file_path.lstrip('/').lstrip('\\')
+        
+        # Prevent directory traversal attacks
+        if '..' in normalized_path:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file path: directory traversal not allowed"
+            )
+        
+        # Only allow .md files
+        if not normalized_path.endswith('.md'):
+            raise HTTPException(
+                status_code=400,
+                detail="Only markdown (.md) files are allowed"
+            )
+        
+        # Build the full path
+        doc_path = project_root / normalized_path
+        resolved_path = doc_path.resolve()
+        
+        logger.info(f"Help API: Requested file_path: {file_path}")
+        logger.info(f"Help API: Normalized path: {normalized_path}")
+        logger.info(f"Help API: Resolved full path: {resolved_path}")
+        
+        # Ensure the file is within the project root (security check)
+        try:
+            resolved_path.relative_to(project_root.resolve())
+        except ValueError:
+            logger.error(f"Help API: Path traversal detected - {resolved_path} is outside project root {project_root.resolve()}")
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file path: file must be within project root"
+            )
+        
+        if not doc_path.exists() or not doc_path.is_file():
+            logger.error(f"Help API: Documentation file not found at: {doc_path}")
+            logger.error(f"Help API: File exists: {doc_path.exists()}, Is file: {doc_path.is_file() if doc_path.exists() else 'N/A'}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Documentation file not found: {file_path}"
+            )
+        
+        # Read and return the markdown content
+        content = doc_path.read_text(encoding="utf-8")
+        logger.info(f"Help API: Successfully read documentation file '{normalized_path}' ({len(content)} characters, first 100 chars: {content[:100]})")
+        
+        return PlainTextResponse(content)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Help API: Error reading documentation file {file_path}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read documentation file: {str(e)}"
+        )
+
+
 @router.get("/images/{image_name}")
 async def get_help_image(image_name: str):
     """

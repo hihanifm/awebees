@@ -50,6 +50,31 @@ else
     echo "  ⚠ Warning: samples directory not found"
 fi
 
+# Copy markdown documentation files (needed for help page)
+echo "  Copying documentation files..."
+# Copy main documentation files from project root
+for doc_file in QUICK_START.md README.md FEATURES.md PLAYGROUND.md CHANGELOG.md WINDOWS-SETUP-GUIDE.md LOGGING_FEATURE.md E2E_TESTS.md; do
+    if [ -f "$PROJECT_ROOT/$doc_file" ]; then
+        cp "$PROJECT_ROOT/$doc_file" "$PACKAGE_DIR/"
+    fi
+done
+
+# Copy docs subdirectory
+if [ -d "$PROJECT_ROOT/docs" ]; then
+    mkdir -p "$PACKAGE_DIR/docs"
+    cp -r "$PROJECT_ROOT/docs"/* "$PACKAGE_DIR/docs/" 2>/dev/null || true
+    echo "  ✓ Documentation subdirectory included"
+fi
+
+# Copy images referenced in documentation (if they exist)
+echo "  Copying documentation images..."
+for img_file in lens_1.png lens_2.png lens_3.png lensAI.png playground-screenshot.png playground_2nd.png; do
+    if [ -f "$PROJECT_ROOT/$img_file" ]; then
+        cp "$PROJECT_ROOT/$img_file" "$PACKAGE_DIR/"
+    fi
+done
+echo "  ✓ Documentation files and images included"
+
 # Copy frontend/out
 echo "  Copying frontend build..."
 # Create frontend directory first

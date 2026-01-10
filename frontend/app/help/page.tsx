@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, HelpCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -183,30 +183,49 @@ export default function HelpPage() {
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchHelpContent = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const [documentStack, setDocumentStack] = useState<Array<{ path: string; title: string }>>([
+    { path: "", title: "Quick Start Guide" }
+  ]);
+  const fetchingRef = useRef(false);
+  const lastFetchedPathRef = useRef<string | null>(null);
+  
+  const fetchMarkdownContent = useCallback(async (docPath: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const baseUrl = API_URL || "";
+      let url: string;
+      
+      if (!docPath || docPath === "") {
+        // Fetch Quick Start guide
+        url = baseUrl ? `${baseUrl}/api/help` : "/api/help";
+        logger.info(`📖 Fetching Quick Start guide (empty path)`);
+      } else {
+        // Fetch specific documentation file
+        // Normalize path - remove leading slash if present, normalize Windows paths
+        let normalizedPath = docPath
+          .startsWith('/') ? docPath.slice(1) : docPath;
+        normalizedPath = normalizedPath.replace(/\\/g, '/'); // Normalize Windows paths
         
-        const baseUrl = API_URL || "";
-        const url = baseUrl ? `${baseUrl}/api/help` : "/api/help";
-        
-        logger.info(`Fetching help content from: ${url}`);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "Unknown error");
-          throw new Error(`Failed to load help content: ${response.status} ${errorText}`);
-        }
-        
-        let content = await response.text();
-        
+        url = baseUrl ? `${baseUrl}/api/help/docs/${normalizedPath}` : `/api/help/docs/${normalizedPath}`;
+        logger.info(`📖 Fetching document: "${docPath}" -> normalized: "${normalizedPath}"`);
+      }
+      
+      logger.info(`🌐 Full API URL: ${url}`);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        throw new Error(`Failed to load help content: ${response.status} ${errorText}`);
+      }
+      
+      let content = await response.text();
+      
+      const transformContent = (text: string) => {
         // Transform relative image paths to use the backend API endpoint
-        // Replace markdown image syntax: ![alt](image.png) with ![alt](/api/help/images/image.png)
-        content = content.replace(
+        text = text.replace(
           /!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|svg|webp))\)/gi,
           (match, alt, imagePath) => {
             // If it's already an absolute URL (http/https), leave it as is
@@ -218,9 +237,7 @@ export default function HelpPage() {
               return match;
             }
             // Otherwise, convert relative path to API endpoint
-            // Extract just the filename (handle paths like ./image.png or images/image.png)
             const imageName = imagePath.split('/').pop()?.split('\\').pop() || imagePath;
-            // Use relative path if baseUrl is empty (same origin), otherwise use full URL
             const imageApiPath = baseUrl 
               ? `${baseUrl}/api/help/images/${imageName}`
               : `/api/help/images/${imageName}`;
@@ -228,19 +245,137 @@ export default function HelpPage() {
           }
         );
         
-        setMarkdownContent(content);
-        logger.info(`Successfully loaded help content (${content.length} characters)`);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to load help content";
-        logger.error("Error fetching help content:", err);
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchHelpContent();
+        // Transform internal markdown file links to use special handler
+        // Match markdown links: [text](file.md) or [text](path/to/file.md)
+        text = text.replace(
+          /\[([^\]]+)\]\(([^)]+\.md)\)/gi,
+          (match, linkText, filePath) => {
+            // Skip external URLs
+            if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+              return match;
+            }
+            // Skip if already transformed
+            if (filePath.startsWith('/api/help/docs/') || filePath.startsWith('internal-doc://')) {
+              logger.debug(`Link already transformed, skipping: "${filePath}"`);
+              return match;
+            }
+            // Transform to internal link handler
+            // Remove leading ./ or ../ if present, and normalize path separators
+            let normalizedPath = filePath
+              .replace(/^\.\//g, '')
+              .replace(/^\.\.\//g, '')
+              .replace(/\\/g, '/') // Normalize Windows paths
+              .trim();
+            
+            logger.info(`🔄 Transforming markdown link: "${filePath}" -> "internal-doc://${normalizedPath}" (link text: "${linkText}")`);
+            return `[${linkText}](internal-doc://${normalizedPath})`;
+          }
+        );
+        
+        return text;
+      };
+      
+      content = transformContent(content);
+      setMarkdownContent(content);
+      logger.info(`✅ Successfully loaded and transformed content (${content.length} chars) for path: "${docPath || '(home)'}"`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load help content";
+      logger.error("Error fetching help content:", err);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Fetch content when document stack changes
+  useEffect(() => {
+    if (documentStack.length === 0) {
+      return;
+    }
+    
+    const currentDoc = documentStack[documentStack.length - 1];
+    const pathToFetch = currentDoc?.path || "";
+    const pathKey = pathToFetch || "__HOME__";
+    
+    // Only fetch if this is a different path than what we last fetched
+    if (lastFetchedPathRef.current === pathKey) {
+      logger.debug(`⏸️ Path unchanged: "${pathToFetch || '(home)'}", skipping fetch (already loaded)`);
+      return;
+    }
+    
+    // If already fetching, log it but continue with new fetch
+    if (fetchingRef.current) {
+      logger.warn(`⚠️ Fetch already in progress for "${lastFetchedPathRef.current}", but path changed to "${pathKey}" - starting new fetch`);
+    }
+    
+    logger.info(`🔄 Document stack changed - Stack length: ${documentStack.length}`);
+    logger.info(`📄 Current document: path="${pathToFetch || '(home - Quick Start)'}", title="${currentDoc?.title || ''}"`);
+    logger.info(`📚 Full stack: ${documentStack.map((d, i) => `${i}: "${d.path || '(home)'}" (${d.title})`).join(' → ')}`);
+    logger.info(`📥 Starting fetch for document: "${pathToFetch || '(home - Quick Start)'}" (key: "${pathKey}")`);
+    logger.info(`🔗 API URL will be: ${pathToFetch ? `/api/help/docs/${pathToFetch}` : '/api/help'}`);
+    
+    // Set refs BEFORE fetch to prevent duplicate requests
+    lastFetchedPathRef.current = pathKey;
+    fetchingRef.current = true;
+    
+    // Clear previous content while loading new one
+    setMarkdownContent("");
+    
+    fetchMarkdownContent(pathToFetch)
+      .then(() => {
+        logger.info(`✅ Successfully loaded document: "${pathToFetch || '(home - Quick Start)'}"`);
+      })
+      .catch((err) => {
+        logger.error(`❌ Failed to load document: "${pathToFetch || '(home - Quick Start)'}"`, err);
+        // Reset ref on error so we can retry
+        if (lastFetchedPathRef.current === pathKey) {
+          lastFetchedPathRef.current = null;
+        }
+      })
+      .finally(() => {
+        fetchingRef.current = false;
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentStack]);
+
+  // Update document title from markdown content when it loads
+  useEffect(() => {
+    if (!markdownContent || documentStack.length === 0) return;
+    
+    const h1Match = markdownContent.match(/^#\s+(.+)$/m);
+    if (!h1Match) return;
+    
+    setDocumentStack(prev => {
+      if (prev.length === 0) return prev;
+      
+      const currentDocIndex = prev.length - 1;
+      const currentDoc = prev[currentDocIndex];
+      if (!currentDoc) return prev;
+      
+      const extractedTitle = h1Match[1].trim();
+      if (!extractedTitle || extractedTitle === currentDoc.title) {
+        return prev; // No change needed - return same reference to prevent re-fetch
+      }
+      
+      // Only update if title is a default/generic title (not yet extracted from content)
+      const filenameTitle = currentDoc.path.split('/').pop()?.replace('.md', '') || '';
+      const isDefaultTitle = 
+        currentDoc.title === filenameTitle || 
+        currentDoc.title === 'Documentation' || 
+        (!currentDoc.path && currentDoc.title === 'Quick Start Guide');
+      
+      if (isDefaultTitle) {
+        logger.info(`📝 Extracting title from H1: "${currentDoc.title}" -> "${extractedTitle}" (path: "${currentDoc.path || '(home)'}")`);
+        // Create new array with updated title - same path, so fetch will be skipped
+        const newStack = [...prev];
+        newStack[currentDocIndex] = { ...newStack[currentDocIndex], title: extractedTitle };
+        // The path is the same, so the fetch useEffect will see lastFetchedPathRef.current === pathToFetch and skip
+        return newStack;
+      }
+      
+      return prev; // Title already set from content, return same reference
+    });
+  }, [markdownContent]);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 font-sans">
@@ -263,6 +398,40 @@ export default function HelpPage() {
           <p className="text-foreground/80 mt-2 font-medium">
             {t("app.helpDescription") || "Quick Start Guide"}
           </p>
+          
+          {/* Breadcrumb Navigation */}
+          {documentStack.length > 1 && (
+            <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground flex-wrap">
+              {documentStack.map((doc, index) => (
+                <div key={`${doc.path}-${index}`} className="flex items-center gap-2">
+                  {index > 0 && <span>/</span>}
+                  {index === documentStack.length - 1 ? (
+                    <span className="text-foreground font-medium">{doc.title}</span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const newStack = documentStack.slice(0, index + 1);
+                        setDocumentStack(newStack);
+                      }}
+                      className="text-primary hover:underline cursor-pointer"
+                    >
+                      {doc.title}
+                    </button>
+                  )}
+                </div>
+              ))}
+              {documentStack.length > 1 && (
+                <button
+                  onClick={() => {
+                    setDocumentStack([{ path: "", title: "Quick Start Guide" }]);
+                  }}
+                  className="ml-2 px-2 py-1 text-xs rounded border border-border hover:bg-muted text-primary hover:bg-muted/80 transition-colors"
+                >
+                  ← Back to Home
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -283,7 +452,17 @@ export default function HelpPage() {
 
           {!loading && !error && markdownContent && (
             <div className="max-w-none space-y-6">
+              {/* Debug: Show current document path */}
+              {documentStack.length > 0 && (
+                <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted rounded border border-border">
+                  📄 <strong>Current document:</strong> <code className="px-2 py-1 bg-background rounded font-mono text-primary">{documentStack[documentStack.length - 1].path || '(home - QUICK_START.md)'}</code>
+                  <span className="ml-2 text-muted-foreground">
+                    | Content length: {markdownContent.length} chars
+                  </span>
+                </div>
+              )}
               <ReactMarkdown
+                key={documentStack.length > 0 ? documentStack[documentStack.length - 1].path || 'home' : 'home'}
                 components={{
                   // Headings with better styling
                   h1({ node, children, ...props }) {
@@ -371,6 +550,49 @@ export default function HelpPage() {
                   },
                   // Links
                   a({ node, href, children, ...props }) {
+                    // Handle internal document links
+                    if (href?.startsWith('internal-doc://')) {
+                      const docPath = href.replace('internal-doc://', '').trim();
+                      // Extract title from link text, or derive from filename
+                      const linkText = String(children).trim();
+                      const docTitle = linkText || docPath.split('/').pop()?.replace('.md', '') || 'Documentation';
+                      
+                      return (
+                        <a
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const clickedPath = docPath; // Capture in closure
+                            const clickedTitle = docTitle;
+                            logger.info(`🔗 Internal link clicked: path="${clickedPath}", title="${clickedTitle}"`);
+                            
+                            setDocumentStack(prev => {
+                              // Check if this document is already in the stack to avoid duplicates
+                              const existingIndex = prev.findIndex(doc => doc.path === clickedPath);
+                              if (existingIndex >= 0) {
+                                // Navigate to existing document in stack
+                                logger.info(`📍 Document already in stack at index ${existingIndex}, navigating back to it`);
+                                const newStack = prev.slice(0, existingIndex + 1);
+                                logger.info(`📍 New stack: ${newStack.map((d, i) => `${i}: "${d.path || '(home)'}"`).join(' → ')}`);
+                                return newStack;
+                              } else {
+                                // Add new document to stack
+                                logger.info(`➕ Adding new document to stack: path="${clickedPath}", title="${clickedTitle}"`);
+                                const newStack = [...prev, { path: clickedPath, title: clickedTitle }];
+                                logger.info(`📚 New stack: ${newStack.map((d, i) => `${i}: "${d.path || '(home)'}" (${d.title})`).join(' → ')}`);
+                                return newStack;
+                              }
+                            });
+                          }}
+                          className="text-primary hover:underline font-medium cursor-pointer"
+                          {...props}
+                        >
+                          {children}
+                        </a>
+                      );
+                    }
+                    
+                    // External links
                     return (
                       <a
                         href={href}

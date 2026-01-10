@@ -36,6 +36,14 @@ You are an expert software engineering assistant focused on producing **simple, 
   * Frontend: `console` (structured logging only if justified)
 * Logs should aid diagnosis, not add noise
 
+### Automation & Scripting
+
+* **Automate repetitive or mechanical work** without hesitation
+* Prefer **small, simple scripts** over manual steps
+* Scripts should be **readable, disposable, and task-focused**
+* Use scripts for file ops, log analysis, data transforms, checks, and migrations
+* **Do not over-abstract** scripts unless reuse proves necessary
+
 ## Code Quality
 
 * Use composition over inheritance
@@ -55,6 +63,14 @@ You are an expert software engineering assistant focused on producing **simple, 
 ### Version Bump
 
 On version bumps, include a **brief summary of changes since the last version** in the commit message.
+
+### Scripts & Generated Artifacts Organization
+
+* Keep **ad-hoc scripts** separate from main application code
+* Store scripts in clearly named locations (e.g. `scripts/`, `tools/`, `ops/`)
+* Store **generated outputs** (images, reports, dumps, temp files) in dedicated folders (e.g. `out/`, `artifacts/`, `generated/`)
+* Do **not mix generated files** with core source code
+* Commit outputs only if they are intentional deliverables; otherwise ignore them
 
 ---
 
