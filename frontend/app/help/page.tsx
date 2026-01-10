@@ -39,21 +39,15 @@ function MarkdownImage({ src, alt, ...props }: { src?: string; alt?: string; [ke
   );
 }
 
-// Mermaid Diagram Component
-// Use a special marker to identify this component
-const MERMAID_MARKER = Symbol('MermaidDiagram');
-
+// Mermaid Diagram Component - using auto-rendering approach
 function MermaidDiagram({ diagram }: { diagram: string }) {
-  const [svg, setSvg] = useState<string>("");
+  const diagramRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const diagramIdRef = useRef<string>(`mermaid-${Math.random().toString(36).substring(7)}`);
-  
-  // Add marker to component for detection
-  (MermaidDiagram as any)[MERMAID_MARKER] = true;
+  const [isRendering, setIsRendering] = useState(true);
 
   useEffect(() => {
-    if (!diagram) {
-      logger.warn(`⚠️ MermaidDiagram received empty diagram`);
+    if (!diagram || !diagramRef.current) {
+      logger.warn(`⚠️ MermaidDiagram: missing diagram or ref`);
       return;
     }
 
@@ -61,10 +55,11 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
     logger.debug(`   Diagram content: ${diagram.substring(0, 300)}...`);
 
     // Check if mermaid is available
-    if (!mermaid || typeof mermaid.initialize !== 'function' || typeof mermaid.render !== 'function') {
+    if (!mermaid || typeof mermaid.initialize !== 'function') {
       const errorMsg = "Mermaid library not available";
       logger.error(`❌ ${errorMsg}`);
       setError(errorMsg);
+      setIsRendering(false);
       return;
     }
 
@@ -73,7 +68,7 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
       try {
         logger.info(`🔧 Initializing Mermaid...`);
         mermaid.initialize({
-          startOnLoad: false,
+          startOnLoad: true,
           theme: 'default',
           flowchart: {
             useMaxWidth: true,
@@ -101,61 +96,78 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
         const errorMsg = `Failed to initialize Mermaid: ${err instanceof Error ? err.message : String(err)}`;
         logger.error(`❌ ${errorMsg}`, err);
         setError(errorMsg);
+        setIsRendering(false);
         return;
       }
     }
 
     const renderMermaid = async () => {
       try {
-        // Clear previous content
-        setSvg("");
+        setIsRendering(true);
         setError(null);
-        
-        const diagramId = diagramIdRef.current;
         const diagramText = diagram.trim();
         
-        logger.info(`🔄 Rendering Mermaid diagram with ID: ${diagramId}`);
+        if (!diagramText || diagramText.length < 10) {
+          throw new Error(`Diagram text is empty or too short: "${diagramText}"`);
+        }
+        
+        logger.info(`🔄 Rendering Mermaid diagram`);
         logger.debug(`   Diagram text: ${diagramText.substring(0, 200)}...`);
         
-        // Render the diagram
-        const { svg: renderedSvg } = await mermaid.render(diagramId, diagramText);
+        if (!diagramRef.current) {
+          throw new Error("Diagram ref is null");
+        }
         
-        logger.info(`✅ Mermaid rendered successfully: SVG length=${renderedSvg.length} chars`);
+        // Generate unique ID for this diagram
+        const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substring(7)}`;
         
-        // Process SVG to make it responsive and larger
-        let processedSvg = renderedSvg;
+        // Set the diagram text content in the div - Mermaid will look for elements with class "mermaid"
+        diagramRef.current.textContent = diagramText;
+        diagramRef.current.className = 'mermaid';
+        diagramRef.current.id = diagramId;
         
-        // Remove fixed width and height to allow responsive scaling
+        logger.info(`   Set diagram content in div with ID: ${diagramId}`);
+        
+        // Use mermaid.render() to render the diagram programmatically
+        // This is the correct API for mermaid v11+
+        const { svg } = await mermaid.render(diagramId, diagramText);
+        
+        logger.info(`✅ Mermaid rendered successfully: SVG length=${svg.length} chars`);
+        
+        // Process SVG to make it responsive
+        let processedSvg = svg;
         processedSvg = processedSvg.replace(/width="[^"]*"/g, '');
         processedSvg = processedSvg.replace(/height="[^"]*"/g, '');
         
-        // Add responsive styling - check if style attribute exists
         if (processedSvg.includes('style=')) {
-          // Append to existing style
           processedSvg = processedSvg.replace(
             /style="([^"]*)"/,
             'style="$1 width: 100%; max-width: 100%; height: auto; min-width: 800px;"'
           );
         } else {
-          // Add new style attribute
           processedSvg = processedSvg.replace(
             /<svg/,
             '<svg style="width: 100%; max-width: 100%; height: auto; min-width: 800px;"'
           );
         }
         
-        logger.info(`✅ SVG processed: final length=${processedSvg.length} chars`);
-        setSvg(processedSvg);
+        // Set the rendered SVG as innerHTML
+        if (diagramRef.current) {
+          diagramRef.current.innerHTML = processedSvg;
+          logger.info(`✅ SVG set in div element`);
+        }
+        
+        setIsRendering(false);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Failed to render diagram";
         logger.error(`❌ Error rendering Mermaid diagram:`, err);
         logger.error(`   Error details:`, {
           message: errorMsg,
           diagram: diagram.substring(0, 200),
-          diagramId: diagramIdRef.current
+          stack: err instanceof Error ? err.stack : undefined
         });
         setError(errorMsg);
-        setSvg("");
+        setIsRendering(false);
       }
     };
 
@@ -164,61 +176,39 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
 
   if (error) {
     return (
-      <div className="rounded-md border border-red-300 bg-red-50 p-4 my-4 dark:border-red-800 dark:bg-red-950">
-        <p className="text-sm text-red-600 dark:text-red-400">
+      <div className="rounded-md border border-red-300 bg-red-50 p-4 my-6 dark:border-red-800 dark:bg-red-950">
+        <p className="text-sm text-red-600 dark:text-red-400 mb-2">
           Failed to render diagram: {error}
         </p>
-        <pre className="mt-2 text-xs bg-red-100 dark:bg-red-900 p-2 rounded overflow-x-auto">
+        <pre className="text-xs bg-red-100 dark:bg-red-900 p-2 rounded overflow-x-auto text-red-800 dark:text-red-200">
           {diagram}
         </pre>
       </div>
     );
   }
 
-  if (!svg) {
-    return (
-      <div className="rounded-md border border-border bg-muted p-4 my-4 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Rendering diagram...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="my-8 w-full">
-      {svg ? (
+      <div 
+        className="mermaid-container w-full flex justify-center overflow-x-auto bg-background rounded-lg border border-border p-6"
+        style={{ minHeight: '400px' }}
+      >
+        {isRendering && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+              <span className="text-sm">Rendering diagram...</span>
+            </div>
+          </div>
+        )}
         <div 
-          className="mermaid-container w-full flex justify-center overflow-x-auto bg-background rounded-lg border border-border p-6"
-          style={{ minHeight: '400px' }}
-        >
-          <div 
-            className="w-full max-w-5xl"
-            dangerouslySetInnerHTML={{ __html: svg }}
-            style={{ 
-              display: 'flex', 
-              justifyContent: 'center',
-            }}
-          />
-        </div>
-      ) : !error ? (
-        <div className="rounded-md border border-border bg-muted p-6 flex items-center justify-center">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-            <span className="text-sm">Rendering diagram...</span>
-          </div>
-        </div>
-      ) : null}
-      {error && (
-        <div className="w-full my-6">
-          <div className="rounded-md border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
-            <p className="text-sm text-red-600 dark:text-red-400 mb-2">
-              Failed to render diagram: {error}
-            </p>
-            <pre className="text-xs bg-red-100 dark:bg-red-900 p-2 rounded overflow-x-auto text-red-800 dark:text-red-200">
-              {diagram}
-            </pre>
-          </div>
-        </div>
-      )}
+          ref={diagramRef}
+          className="mermaid w-full max-w-5xl flex justify-center"
+          style={{ 
+            minHeight: '400px',
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -574,57 +564,105 @@ export default function HelpPage() {
                       ? className.join(' ') 
                       : (typeof className === 'string' ? className : '');
                     
-                    // Check if this is a Mermaid diagram
-                    if (classNameStr && (classNameStr.includes('language-mermaid') || classNameStr.includes('mermaid'))) {
+                    // Check if this is a Mermaid diagram block
+                    const isMermaid = classNameStr && (classNameStr.includes('language-mermaid') || classNameStr.includes('mermaid'));
+                    
+                    if (isMermaid && !props.inline) {
+                      // Extract diagram text - ReactMarkdown v9 should pass text content in children
                       let diagramText = '';
                       
-                      // ReactMarkdown typically passes code block content as string in children prop
+                      // Method 1: Direct string (most common)
                       if (typeof children === 'string') {
                         diagramText = children.trim();
-                      } else if (Array.isArray(children) && children.length === 1 && typeof children[0] === 'string') {
-                        diagramText = children[0].trim();
-                      } else if (Array.isArray(children)) {
-                        // Extract all string children
+                        logger.debug(`   Extracted from string children: ${diagramText.length} chars`);
+                      } 
+                      // Method 2: Array of strings
+                      else if (Array.isArray(children)) {
                         diagramText = children
-                          .filter((c: any) => typeof c === 'string')
+                          .filter((c: any) => c !== null && c !== undefined)
+                          .map((c: any) => {
+                            if (typeof c === 'string') return c;
+                            if (typeof c === 'number') return String(c);
+                            // Try to extract from React elements
+                            if (c && typeof c === 'object') {
+                              if (c.props?.children) {
+                                if (typeof c.props.children === 'string') return c.props.children;
+                                if (Array.isArray(c.props.children)) {
+                                  return c.props.children.filter((x: any) => typeof x === 'string').join('');
+                                }
+                              }
+                              if (c.children) {
+                                if (typeof c.children === 'string') return c.children;
+                                if (Array.isArray(c.children)) {
+                                  return c.children.filter((x: any) => typeof x === 'string').join('');
+                                }
+                              }
+                            }
+                            return '';
+                          })
+                          .filter(Boolean)
                           .join('')
                           .trim();
-                      } else if (node?.children && Array.isArray(node.children)) {
-                        // Fallback: extract from AST node structure
-                        diagramText = node.children
-                          .filter((n: any) => n && n.type === 'text')
-                          .map((n: any) => n.value || '')
-                          .join('')
-                          .trim();
-                      } else if (children && typeof children === 'object') {
-                        // Try to extract from React element props
-                        const extractFromReactElement = (elem: any): string => {
-                          if (typeof elem === 'string') return elem;
-                          if (Array.isArray(elem)) return elem.map(extractFromReactElement).join('');
-                          if (elem?.props?.children) return extractFromReactElement(elem.props.children);
-                          if (elem?.children) return extractFromReactElement(elem.children);
+                        logger.debug(`   Extracted from array children: ${diagramText.length} chars`);
+                      }
+                      // Method 3: Extract from node AST structure (fallback)
+                      if ((!diagramText || diagramText.length < 10) && node) {
+                        const extractFromNode = (n: any): string => {
+                          if (!n) return '';
+                          if (typeof n === 'string') return n;
+                          if (n.type === 'text' && n.value) return n.value;
+                          if (Array.isArray(n)) {
+                            return n.map(extractFromNode).filter(Boolean).join('');
+                          }
+                          if (n.children) {
+                            return extractFromNode(n.children);
+                          }
                           return '';
                         };
-                        diagramText = extractFromReactElement(children).trim();
+                        diagramText = extractFromNode(node).trim();
+                        logger.debug(`   Extracted from node AST: ${diagramText.length} chars`);
                       }
                       
-                      logger.info(`📊 Mermaid detected in code component`);
+                      // Final trim
+                      diagramText = diagramText.trim();
+                      
+                      logger.info(`📊 Mermaid block code detected`);
                       logger.info(`   className: "${classNameStr}"`);
                       logger.info(`   diagram length: ${diagramText.length} chars`);
                       logger.debug(`   children type: ${typeof children}, isArray: ${Array.isArray(children)}`);
+                      logger.debug(`   node present: ${!!node}`);
+                      
                       if (diagramText && diagramText.length > 10) {
-                        logger.info(`   ✅ Diagram extracted successfully`);
-                        logger.debug(`   diagram preview: ${diagramText.substring(0, 200)}...`);
-                        // Return MermaidDiagram directly - don't render as code element
+                        logger.info(`   ✅ Diagram text extracted successfully: "${diagramText.substring(0, 100)}..."`);
+                        // Return MermaidDiagram component with the extracted text
                         return <MermaidDiagram diagram={diagramText} />;
                       } else {
-                        logger.error(`   ❌ Mermaid code block found but text extraction failed!`);
-                        logger.error(`   Extracted text: "${diagramText}" (length: ${diagramText.length})`);
-                        logger.debug(`   node structure:`, node);
-                        logger.debug(`   children:`, children);
+                        logger.error(`   ❌ Failed to extract diagram text!`);
+                        logger.error(`   Extracted: "${diagramText}" (length: ${diagramText.length})`);
+                        logger.error(`   children:`, children);
+                        logger.error(`   node:`, node ? JSON.stringify(node).substring(0, 500) : 'null');
+                        // Show error in UI with debugging info
+                        return (
+                          <div className="rounded-lg border border-red-300 bg-red-50 p-4 my-4 dark:border-red-800 dark:bg-red-950">
+                            <p className="text-sm text-red-600 dark:text-red-400 mb-2">
+                              ⚠️ Mermaid diagram detected but could not extract content
+                            </p>
+                            <p className="text-xs text-red-500 mb-2">
+                              Extracted length: {diagramText.length} chars
+                            </p>
+                            <pre className="mt-2 text-xs bg-red-100 dark:bg-red-900 p-2 rounded overflow-x-auto max-h-48">
+                              {`children type: ${typeof children}\n`}
+                              {`children isArray: ${Array.isArray(children)}\n`}
+                              {`node present: ${!!node}\n`}
+                              {`className: ${classNameStr}\n`}
+                              {`Extracted text: "${diagramText}"`}
+                            </pre>
+                          </div>
+                        );
                       }
                     }
                     
+                    // Check if inline code
                     const isInline = !classNameStr || !classNameStr.includes('language-');
                     
                     if (isInline) {
@@ -635,7 +673,7 @@ export default function HelpPage() {
                       );
                     }
                     
-                    // For block code (non-mermaid), just return code element
+                    // For block code (non-mermaid), just return code element (pre handles wrapper)
                     return (
                       <code className={className} {...props}>
                         {children}
