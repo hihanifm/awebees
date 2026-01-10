@@ -46,34 +46,57 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
   const diagramIdRef = useRef<string>(`mermaid-${Math.random().toString(36).substring(7)}`);
 
   useEffect(() => {
-    if (!diagram) return;
+    if (!diagram) {
+      logger.warn(`⚠️ MermaidDiagram received empty diagram`);
+      return;
+    }
+
+    logger.info(`🎨 MermaidDiagram rendering: diagram length=${diagram.length} chars`);
+    logger.debug(`   Diagram content: ${diagram.substring(0, 300)}...`);
+
+    // Check if mermaid is available
+    if (!mermaid || typeof mermaid.initialize !== 'function' || typeof mermaid.render !== 'function') {
+      const errorMsg = "Mermaid library not available";
+      logger.error(`❌ ${errorMsg}`);
+      setError(errorMsg);
+      return;
+    }
 
     // Initialize mermaid once globally
     if (!mermaidInitialized) {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: 'default',
-        flowchart: {
-          useMaxWidth: true,
-          htmlLabels: true,
-          curve: 'basis',
-        },
-        themeVariables: {
-          primaryColor: '#f59e0b',
-          primaryTextColor: '#fff',
-          primaryBorderColor: '#d97706',
-          lineColor: '#94a3b8',
-          secondaryColor: '#fbbf24',
-          tertiaryColor: '#f3f4f6',
-          background: '#ffffff',
-          mainBkg: '#ffffff',
-          secondBkg: '#f3f4f6',
-          textColor: '#1f2937',
-          fontSize: '16px',
-          fontFamily: 'inherit',
-        },
-      });
-      mermaidInitialized = true;
+      try {
+        logger.info(`🔧 Initializing Mermaid...`);
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'default',
+          flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+            curve: 'basis',
+          },
+          themeVariables: {
+            primaryColor: '#f59e0b',
+            primaryTextColor: '#fff',
+            primaryBorderColor: '#d97706',
+            lineColor: '#94a3b8',
+            secondaryColor: '#fbbf24',
+            tertiaryColor: '#f3f4f6',
+            background: '#ffffff',
+            mainBkg: '#ffffff',
+            secondBkg: '#f3f4f6',
+            textColor: '#1f2937',
+            fontSize: '16px',
+            fontFamily: 'inherit',
+          },
+        });
+        mermaidInitialized = true;
+        logger.info(`✅ Mermaid initialized successfully`);
+      } catch (err) {
+        const errorMsg = `Failed to initialize Mermaid: ${err instanceof Error ? err.message : String(err)}`;
+        logger.error(`❌ ${errorMsg}`, err);
+        setError(errorMsg);
+        return;
+      }
     }
 
     const renderMermaid = async () => {
@@ -82,8 +105,17 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
         setSvg("");
         setError(null);
         
+        const diagramId = diagramIdRef.current;
+        const diagramText = diagram.trim();
+        
+        logger.info(`🔄 Rendering Mermaid diagram with ID: ${diagramId}`);
+        logger.debug(`   Diagram text: ${diagramText.substring(0, 200)}...`);
+        
         // Render the diagram
-        const { svg: renderedSvg } = await mermaid.render(diagramIdRef.current, diagram.trim());
+        const { svg: renderedSvg } = await mermaid.render(diagramId, diagramText);
+        
+        logger.info(`✅ Mermaid rendered successfully: SVG length=${renderedSvg.length} chars`);
+        
         // Process SVG to make it responsive and larger
         let processedSvg = renderedSvg;
         
@@ -106,10 +138,17 @@ function MermaidDiagram({ diagram }: { diagram: string }) {
           );
         }
         
+        logger.info(`✅ SVG processed: final length=${processedSvg.length} chars`);
         setSvg(processedSvg);
       } catch (err) {
-        logger.error("Error rendering Mermaid diagram:", err);
-        setError(err instanceof Error ? err.message : "Failed to render diagram");
+        const errorMsg = err instanceof Error ? err.message : "Failed to render diagram";
+        logger.error(`❌ Error rendering Mermaid diagram:`, err);
+        logger.error(`   Error details:`, {
+          message: errorMsg,
+          diagram: diagram.substring(0, 200),
+          diagramId: diagramIdRef.current
+        });
+        setError(errorMsg);
         setSvg("");
       }
     };
@@ -505,8 +544,13 @@ export default function HelpPage() {
                   },
                   // Inline code
                   code({ node, className, children, ...props }: any) {
-                    // Check if this is inline code by checking if parent is a paragraph or if there's no className
-                    const isInline = !className || (typeof className === 'string' && !className.includes('language-'));
+                    // Check if this is inline code by checking if there's no language class
+                    const classNameStr = Array.isArray(className) 
+                      ? className.join(' ') 
+                      : (typeof className === 'string' ? className : '');
+                    
+                    const isInline = !classNameStr || !classNameStr.includes('language-');
+                    
                     if (isInline) {
                       return (
                         <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground border border-border" {...props}>
@@ -514,7 +558,8 @@ export default function HelpPage() {
                         </code>
                       );
                     }
-                    // For block code, just return code element (pre handles the wrapper and mermaid detection)
+                    
+                    // For block code, just return code element (pre component handles mermaid detection and rendering)
                     return (
                       <code className={className} {...props}>
                         {children}
@@ -522,27 +567,78 @@ export default function HelpPage() {
                     );
                   },
                   // Code blocks wrapper - handle mermaid here
-                  pre({ node, children, ...props }) {
-                    // Check if this is a mermaid diagram by examining the node
-                    if (node?.children && node.children.length > 0) {
-                      const codeChild = node.children[0] as any;
-                      if (codeChild && codeChild.type === 'element' && codeChild.tagName === 'code') {
+                  pre({ node, children, ...props }: any) {
+                    // Check node structure for mermaid code block
+                    if (node?.children && Array.isArray(node.children)) {
+                      const codeChild = node.children.find((child: any) => 
+                        child && child.type === 'element' && child.tagName === 'code'
+                      );
+                      
+                      if (codeChild) {
                         const className = codeChild.properties?.className;
                         const classNameStr = Array.isArray(className) 
                           ? className.join(' ') 
                           : (typeof className === 'string' ? className : '');
                         
-                        if (classNameStr.includes('language-mermaid')) {
-                          // Extract diagram content from code child's text nodes
-                          const extractText = (nodes: any[]): string => {
-                            return nodes
-                              .filter((n: any) => n.type === 'text')
-                              .map((n: any) => n.value || '')
-                              .join('');
+                        if (classNameStr.includes('language-mermaid') || classNameStr.includes('mermaid')) {
+                          // Extract text from all text nodes recursively
+                          const extractAllText = (nodes: any[]): string => {
+                            if (!Array.isArray(nodes)) return '';
+                            let text = '';
+                            for (const n of nodes) {
+                              if (n.type === 'text' && n.value) {
+                                text += n.value;
+                              } else if (n.children && Array.isArray(n.children)) {
+                                text += extractAllText(n.children);
+                              }
+                            }
+                            return text;
                           };
-                          const diagram = extractText(codeChild.children || []);
-                          if (diagram.trim()) {
-                            return <MermaidDiagram diagram={diagram.trim()} />;
+                          
+                          let diagramText = extractAllText(codeChild.children || []);
+                          
+                          // If extraction from node failed, try extracting from children prop
+                          if (!diagramText || diagramText.trim().length === 0) {
+                            logger.debug(`   Node extraction empty, trying children prop...`);
+                            if (children) {
+                              if (typeof children === 'string') {
+                                diagramText = children;
+                              } else if (Array.isArray(children)) {
+                                // Find the code element in children and extract its text
+                                for (const child of children) {
+                                  if (child && typeof child === 'object') {
+                                    if (child.props && child.props.className && 
+                                        (child.props.className.includes('language-mermaid') || 
+                                         child.props.className.includes('mermaid'))) {
+                                      diagramText = String(child.props.children || '');
+                                      break;
+                                    }
+                                  }
+                                }
+                              } else if (children.props) {
+                                // Single React element
+                                if (children.props.className && 
+                                    (children.props.className.includes('language-mermaid') || 
+                                     children.props.className.includes('mermaid'))) {
+                                  diagramText = String(children.props.children || '');
+                                }
+                              }
+                            }
+                          }
+                          
+                          diagramText = diagramText.trim();
+                          
+                          logger.info(`📊 Mermaid diagram detected in pre component`);
+                          logger.info(`   className: "${classNameStr}"`);
+                          logger.info(`   diagram length: ${diagramText.length} chars`);
+                          if (diagramText) {
+                            logger.info(`   diagram preview: ${diagramText.substring(0, 200)}...`);
+                            return <MermaidDiagram diagram={diagramText} />;
+                          } else {
+                            logger.error(`   ❌ Mermaid code block found but text extraction returned empty!`);
+                            logger.debug(`   node.children:`, node.children);
+                            logger.debug(`   codeChild:`, codeChild);
+                            logger.debug(`   children prop:`, children);
                           }
                         }
                       }
