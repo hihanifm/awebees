@@ -33,6 +33,8 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
   const [showCustomPrompt, setShowCustomPrompt] = useState<Record<string, boolean>>({});
   const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
+  const [expandedInsights, setExpandedInsights] = useState<Record<string, boolean>>({});
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   if (loading) {
     return (
@@ -220,6 +222,14 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
     setShowAI(prev => ({ ...prev, [insightId]: !prev[insightId] }));
   };
 
+  const handleToggleExpand = (insightId: string) => {
+    setExpandedInsights(prev => ({ ...prev, [insightId]: !(prev[insightId] ?? true) }));
+  };
+
+  const handleToggleCard = (insightId: string) => {
+    setExpandedCards(prev => ({ ...prev, [insightId]: !(prev[insightId] ?? true) }));
+  };
+
   const handlePromptTypeChange = (insightId: string, value: string) => {
     setPromptTypes(prev => ({ ...prev, [insightId]: value }));
     setShowCustomPrompt(prev => ({ ...prev, [insightId]: value === "custom" }));
@@ -268,13 +278,33 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
         {results.map((resultItem, index) => (
           <Card key={resultItem.insight_id}>
             <CardHeader>
-              <CardTitle className="text-base flex justify-between items-center">
-                <span>{t("results.insight")}: {resultItem.insight_id}</span>
+              <CardTitle 
+                className="text-base flex justify-between items-center cursor-pointer select-none"
+                onDoubleClick={() => handleToggleCard(resultItem.insight_id)}
+                title="Double-click to expand/collapse"
+              >
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleCard(resultItem.insight_id)}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                    title={expandedCards[resultItem.insight_id] ?? true ? "Collapse (or double-click title)" : "Expand (or double-click title)"}
+                  >
+                    {expandedCards[resultItem.insight_id] ?? true ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <span>{t("results.insight")}: {resultItem.insight_id}</span>
+                </div>
                 <span className="text-xs font-normal text-muted-foreground">
                   {formatTime(resultItem.execution_time)}
                 </span>
               </CardTitle>
             </CardHeader>
+            {(expandedCards[resultItem.insight_id] ?? true) && (
             <CardContent>
               {resultItem.result.result_type === "text" && (
                 <div className="space-y-4">
@@ -282,7 +312,17 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                   {resultItem.result.metadata && (
                     <div className="border border-primary/20 rounded-lg overflow-hidden">
                       {/* Header bar */}
-                      <div className="bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-3 border-b border-primary/20 flex items-center justify-between">
+                      <div 
+                        className="bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-3 border-b border-primary/20 flex items-center justify-between cursor-pointer select-none"
+                        onDoubleClick={(e) => {
+                          // Don't trigger if double-clicking on a button
+                          if ((e.target as HTMLElement).closest('button')) {
+                            return;
+                          }
+                          handleToggleExpand(resultItem.insight_id);
+                        }}
+                        title="Double-click to expand/collapse content"
+                      >
                         <div className="flex items-center gap-4 text-sm">
                           {resultItem.result.metadata.line_count !== undefined && (
                             <span className="text-foreground font-medium">
@@ -293,80 +333,127 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                             {formatTime(resultItem.execution_time)}
                           </span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopyResult(resultItem.insight_id, resultItem.result.content)}
-                          className="text-primary hover:bg-primary/10"
-                        >
-                          {copiedStates[resultItem.insight_id] ? (
-                            <>
-                              <Check className="h-4 w-4 mr-2" />
-                              {t("common.copied")}
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-4 w-4 mr-2" />
-                              {t("common.copy")}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-
-                      {/* Command display */}
-                      {resultItem.result.metadata.execution_command && (
-                        <div className="bg-muted px-4 py-2 border-b border-primary/20">
-                          <code className="text-xs text-muted-foreground font-mono">
-                            $ {resultItem.result.metadata.execution_command}
-                          </code>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleExpand(resultItem.insight_id)}
+                            className="text-primary hover:bg-primary/10"
+                            title={expandedInsights[resultItem.insight_id] ?? true ? "Minimize (or double-click header)" : "Expand (or double-click header)"}
+                          >
+                            {expandedInsights[resultItem.insight_id] ?? true ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopyResult(resultItem.insight_id, resultItem.result.content)}
+                            className="text-primary hover:bg-primary/10"
+                          >
+                            {copiedStates[resultItem.insight_id] ? (
+                              <>
+                                <Check className="h-4 w-4 mr-2" />
+                                {t("common.copied")}
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4 mr-2" />
+                                {t("common.copy")}
+                              </>
+                            )}
+                          </Button>
                         </div>
-                      )}
-
-                      {/* Results */}
-                      <div className="bg-primary/5 overflow-auto max-h-[600px] border-t border-primary/20">
-                        <pre className="p-4 text-sm font-mono text-foreground whitespace-pre-wrap">
-                          {resultItem.result.content.split('\n').map((line, index) => (
-                            <div key={index} className="flex hover:bg-primary/10">
-                              <span className="text-primary select-none mr-4 text-right w-12 flex-shrink-0 font-semibold">
-                                {index + 1}
-                              </span>
-                              <span className="flex-1">{line || ' '}</span>
-                            </div>
-                          ))}
-                        </pre>
                       </div>
+
+                      {/* Command display and Results - conditionally rendered */}
+                      {(expandedInsights[resultItem.insight_id] ?? true) && (
+                        <>
+                          {/* Command display */}
+                          {resultItem.result.metadata.execution_command && (
+                            <div className="bg-muted px-4 py-2 border-b border-primary/20">
+                              <code className="text-xs text-muted-foreground font-mono">
+                                $ {resultItem.result.metadata.execution_command}
+                              </code>
+                            </div>
+                          )}
+
+                          {/* Results */}
+                          <div className="bg-primary/5 overflow-auto max-h-[600px] border-t border-primary/20">
+                            <pre className="p-4 text-sm font-mono text-foreground whitespace-pre-wrap">
+                              {resultItem.result.content.split('\n').map((line, index) => (
+                                <div key={index} className="flex hover:bg-primary/10">
+                                  <span className="text-primary select-none mr-4 text-right w-12 flex-shrink-0 font-semibold">
+                                    {index + 1}
+                                  </span>
+                                  <span className="flex-1">{line || ' '}</span>
+                                </div>
+                              ))}
+                            </pre>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
                   {/* Fallback: Simple display if no metadata */}
                   {!resultItem.result.metadata && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div 
+                        className="flex items-center justify-between cursor-pointer select-none"
+                        onDoubleClick={(e) => {
+                          // Don't trigger if double-clicking on a button
+                          if ((e.target as HTMLElement).closest('button')) {
+                            return;
+                          }
+                          handleToggleExpand(resultItem.insight_id);
+                        }}
+                        title="Double-click to expand/collapse content"
+                      >
                         <span className="text-sm text-muted-foreground">
                           {formatTime(resultItem.execution_time)}
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopyResult(resultItem.insight_id, resultItem.result.content)}
-                          className="text-primary hover:bg-primary/10"
-                        >
-                          {copiedStates[resultItem.insight_id] ? (
-                            <>
-                              <Check className="h-4 w-4 mr-2" />
-                              {t("common.copied")}
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-4 w-4 mr-2" />
-                              {t("common.copy")}
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleExpand(resultItem.insight_id)}
+                            className="text-primary hover:bg-primary/10"
+                            title={expandedInsights[resultItem.insight_id] ?? true ? "Minimize (or double-click header)" : "Expand (or double-click header)"}
+                          >
+                            {expandedInsights[resultItem.insight_id] ?? true ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopyResult(resultItem.insight_id, resultItem.result.content)}
+                            className="text-primary hover:bg-primary/10"
+                          >
+                            {copiedStates[resultItem.insight_id] ? (
+                              <>
+                                <Check className="h-4 w-4 mr-2" />
+                                {t("common.copied")}
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4 mr-2" />
+                                {t("common.copy")}
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                      <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted p-4 font-mono text-sm overflow-x-auto overflow-y-auto max-h-[600px]">
-                        {resultItem.result.content}
-                      </pre>
+                      {(expandedInsights[resultItem.insight_id] ?? true) && (
+                        <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted p-4 font-mono text-sm overflow-x-auto overflow-y-auto max-h-[600px]">
+                          {resultItem.result.content}
+                        </pre>
+                      )}
                     </div>
                   )}
 
@@ -594,6 +681,7 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                 </div>
               )}
             </CardContent>
+            )}
           </Card>
         ))}
       </div>
