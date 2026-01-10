@@ -82,6 +82,7 @@ class FileFilter:
         
         File filtering is only applied when input contains folder paths.
         Individual file paths pass through unchanged.
+        Patterns match against the filename only (not the full path).
         Multiple patterns use OR logic - a file matches if it matches any pattern.
         
         Args:
@@ -112,9 +113,9 @@ class FileFilter:
             path_obj = Path(path)
             
             if path_obj.is_file():
-                # Individual file paths pass through unchanged
+                # Individual file paths pass through unchanged (filtering only applies to folders)
                 resolved_path = str(path_obj.resolve())
-                logger.debug(f"FileFilter: Added file: {resolved_path}")
+                logger.debug(f"FileFilter: Added individual file: {resolved_path}")
                 all_files.append(resolved_path)
             elif path_obj.is_dir():
                 # Folder paths: expand to files and apply filtering
@@ -124,20 +125,31 @@ class FileFilter:
                     folder_files = self._list_files_sync(str(path_obj.resolve()))
                     logger.debug(f"FileFilter: Found {len(folder_files)} files in folder {path}")
                     
-                    if self._file_patterns:
+                    if self._file_patterns and len(self._file_patterns) > 0:
                         # Apply file filtering patterns (OR logic)
                         logger.info(f"FileFilter: Applying {len(self._file_patterns)} file filter pattern(s): {self._file_patterns}")
-                        compiled_patterns = [re.compile(pattern) for pattern in self._file_patterns]
-                        matching_files = []
-                        for file_path in folder_files:
-                            file_name = Path(file_path).name
-                            if any(pattern.search(file_name) for pattern in compiled_patterns):
-                                matching_files.append(file_path)
-                        logger.info(f"FileFilter: {len(matching_files)} files matched filter pattern(s) from {len(folder_files)} total files")
-                        all_files.extend(matching_files)
+                        try:
+                            compiled_patterns = [re.compile(pattern) for pattern in self._file_patterns]
+                            matching_files = []
+                            for file_path in folder_files:
+                                file_name = Path(file_path).name
+                                matches = [p for p in compiled_patterns if p.search(file_name)]
+                                if matches:
+                                    matching_patterns = [p.pattern for p in matches]
+                                    logger.debug(f"FileFilter: File '{file_name}' matched pattern(s): {matching_patterns}")
+                                    matching_files.append(file_path)
+                                else:
+                                    logger.debug(f"FileFilter: File '{file_name}' did not match any pattern")
+                            logger.info(f"FileFilter: {len(matching_files)} files matched filter pattern(s) from {len(folder_files)} total files in folder {path}")
+                            all_files.extend(matching_files)
+                        except re.error as e:
+                            logger.error(f"FileFilter: Invalid regex pattern in file_patterns: {e}", exc_info=True)
+                            # Fall back to including all files if pattern is invalid
+                            logger.warning(f"FileFilter: Falling back to including all {len(folder_files)} files due to pattern error")
+                            all_files.extend(folder_files)
                     else:
                         # No patterns: include all files
-                        logger.debug(f"FileFilter: No file filter patterns, including all {len(folder_files)} files")
+                        logger.debug(f"FileFilter: No file filter patterns specified, including all {len(folder_files)} files from folder {path}")
                         all_files.extend(folder_files)
                 except Exception as e:
                     logger.error(f"FileFilter: Error processing folder {path}: {e}", exc_info=True)

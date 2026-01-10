@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import logging
 import os
 
-from app.services.file_handler import validate_file_path, list_files_in_folder
+from app.services.file_handler import validate_file_path
 from app.core.constants import SAMPLE_FILES
 from app.core.sample_discovery import discover_all_samples
 from pathlib import Path
@@ -63,58 +63,48 @@ async def select_files(request: FileSelectRequest):
     Select files and/or folders for analysis.
     
     Accepts a list of file and folder paths, validates them,
-    and returns a flat list of all files (expanding folders).
+    and returns them as-is. Folder expansion and filtering
+    happens in the insight processing layer.
     """
     import time
     start_time = time.time()
     logger.info(f"Files API: Received file selection request for {len(request.paths)} path(s)")
     
-    all_files = []
+    validated_paths = []
     
     for path_idx, path in enumerate(request.paths, 1):
         logger.debug(f"Files API: Processing path {path_idx}/{len(request.paths)}: {path}")
         
         # Normalize path: trim whitespace and strip surrounding quotes
-        path = normalize_path(path)
+        normalized_path = normalize_path(path)
         
-        if not validate_file_path(path):
-            logger.warning(f"Files API: Invalid or inaccessible path: {path}")
+        if not validate_file_path(normalized_path):
+            logger.warning(f"Files API: Invalid or inaccessible path: {normalized_path}")
             continue
         
-        path_obj = Path(path)
-        
-        if path_obj.is_file():
-            resolved_path = str(path_obj.resolve())
-            logger.debug(f"Files API: Added file: {resolved_path}")
-            all_files.append(resolved_path)
-        elif path_obj.is_dir():
-            try:
-                logger.info(f"Files API: Expanding directory: {path}")
-                folder_files = await list_files_in_folder(str(path_obj.resolve()), recursive=True)
-                logger.info(f"Files API: Found {len(folder_files)} file(s) in directory: {path}")
-                all_files.extend(folder_files)
-            except Exception as e:
-                logger.error(f"Files API: Error listing files in folder {path}: {e}", exc_info=True)
-                raise HTTPException(status_code=400, detail=f"Error reading folder {path}: {str(e)}")
+        # Resolve to absolute path and add
+        resolved_path = str(Path(normalized_path).resolve())
+        validated_paths.append(resolved_path)
+        logger.debug(f"Files API: Validated path: {resolved_path}")
     
     # Remove duplicates while preserving order
     seen = set()
-    unique_files = []
-    for file_path in all_files:
-        if file_path not in seen:
-            seen.add(file_path)
-            unique_files.append(file_path)
+    unique_paths = []
+    for path in validated_paths:
+        if path not in seen:
+            seen.add(path)
+            unique_paths.append(path)
     
-    duplicates_removed = len(all_files) - len(unique_files)
+    duplicates_removed = len(validated_paths) - len(unique_paths)
     if duplicates_removed > 0:
-        logger.debug(f"Files API: Removed {duplicates_removed} duplicate file path(s)")
+        logger.debug(f"Files API: Removed {duplicates_removed} duplicate path(s)")
     
     elapsed = time.time() - start_time
-    logger.info(f"Files API: File selection complete - {len(unique_files)} unique file(s) selected in {elapsed:.2f}s")
+    logger.info(f"Files API: File selection complete - {len(unique_paths)} unique path(s) validated in {elapsed:.2f}s")
     
     return FileSelectResponse(
-        files=unique_files,
-        count=len(unique_files)
+        files=unique_paths,
+        count=len(unique_paths)
     )
 
 

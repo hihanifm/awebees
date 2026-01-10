@@ -12,6 +12,7 @@ INSIGHT_CONFIG = {
         "description": "Ultra-fast ERROR/FATAL detection using ripgrep - 10-100x faster than Python regex"
     },
     "filters": {
+        "file_patterns": [r"dumpstate-", r"bugreport-", r"dumpstate.txt"],
         "line_pattern": r"\b(ERROR|FATAL)\b"
     }
 }
