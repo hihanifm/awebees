@@ -30,7 +30,9 @@
     "selectInsights": "Select Insights",
     "analyzeFiles": "Analyze Files",
     "analyzing": "Analyzing...",
-    "backToAnalysis": "Back to Analysis"
+    "backToAnalysis": "Back to Analysis",
+    "help": "Help",
+    "helpDescription": "Quick Start Guide"
   },
   "playground": {
     "title": "Playground",

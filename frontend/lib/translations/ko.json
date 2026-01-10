@@ -30,7 +30,9 @@
     "selectInsights": "인사이트 선택",
     "analyzeFiles": "파일 분석",
     "analyzing": "분석 중...",
-    "backToAnalysis": "분석으로 돌아가기"
+    "backToAnalysis": "분석으로 돌아가기",
+    "help": "도움말",
+    "helpDescription": "빠른 시작 가이드"
   },
   "playground": {
     "title": "플레이그라운드",

@@ -4,11 +4,50 @@ Get up and running with LensAI in minutes! This guide follows a progressive appr
 
 ---
 
+## Architecture Overview
+
+LensAI consists of three main components that all run on your local PC:
+
+```mermaid
+graph TB
+    subgraph PC["Your Local PC"]
+        WebUI["Web UI (Next.js, Port 34000/34001)"]
+        Engine["LensAI Engine (FastAPI Python, Port 34001)"]
+        BuiltIn["Built-in Insights (backend/app/insights/)"]
+        LocalInsights["Local Insights (LensInsights repo, /path/to/LensInsights)"]
+        LogFiles["Log Files (Your local files)"]
+        Config["insight_paths.json (Configuration)"]
+    end
+    
+    AI["AI Services (Optional: OpenAI/Azure/Local LLM)"]
+    
+    WebUI -->|"HTTP/REST API"| Engine
+    Engine -->|"Load insights"| BuiltIn
+    Engine -->|"Load insights via config"| LocalInsights
+    Engine -->|"Read paths"| Config
+    Engine -->|"Process files"| LogFiles
+    Engine -.->|"Optional API calls"| AI
+    LocalInsights -.->|"User configured path"| Config
+```
+
+**How it works:**
+- **Web UI**: Your browser interface (Next.js) where you select files and insights, then view results
+- **LensAI Engine**: The FastAPI Python backend that processes requests, loads insights, and analyzes your log files
+- **Built-in Insights**: Pre-installed insights that come with LensAI (e.g., Error Detector, Line Count)
+- **Local Insights**: Custom insights from your LensInsights repository that you configure via Settings
+- **Configuration**: The `insight_paths.json` file stores paths to your external insight directories
+- **Log Files**: Your log files on the local filesystem that are processed by insights
+- **AI Services** (optional): Cloud or local LLM services for enhanced analysis
+
+Everything runs locally on your machine—your data never leaves your computer (except for optional AI analysis, which you can configure to use local models).
+
+---
+
 ## Stage 1: Get Started
 
 ### Step 1: Install the Application
 
-1. Visit the download page: **[https://hihanifm.github.io/awebees/](https://hihanifm.github.io/awebees/)**
+1. Visit the download page: **[https://tinyurl.com/lensPlusAI](https://tinyurl.com/lensPlusAI)**
 2. Download the Windows installer:
    - **Self-Contained Installer** (recommended): Includes Python runtime, no additional setup needed
    - **Python-Required Installer**: Smaller download, requires Python 3.x already installed

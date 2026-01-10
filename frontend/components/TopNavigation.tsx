@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
@@ -79,8 +79,24 @@ export function TopNavigation({ className }: TopNavigationProps) {
             </Link>
           </div>
 
-          {/* Settings Tab - Right */}
-          <div className="ml-auto flex items-center">
+          {/* Help and Settings Tabs - Right */}
+          <div className="ml-auto flex items-center gap-1">
+            {/* Help Tab */}
+            <Link
+              href="/help"
+              className={cn(
+                "px-4 py-2 rounded-md text-sm font-medium transition-all no-underline flex items-center gap-2",
+                "hover:bg-primary/10",
+                isActive("/help")
+                  ? "bg-primary/15 text-primary font-semibold border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <HelpCircle className="h-4 w-4" />
+              {t("app.help") || "Help"}
+            </Link>
+
+            {/* Settings Tab */}
             <button
               onClick={() => setSettingsOpen(true)}
               className={cn(
