@@ -338,12 +338,55 @@
   }
   body {
     @apply bg-background text-foreground;
+    scrollbar-gutter: stable;
     background-image: 
       radial-gradient(
         ellipse 80% 50% at 50% -20%,
         oklch(0.95 0.03 45 / 0.3),
         transparent
       );
+  }
+  
+  /* Prevent layout shift when Radix UI locks scroll for dropdowns */
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    /* Completely disable scroll lock to prevent page jumping */
+    overflow: visible !important;
+    position: static !important;
+    /* Prevent scroll position from being reset */
+    scroll-behavior: auto !important;
+    /* Force scroll position to be preserved */
+    transform: translateZ(0) !important;
+  }
+  
+  /* Prevent RemoveScroll from applying styles that cause scroll reset */
+  body[data-scroll-locked]::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+  
+  /* Ensure scrollbar space is maintained */
+  html {
+    scrollbar-gutter: stable;
+  }
+  
+  /* Prevent any scroll behavior when dropdown opens */
+  body[data-scroll-locked] * {
+    scroll-behavior: auto !important;
+  }
+  
+  /* Prevent scrollIntoView from causing jumps */
+  [data-radix-select-content],
+  [data-radix-select-viewport] {
+    scroll-margin: 0 !important;
+    scroll-padding: 0 !important;
   }
   
   .dark body {
