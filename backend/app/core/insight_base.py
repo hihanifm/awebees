@@ -157,6 +157,11 @@ class Insight(ABC):
         if self.ai_auto and self.ai_enabled:
             logger.info(f"AI Auto-trigger: Checking if AI should auto-run for insight (ai_auto={self.ai_auto}, ai_enabled={self.ai_enabled})")
             
+            # Skip AI analysis if there is no data in the result
+            if not result.content or not result.content.strip():
+                logger.info(f"AI Auto-trigger: Skipping AI analysis - result content is empty or whitespace-only")
+                return result
+            
             from app.services.ai_service import AIService
             from app.core.config import AIConfig
             

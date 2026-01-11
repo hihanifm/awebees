@@ -361,11 +361,11 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
               <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("results.individualTimes")}</span>
               <div className="text-xs space-y-1 mt-1">
                 {results.map((resultItem) => (
-                  <div key={resultItem.insight_id} className="flex justify-between items-center">
-                    <span className="text-orange-800 dark:text-orange-200 truncate mr-2 max-w-[150px]" title={resultItem.insight_id}>
+                  <div key={resultItem.insight_id} className="flex justify-between items-center gap-2">
+                    <span className="text-orange-800 dark:text-orange-200 truncate flex-1 min-w-0" title={resultItem.insight_id}>
                       {resultItem.insight_id}
                     </span>
-                    <span className="font-semibold text-orange-700 dark:text-orange-300">
+                    <span className="font-semibold text-orange-700 dark:text-orange-300 flex-shrink-0">
                       {formatTime(resultItem.execution_time)}
                     </span>
                   </div>
