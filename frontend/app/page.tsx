@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TextareaWithHistory } from "@/components/ui/textarea-with-history";
+import { SamplesDropdown } from "@/components/ui/samples-dropdown";
 import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
@@ -258,29 +258,13 @@ export default function Home() {
                   <label className="text-xs text-muted-foreground whitespace-nowrap">
                     {t("app.selectSample")}:
                   </label>
-                  <Select
-                    value={selectedSampleId || ""}
-                    onValueChange={setSelectedSampleId}
+                  <SamplesDropdown
+                    samples={availableSamples}
+                    value={selectedSampleId || undefined}
+                    onSelect={(sample) => setSelectedSampleId(sample.id)}
                     disabled={analyzing}
-                  >
-                    <SelectTrigger className="w-full text-left">
-                      <SelectValue placeholder={t("app.selectSamplePlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSamples.map((sample) => (
-                        <SelectItem key={sample.id} value={sample.id}>
-                          <div className="flex flex-col items-start text-left">
-                            <span className="font-medium">{sample.name}</span>
-                            {sample.description && (
-                              <span className="text-xs text-muted-foreground text-left">
-                                {sample.description}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder={t("app.selectSamplePlaceholder")}
+                  />
                 </div>
               )}
               <p className="text-xs text-muted-foreground">

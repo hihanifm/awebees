@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Input, InputProps } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, X, Trash2 } from "lucide-react";
-import { saveInputHistory, getInputHistory, deleteInputHistoryItem } from "@/lib/input-history-storage";
+import { ChevronDown, X } from "lucide-react";
+import { saveInputHistory, getInputHistory } from "@/lib/input-history-storage";
 import { cn } from "@/lib/utils";
 
 export interface InputWithHistoryProps extends Omit<InputProps, "value" | "onChange"> {
@@ -54,13 +54,6 @@ export function InputWithHistory({
   const handleHistorySelect = (selectedValue: string) => {
     onChange(selectedValue);
     setIsOpen(false);
-  };
-
-  const handleDelete = (e: React.MouseEvent, itemToDelete: string) => {
-    e.stopPropagation(); // Prevent triggering the select action
-    deleteInputHistoryItem(storageKey, itemToDelete);
-    setHistory(getInputHistory(storageKey));
-    // Keep dropdown open after deletion
   };
 
   const handleToggle = () => {
@@ -117,28 +110,16 @@ export function InputWithHistory({
       {isOpen && history.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-popover border border-input rounded-md shadow-md max-h-60 overflow-auto">
           {history.map((item) => (
-            <div
+            <button
               key={item}
-              className="group flex items-center gap-2 px-3 py-2 hover:bg-accent first:rounded-t-md last:rounded-b-md"
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none first:rounded-t-md last:rounded-b-md"
+              onClick={() => handleHistorySelect(item)}
             >
-              <button
-                type="button"
-                className="flex-1 text-left text-sm hover:text-accent-foreground focus:text-accent-foreground focus:outline-none"
-                onClick={() => handleHistorySelect(item)}
-              >
-                <span className="truncate block" title={item}>
-                  {item}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/20 focus:bg-destructive/20 focus:outline-none transition-opacity"
-                onClick={(e) => handleDelete(e, item)}
-                title="Delete from history"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-              </button>
-            </div>
+              <span className="truncate block" title={item}>
+                {item}
+              </span>
+            </button>
           ))}
         </div>
       )}
