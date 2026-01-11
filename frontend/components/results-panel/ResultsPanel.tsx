@@ -343,29 +343,29 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
       <h2 className="text-lg font-semibold">{t("results.analysisResults")}</h2>
       
       {/* Statistics Card */}
-      <Card className="bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 dark:from-orange-950/30 dark:via-amber-950/20 dark:to-orange-950/30 border-2 border-orange-200 dark:border-orange-800/50">
+      <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 dark:from-primary/20 dark:via-primary/15 dark:to-primary/20 border-2 border-primary/30 dark:border-primary/30">
         <CardHeader>
-          <CardTitle className="text-base text-orange-900 dark:text-orange-100">{t("results.analysisStatistics")}</CardTitle>
+          <CardTitle className="text-base text-foreground dark:text-foreground">{t("results.analysisStatistics")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("results.insightsRun")}</span>
-              <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">{insights_count}</span>
+              <span className="text-2xl font-bold text-primary dark:text-primary">{insights_count}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("results.totalTime")}</span>
-              <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">{formatTime(total_time)}</span>
+              <span className="text-2xl font-bold text-primary dark:text-primary">{formatTime(total_time)}</span>
             </div>
             <div className="flex flex-col sm:col-span-1">
               <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("results.individualTimes")}</span>
               <div className="text-xs space-y-1 mt-1">
                 {results.map((resultItem) => (
                   <div key={resultItem.insight_id} className="flex justify-between items-center gap-2">
-                    <span className="text-orange-800 dark:text-orange-200 truncate flex-1 min-w-0" title={resultItem.insight_id}>
+                    <span className="text-foreground dark:text-foreground truncate flex-1 min-w-0" title={resultItem.insight_id}>
                       {resultItem.insight_id}
                     </span>
-                    <span className="font-semibold text-orange-700 dark:text-orange-300 flex-shrink-0">
+                    <span className="font-semibold text-primary dark:text-primary flex-shrink-0">
                       {formatTime(resultItem.execution_time)}
                     </span>
                   </div>

@@ -198,7 +198,7 @@ export function PromptManager({
             variant="outline"
             size="sm"
             onClick={() => setSaveDialogOpen(true)}
-            className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-900/30 font-bold"
+            className="border-primary text-primary hover:bg-primary/10 dark:border-primary dark:text-primary dark:hover:bg-primary/20 font-bold"
           >
             <Save className="h-4 w-4 mr-2" />
             {t("promptManager.saveCurrent")}

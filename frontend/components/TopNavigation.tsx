@@ -24,20 +24,15 @@ export function TopNavigation({ className }: TopNavigationProps) {
       <nav
         className={cn(
           "fixed top-0 left-0 right-0 z-50 h-16 border-b border-border",
-          "bg-gradient-to-r from-primary/5 via-[oklch(0.96_0.02_50)] to-accent/5",
-          "backdrop-blur supports-[backdrop-filter]:bg-[oklch(0.96_0.02_50)]/95",
+          "bg-gradient-to-r from-primary/5 via-background to-accent/5",
+          "backdrop-blur supports-[backdrop-filter]:bg-background/95",
           "shadow-sm",
           className
         )}
       >
         <div className="mx-auto flex h-full w-full items-center px-6 relative">
-          {/* Logo and App Name */}
+          {/* App Name */}
           <Link href="/" className="flex items-center gap-3 no-underline hover:opacity-80 transition-opacity">
-            <img
-              src="/lensAI.png"
-              alt="LensAI"
-              className="h-16 w-auto"
-            />
             <div className="flex flex-col">
               <span className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
                 Lens.AI
