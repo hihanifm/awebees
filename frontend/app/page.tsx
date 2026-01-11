@@ -173,7 +173,13 @@ export default function Home() {
       const selectResponse = await apiClient.selectFiles(paths);
 
       if (selectResponse.files.length === 0) {
-        setError("No valid paths found");
+        // Check if original input might have spaces (wrong delimiter)
+        const hasSpacesInInput = filePaths.trim().includes(" ") && !filePaths.trim().includes("\n");
+        const errorMessage = hasSpacesInInput
+          ? "No valid paths found. Make sure each path is on a separate line (use Enter/Return, not spaces)."
+          : `No valid paths found. Please check that the paths exist and are accessible. You provided ${paths.length} path(s).`;
+        setError(errorMessage);
+        setProgressEvents([]); // Clear progress events to avoid stuck state
         setAnalyzing(false);
         return;
       }
