@@ -174,11 +174,11 @@ jobs:
             dist/windows/lens-setup-*.exe
           retention-days: 30
       
-      - name: Upload to release (if release)
-        if: github.event_name == 'release'
+      - name: Upload to release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             dist/windows/lens-setup-*.exe
+          tag: v${{ steps.version.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
