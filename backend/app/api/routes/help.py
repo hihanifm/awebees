@@ -30,6 +30,7 @@ async def get_help():
                 detail=f"Quick Start guide not found at {quickstart_path}"
             )
         
+        # Read and return the markdown content
         content = quickstart_path.read_text(encoding="utf-8")
         logger.info(f"Help API: Successfully read Quick Start guide ({len(content)} characters)")
         
@@ -48,21 +49,20 @@ async def get_help():
 @router.get("/docs/{file_path:path}")
 async def get_help_doc(file_path: str):
     try:
-        project_root = get_project_root()
         normalized_path = file_path.lstrip('/').lstrip('\\')
         
+        # Prevent directory traversal attacks
         if '..' in normalized_path:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid file path: directory traversal not allowed"
             )
-        
+        # Only allow .md files
         if not normalized_path.endswith('.md'):
             raise HTTPException(
                 status_code=400,
                 detail="Only markdown (.md) files are allowed"
             )
-        
         doc_path = project_root / normalized_path
         resolved_path = doc_path.resolve()
         
@@ -70,6 +70,7 @@ async def get_help_doc(file_path: str):
         logger.info(f"Help API: Normalized path: {normalized_path}")
         logger.info(f"Help API: Resolved full path: {resolved_path}")
         
+        # Ensure the file is within the project root (security check)
         try:
             resolved_path.relative_to(project_root.resolve())
         except ValueError:
@@ -86,7 +87,7 @@ async def get_help_doc(file_path: str):
                 status_code=404,
                 detail=f"Documentation file not found: {file_path}"
             )
-        
+        # Read and return the markdown content
         content = doc_path.read_text(encoding="utf-8")
         logger.info(f"Help API: Successfully read documentation file '{normalized_path}' ({len(content)} characters, first 100 chars: {content[:100]})")
         
@@ -109,7 +110,7 @@ async def get_help_image(image_name: str):
         image_path = project_root / image_name
         
         logger.info(f"Help API: Serving image: {image_path}")
-        
+        # Security: Only allow image files and prevent path traversal
         if not image_name.endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp')):
             raise HTTPException(
                 status_code=400,
@@ -128,7 +129,7 @@ async def get_help_image(image_name: str):
                 status_code=404,
                 detail=f"Image not found: {image_name}"
             )
-        
+        # Determine media type based on file extension
         media_type_map = {
             '.png': 'image/png',
             '.jpg': 'image/jpeg',
