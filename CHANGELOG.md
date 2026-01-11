@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-01-11
+
+### Added
+- Emit path_result progress event when file filters match no files
+- Display event data field in ProgressWidget when present
+- Show formatted JSON data (file patterns, matched files count) in progress events
+
+### Changed
+- Skip file pattern filtering for individual files (only applies to folders)
+- Extract duplicate LineFilterConfig creation logic into helper method
+
+### Fixed
+- Fix file pattern filtering not being applied correctly to individual files
+- Fix insights with file_patterns failing to process individual files
+
+[5.0.0]: https://github.com/hihanifm/awebees/releases/tag/v5.0.0
+
 ## [4.13.0] - 2026-01-09
 
 ### Added
