@@ -69,7 +69,10 @@ SelectScrollDownButton.displayName =
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
+    onOpenAutoFocus?: (event: Event) => void;
+    onCloseAutoFocus?: (event: Event) => void;
+  }
 >(({ className, children, position = "popper", side = "bottom", sideOffset = 4, avoidCollisions = false, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
   // Preserve scroll position when dropdown opens
   const handleOpenAutoFocus = React.useCallback((e: Event) => {
@@ -104,9 +107,11 @@ const SelectContent = React.forwardRef<
         side={side}
         sideOffset={sideOffset}
         avoidCollisions={avoidCollisions}
-        onOpenAutoFocus={handleOpenAutoFocus}
-        onCloseAutoFocus={handleCloseAutoFocus}
-        {...props}
+        {...({
+          onOpenAutoFocus: handleOpenAutoFocus,
+          onCloseAutoFocus: handleCloseAutoFocus,
+          ...props
+        } as any)}
       >
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport

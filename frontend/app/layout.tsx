@@ -87,19 +87,24 @@ export default function RootLayout({
     originalScrollTo = window.scrollTo;
     const patchedScrollTo = function(this: Window, options?: ScrollToOptions | number, y?: number) {
       if (isLocked) {
+        const scrollOptions: ScrollToOptions = { top: savedScrollY, left: 0, behavior: 'auto' };
         if (typeof options === 'object' && options?.top !== undefined) {
           // If trying to scroll to a different position while locked, use saved position
           if (Math.abs(options.top - savedScrollY) > 5) {
-            return originalScrollTo.call(this, { top: savedScrollY, left: 0, behavior: 'auto' });
+            return (originalScrollTo as (options?: ScrollToOptions) => void).call(this, scrollOptions);
           }
         } else if (typeof options === 'number') {
           // If trying to scroll to a number while locked, use saved position
           if (Math.abs(options - savedScrollY) > 5) {
-            return originalScrollTo.call(this, { top: savedScrollY, left: 0, behavior: 'auto' });
+            return (originalScrollTo as (options?: ScrollToOptions) => void).call(this, scrollOptions);
           }
         }
       }
-      return originalScrollTo.call(this, options as any, y);
+      if (typeof options === 'object') {
+        return (originalScrollTo as (options?: ScrollToOptions) => void).call(this, options);
+      } else {
+        return (originalScrollTo as (x?: number, y?: number) => void).call(this, options, y);
+      }
     };
 
     // Override Element.scrollIntoView to prevent unwanted scrolls
@@ -130,7 +135,7 @@ export default function RootLayout({
         const restoreImmediately = () => {
           const currentScroll = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
           if (Math.abs(currentScroll - savedScrollY) > 1) {
-            originalScrollTo.call(window, { top: savedScrollY, left: 0, behavior: 'auto' });
+            (originalScrollTo as (options?: ScrollToOptions) => void).call(window, { top: savedScrollY, left: 0, behavior: 'auto' });
             // Keep restoring until it sticks
             setTimeout(restoreImmediately, 0);
           }
@@ -178,7 +183,7 @@ export default function RootLayout({
             requestAnimationFrame(() => {
               const currentScroll = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
               if (Math.abs(currentScroll - savedScrollY) > 1) {
-                originalScrollTo.call(window, { top: savedScrollY, left: 0, behavior: 'auto' });
+                (originalScrollTo as (options?: ScrollToOptions) => void).call(window, { top: savedScrollY, left: 0, behavior: 'auto' });
               }
             });
           }
@@ -237,7 +242,7 @@ export default function RootLayout({
                     function restore() {
                       const current = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
                       if (Math.abs(current - savedScrollY) > 1) {
-                        originalScrollTo.call(window, { top: savedScrollY, left: 0, behavior: 'auto' });
+                        (originalScrollTo as (options?: ScrollToOptions) => void).call(window, { top: savedScrollY, left: 0, behavior: 'auto' });
                         setTimeout(restore, 0);
                       }
                     }
