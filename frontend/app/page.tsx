@@ -13,7 +13,7 @@ import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 import { useTranslation } from "@/lib/i18n";
 import { logger } from "@/lib/logger";
-import { savePath, getMostRecentPath, getCachedPaths } from "@/lib/path-storage";
+import { saveInputHistory, getMostRecentInput, getInputHistory } from "@/lib/input-history-storage";
 
 /**
  * Strip surrounding quotes from a string if they match at both ends.
@@ -73,12 +73,13 @@ export default function Home() {
 
   // Load last used paths from localStorage on mount
   useEffect(() => {
-    const lastPath = getMostRecentPath();
+    const STORAGE_KEY = "lens_file_paths_history";
+    const lastPath = getMostRecentInput(STORAGE_KEY);
     if (lastPath) {
       setFilePaths(lastPath);
     }
     // Load cached paths for dropdown
-    setCachedPaths(getCachedPaths());
+    setCachedPaths(getInputHistory(STORAGE_KEY));
   }, []);
 
   // Load available samples on mount and auto-select first one
@@ -96,9 +97,10 @@ export default function Home() {
               setSelectedSampleId(firstSample.id);
               // Auto-load the first sample
               if (firstSample.exists) {
+                const STORAGE_KEY = "lens_file_paths_history";
                 setFilePaths(firstSample.path);
-                savePath(firstSample.path);
-                setCachedPaths(getCachedPaths());
+                saveInputHistory(STORAGE_KEY, firstSample.path);
+                setCachedPaths(getInputHistory(STORAGE_KEY));
               }
             }
           }
@@ -116,12 +118,22 @@ export default function Home() {
     if (selectedSampleId && availableSamples.length > 0) {
       const selectedSample = availableSamples.find(s => s.id === selectedSampleId);
       if (selectedSample && selectedSample.exists) {
+        const STORAGE_KEY = "lens_file_paths_history";
         setFilePaths(selectedSample.path);
-        savePath(selectedSample.path);
-        setCachedPaths(getCachedPaths());
+        saveInputHistory(STORAGE_KEY, selectedSample.path);
+        setCachedPaths(getInputHistory(STORAGE_KEY));
       }
     }
   }, [selectedSampleId, availableSamples]);
+
+  // Save filePaths to history when it changes
+  useEffect(() => {
+    if (filePaths && filePaths.trim()) {
+      const STORAGE_KEY = "lens_file_paths_history";
+      saveInputHistory(STORAGE_KEY, filePaths);
+      setCachedPaths(getInputHistory(STORAGE_KEY));
+    }
+  }, [filePaths]);
 
   const handleCancel = async () => {
     if (currentTaskId) {
@@ -159,9 +171,7 @@ export default function Home() {
     setCurrentTaskId(null);
 
     try {
-      // Save paths to cache
-      savePath(filePaths);
-      setCachedPaths(getCachedPaths());
+      // Paths are already saved to history via useEffect
 
       // Add initial progress event to show widget immediately
       setProgressEvents([{

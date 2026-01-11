@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputWithHistory } from "@/components/ui/input-with-history";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -487,12 +488,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {/* Base URL */}
             <div className="space-y-2">
               <Label htmlFor="base-url">{t("settings.baseURL")}</Label>
-              <Input
+              <InputWithHistory
                 id="base-url"
                 value={settings.baseUrl}
-                onChange={(e) =>
-                  setSettings({ ...settings, baseUrl: e.target.value })
+                onChange={(value) =>
+                  setSettings({ ...settings, baseUrl: value })
                 }
+                storageKey="lens_settings_base_url_history"
                 placeholder="https://api.openai.com/v1"
                 disabled={!settings.enabled}
               />

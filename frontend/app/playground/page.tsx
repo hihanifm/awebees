@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { InputWithHistory } from "@/components/ui/input-with-history";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBar } from "@/components/StatusBar";
 import { FilteredResults } from "@/components/playground/FilteredResults";
@@ -28,6 +29,9 @@ const STORAGE_KEYS = {
   SYSTEM_PROMPT: "lens_playground_system_prompt",
   USER_PROMPT: "lens_playground_user_prompt",
   ACTIVE_TAB: "lens_playground_active_tab",
+  // History storage keys
+  FILE_PATH_HISTORY: "lens_playground_file_path_history",
+  PATTERN_HISTORY: "lens_playground_pattern_history",
 };
 
 export default function PlaygroundPage() {
@@ -392,10 +396,11 @@ export default function PlaygroundPage() {
               </h2>
               <div>
                 <Label htmlFor="file-path">{t("playground.filePath")}</Label>
-                <Input
+                <InputWithHistory
                   id="file-path"
                   value={filePath}
-                  onChange={(e) => setFilePath(e.target.value)}
+                  onChange={setFilePath}
+                  storageKey={STORAGE_KEYS.FILE_PATH_HISTORY}
                   placeholder={t("playground.filePathPlaceholder")}
                   className="font-mono"
                 />
@@ -412,10 +417,11 @@ export default function PlaygroundPage() {
               </h2>
               <div>
                 <Label htmlFor="pattern">{t("playground.pattern")}</Label>
-                <Input
+                <InputWithHistory
                   id="pattern"
                   value={pattern}
-                  onChange={(e) => setPattern(e.target.value)}
+                  onChange={setPattern}
+                  storageKey={STORAGE_KEYS.PATTERN_HISTORY}
                   placeholder={t("playground.patternPlaceholder")}
                   className="font-mono text-sm"
                 />
