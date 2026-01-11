@@ -96,20 +96,17 @@ Be specific and practical."""
         if prompt_type == "custom" and custom_prompt:
             prompt = custom_prompt
             
-            # Substitute variables if provided
             if variables:
                 for key, value in variables.items():
                     placeholder = "{" + key + "}"
                     if placeholder in prompt:
                         prompt = prompt.replace(placeholder, str(value))
             
-            # Append content if not already included
             if "{result_content}" not in custom_prompt:
                 prompt += f"\n\n{content}"
             else:
                 prompt = prompt.replace("{result_content}", content)
         else:
-            # Use predefined prompt
             prompt = content
         
         return prompt
@@ -139,13 +136,11 @@ Be specific and practical."""
         if not self.is_configured():
             raise ValueError("AI service is not configured. Please set OPENAI_API_KEY.")
         
-        # Build prompts
         system_prompt = self.get_system_prompt(prompt_type)
         user_prompt = self.build_prompt(content, prompt_type, custom_prompt, variables)
         
         logger.info(f"AI Service: Starting streaming analysis (model: {self.model}, prompt_type: {prompt_type})")
         
-        # Prepare request
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",

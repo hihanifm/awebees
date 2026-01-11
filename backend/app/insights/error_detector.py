@@ -7,7 +7,7 @@ INSIGHT_CONFIG = {
     },
     "file_filters": [
         {
-            "file_patterns": [],  # Empty means process all files
+            "file_patterns": [],
             "line_filters": [
                 {
                     "pattern": r"\b(ERROR|FATAL)\b"

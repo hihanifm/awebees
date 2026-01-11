@@ -17,7 +17,6 @@ router = APIRouter(prefix="/api/errors", tags=["errors"])
 
 
 def _format_sse_event(data: dict) -> str:
-    # Convert datetime objects to ISO format strings for JSON serialization
     def json_serial(obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
@@ -30,16 +29,9 @@ def _format_sse_event(data: dict) -> str:
 async def _stream_errors() -> AsyncGenerator[str, None]:
     try:
         plugin_manager = get_plugin_manager()
-        
-        # Send all existing errors first
         errors = plugin_manager.get_errors()
         for error in errors:
             yield _format_sse_event(error.model_dump())
-        
-        # Keep connection alive and check for new errors periodically
-        # In a production system, you might want to use asyncio.Queue for real-time updates
-        # For now, we send accumulated errors and close the stream
-        # Future enhancement: Use a queue to emit errors in real-time
         
         logger.info(f"Errors API: Streamed {len(errors)} error(s)")
         
@@ -69,7 +61,7 @@ async def stream_errors():
     )
     response.headers["Cache-Control"] = "no-cache"
     response.headers["Connection"] = "keep-alive"
-    response.headers["X-Accel-Buffering"] = "no"  # Disable buffering in nginx
+    response.headers["X-Accel-Buffering"] = "no"
     
     return response
 

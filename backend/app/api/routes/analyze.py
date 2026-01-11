@@ -29,18 +29,17 @@ class AnalysisRequest(BaseModel):
 
 class AnalysisResultItem(BaseModel):
     insight_id: str
-    results: List[InsightResult]  # One InsightResult per user path
-    execution_time: float = 0.0  # Execution time in seconds
+    results: List[InsightResult]
+    execution_time: float = 0.0
 
 
 class AnalysisResponse(BaseModel):
     results: List[AnalysisResultItem]
-    total_time: float = 0.0  # Total execution time in seconds
-    insights_count: int = 0  # Number of insights executed
+    total_time: float = 0.0
+    insights_count: int = 0
 
 
 def _format_sse_event(data: dict) -> str:
-    # Convert datetime objects to ISO format strings for JSON serialization
     def json_serial(obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
@@ -65,7 +64,6 @@ async def _run_analysis_with_progress(
     start_time = time.time()
     
     try:
-        # Emit file verification event
         await progress_queue.put(ProgressEvent(
             type="file_verification",
             message=f"Verifying {len(request.file_paths)} file(s)...",
@@ -73,9 +71,7 @@ async def _run_analysis_with_progress(
             total_files=len(request.file_paths)
         ))
         
-        # Run insights
         for insight_idx, insight_id in enumerate(request.insight_ids, 1):
-            # Check for cancellation
             if task.cancellation_event.is_set():
                 await progress_queue.put(ProgressEvent(
                     type="cancelled",
@@ -95,7 +91,6 @@ async def _run_analysis_with_progress(
                 ))
                 continue
             
-            # Emit insight start event
             await progress_queue.put(ProgressEvent(
                 type="insight_start",
                 message=f"Running {insight.name}...",
@@ -103,21 +98,17 @@ async def _run_analysis_with_progress(
                 insight_id=insight_id
             ))
             
-            # Create progress callback function for this insight
             async def progress_callback(event: ProgressEvent) -> None:
-                event.insight_id = insight_id  # Ensure insight_id is set
-                event.task_id = task_id  # Ensure task_id is set
+                event.insight_id = insight_id
+                event.task_id = task_id
                 await progress_queue.put(event)
             
             try:
                 insight_start_time = time.time()
-                
-                # Process each user path separately - call analyze() multiple times
                 path_results = []
                 total_elapsed = 0.0
                 
                 for user_path in request.file_paths:
-                    # Check for cancellation
                     if task.cancellation_event.is_set():
                         await progress_queue.put(ProgressEvent(
                             type="cancelled",
@@ -127,7 +118,6 @@ async def _run_analysis_with_progress(
                         task_manager.update_task_status(task_id, "cancelled")
                         raise CancelledError("Analysis cancelled")
                     
-                    # Call analyze() for this single path (insight handles getting files)
                     path_start_time = time.time()
                     path_result = await insight.analyze_with_ai(
                         user_path,
@@ -139,7 +129,6 @@ async def _run_analysis_with_progress(
                     
                     path_results.append(path_result)
                     
-                    # Emit path_result event (when this path completes)
                     await progress_queue.put(ProgressEvent(
                         type="path_result",
                         message=f"Completed analysis for path: {user_path}",
@@ -152,11 +141,10 @@ async def _run_analysis_with_progress(
                 insight_elapsed = time.time() - insight_start_time
                 results.append(AnalysisResultItem(
                     insight_id=insight_id,
-                    results=path_results,  # List of InsightResults (one per path)
+                    results=path_results,
                     execution_time=insight_elapsed
                 ))
                 
-                # Emit insight complete event
                 await progress_queue.put(ProgressEvent(
                     type="insight_complete",
                     message=f"{insight.name} completed in {insight_elapsed:.2f}s",
@@ -181,7 +169,6 @@ async def _run_analysis_with_progress(
                     insight_id=insight_id
                 ))
         
-        # Emit analysis complete event
         total_elapsed = time.time() - start_time
         await progress_queue.put(ProgressEvent(
             type="analysis_complete",
@@ -215,32 +202,25 @@ async def _stream_analysis_events(
     progress_queue: asyncio.Queue
 ) -> AsyncGenerator[str, None]:
     try:
-        # Emit immediate event to signal analysis has started
         yield _format_sse_event(ProgressEvent(
             type="analysis_started",
             message=f"Starting analysis of {len(request.file_paths)} file(s) with {len(request.insight_ids)} insight(s)...",
             task_id=task_id,
             total_files=len(request.file_paths)
         ).model_dump())
-        # Yield control to event loop to ensure immediate flushing
         await asyncio.sleep(0)
         
-        # Start analysis in background
         analysis_task = asyncio.create_task(
             _run_analysis_with_progress(task_id, request, progress_queue)
         )
         
-        # Stream events until analysis completes
         final_result = None
         while True:
             try:
-                # Wait for event with timeout to check if analysis is done
                 event = await asyncio.wait_for(progress_queue.get(), timeout=0.1)
                 yield _format_sse_event(event.model_dump())
-                # Yield control to event loop to ensure immediate flushing of SSE event
                 await asyncio.sleep(0)
                 
-                # Check if this is a terminal event
                 if event.type in ("analysis_complete", "cancelled", "error"):
                     if analysis_task.done():
                         try:
@@ -252,7 +232,6 @@ async def _stream_analysis_events(
                     break
                     
             except asyncio.TimeoutError:
-                # Check if analysis is done
                 if analysis_task.done():
                     try:
                         final_result = await analysis_task
@@ -264,14 +243,13 @@ async def _stream_analysis_events(
                         break
                 continue
         
-        # Send final result if available
         if final_result:
             yield _format_sse_event({
                 "type": "result",
                 "task_id": task_id,
                 "data": final_result.model_dump()
             })
-            await asyncio.sleep(0)  # Yield control to ensure final event is flushed
+            await asyncio.sleep(0)
         
     except Exception as e:
         logger.error(f"Error in event stream: {e}", exc_info=True)
@@ -350,7 +328,6 @@ async def analyze(request: AnalysisRequest):
                 logger.warning(f"Analyze API: Insight '{insight_id}' not found in plugin manager")
                 raise HTTPException(status_code=404, detail=f"Insight not found: {insight_id}")
             
-            # Process each user path separately - call analyze() multiple times
             path_results = []
             total_elapsed = 0.0
             
@@ -367,7 +344,7 @@ async def analyze(request: AnalysisRequest):
             
             results.append(AnalysisResultItem(
                 insight_id=insight_id,
-                results=path_results,  # List of InsightResults (one per path)
+                results=path_results,
                 execution_time=insight_elapsed
             ))
         except HTTPException:
@@ -389,9 +366,7 @@ async def analyze(request: AnalysisRequest):
     )
 
 
-# ============================================================================
 # AI Analysis Endpoints
-# ============================================================================
 
 class AIAnalyzeRequest(BaseModel):
     content: str
@@ -424,8 +399,7 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
             detail="AI service is not configured. Please set OPENAI_API_KEY and enable AI_ENABLED=true"
         )
     
-    # Limit content to 150 lines to control API costs and token usage
-    # Reduced for models with smaller context windows (e.g., phi-4-mini: ~2K-4K tokens)
+    # Limit to 150 lines to control API costs and token usage
     MAX_LINES = 150
     lines = request.content.split('\n')
     if len(lines) > MAX_LINES:
@@ -439,13 +413,11 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
         try:
             ai_service = get_ai_service()
             
-            # Send initial event
             yield _format_sse_event({
                 "type": "ai_start",
                 "message": "AI analysis starting..."
             })
             
-            # Stream AI response
             full_response = []
             async for chunk in ai_service.analyze_stream(
                 content=limited_content,
@@ -459,7 +431,6 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
                     "content": chunk
                 })
             
-            # Send completion event
             yield _format_sse_event({
                 "type": "ai_complete",
                 "message": "AI analysis complete",
@@ -510,17 +481,13 @@ async def update_ai_config(config: AIConfigUpdate):
     logger.debug(f"AI Config API: Received config: {config.dict()}")
     
     try:
-        # Convert to dict and filter None values
         config_dict = {k: v for k, v in config.dict().items() if v is not None}
         logger.info(f"AI Config API: Config dict to update: {config_dict}")
         
-        # Update configuration
         AIConfig.update_from_dict(config_dict)
         
-        # Log the updated config
         logger.info(f"AI Config API: Updated - enabled={AIConfig.ENABLED}, base_url={AIConfig.BASE_URL}, model={AIConfig.MODEL}, is_configured={AIConfig.is_configured()}")
         
-        # Reset AI service to pick up new config
         from app.services.ai_service import reset_ai_service
         reset_ai_service()
         logger.info("AI Config API: AI service singleton reset")
@@ -582,7 +549,6 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
     logger.info("AI Test API: Testing connection with provided config")
     logger.debug(f"AI Test API: Test config - base_url={config.base_url}, model={config.model}")
     
-    # Validate required fields
     if not config.base_url or not config.api_key:
         return {
             "success": False,
@@ -590,7 +556,6 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
         }
     
     try:
-        # Create a temporary AI service instance with the provided config
         from app.services.ai_service import AIService
         
         test_service = AIService(
@@ -632,12 +597,10 @@ async def get_available_models(config: AIConfigUpdate):
     logger.info("AI Models API: Fetching available models via proxy")
     logger.debug(f"AI Models API: Using base_url={config.base_url}")
     
-    # Validate required fields
     if not config.base_url:
         return {"models": []}
     
     try:
-        # Create a temporary AI service instance with the provided config
         from app.services.ai_service import AIService
         
         temp_service = AIService(

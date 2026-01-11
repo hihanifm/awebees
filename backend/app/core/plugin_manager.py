@@ -35,7 +35,6 @@ class PluginManager:
             insights_dir: Path to insights directory (defaults to app/insights)
         """
         if insights_dir is None:
-            # Get the insights directory relative to this file
             current_dir = Path(__file__).parent.parent
             insights_dir = str(current_dir / "insights")
         
@@ -44,17 +43,14 @@ class PluginManager:
             logger.warning(f"Insights directory not found: {insights_dir}")
             return
         
-        # Recursively discover insights in root and subdirectories
         self._discover_insights_recursive(insights_path, insights_path, source="built-in")
     
     def discover_all_insights(self) -> None:
-        # Clear existing insights
         self._insights.clear()
         self._insight_folders.clear()
         self._insight_sources.clear()
         self._errors.clear()
         
-        # Discover built-in insights
         logger.info("Discovering built-in insights...")
         current_dir = Path(__file__).parent.parent
         insights_dir = current_dir / "insights"
@@ -64,7 +60,6 @@ class PluginManager:
         else:
             logger.warning(f"Built-in insights directory not found: {insights_dir}")
         
-        # Discover external insights
         from app.core.insight_paths_config import InsightPathsConfig
         paths_config = InsightPathsConfig()
         self._external_paths = paths_config.get_paths()
@@ -103,13 +98,11 @@ class PluginManager:
             ))
             return
         
-        # Add to sys.path temporarily for imports
         sys.path.insert(0, str(path))
         
         try:
             self._discover_external_recursive(path, path, str(path.absolute()))
         finally:
-            # Remove from sys.path
             if str(path) in sys.path:
                 sys.path.remove(str(path))
     
@@ -122,7 +115,6 @@ class PluginManager:
             current_path: Current directory being scanned
             source: Source identifier (absolute path)
         """
-        # Get all Python files in current directory (except __init__.py)
         python_files = [
             f for f in current_path.iterdir()
             if f.is_file() and f.suffix == ".py" and f.stem != "__init__"
@@ -136,10 +128,8 @@ class PluginManager:
             relative_path = current_path.relative_to(root_path)
             folder_name = str(relative_path.parts[0]) if relative_path.parts else None
         
-        # Process Python files in current directory
         for file_path in python_files:
             try:
-                # Dynamic import without package structure
                 module_name = f"external_insight_{file_path.stem}_{id(file_path)}"
                 spec = importlib.util.spec_from_file_location(module_name, file_path)
                 if spec is None or spec.loader is None:
@@ -149,7 +139,6 @@ class PluginManager:
                 sys.modules[module_name] = module
                 spec.loader.exec_module(module)
                 
-                # Check for config-based insight (INSIGHT_CONFIG dictionary)
                 config_found = False
                 if hasattr(module, 'INSIGHT_CONFIG'):
                     config_found = True
@@ -157,8 +146,6 @@ class PluginManager:
                         insight_config = getattr(module, 'INSIGHT_CONFIG')
                         process_results_fn = getattr(module, 'process_results', None)
                         
-                        # Create ConfigBasedInsight instance with file path info for ID generation
-                        # For external insights, insights_root is the external root path
                         instance = ConfigBasedInsight(
                             config=insight_config,
                             process_results_fn=process_results_fn,
@@ -228,7 +215,6 @@ class PluginManager:
                     file=file_path.name
                 ))
         
-        # Recursively process subdirectories
         subdirs = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('__')]
         for subdir in subdirs:
             self._discover_external_recursive(root_path, subdir, source)
@@ -242,35 +228,27 @@ class PluginManager:
             current_path: Current directory being scanned
             source: Source identifier for the insight
         """
-        # Get all Python files in current directory (except __init__.py, base.py, and filter_base.py)
         python_files = [
             f for f in current_path.iterdir()
             if f.is_file() and f.suffix == ".py" 
             and f.stem != "__init__" and f.stem != "base"
         ]
         
-        # Determine folder name (relative to root_path)
         if current_path == root_path:
-            folder_name = None  # Root-level insights have no folder
+            folder_name = None
         else:
-            # Get relative path from root, use first component as folder name
             relative_path = current_path.relative_to(root_path)
             folder_name = str(relative_path.parts[0]) if relative_path.parts else None
         
-        # Process Python files in current directory
         for file_path in python_files:
             try:
-                # Build module name based on folder structure
                 if folder_name is None:
-                    # Root-level: app.insights.{file_stem}
                     module_name = f"app.insights.{file_path.stem}"
                 else:
-                    # Nested: app.insights.{folder_name}.{file_stem}
                     module_name = f"app.insights.{folder_name}.{file_path.stem}"
                 
                 module = importlib.import_module(module_name)
                 
-                # Check for config-based insight (INSIGHT_CONFIG dictionary)
                 config_found = False
                 if hasattr(module, 'INSIGHT_CONFIG'):
                     config_found = True
@@ -278,7 +256,6 @@ class PluginManager:
                         insight_config = getattr(module, 'INSIGHT_CONFIG')
                         process_results_fn = getattr(module, 'process_results', None)
                         
-                        # Create ConfigBasedInsight instance with file path info for ID generation
                         instance = ConfigBasedInsight(
                             config=insight_config,
                             process_results_fn=process_results_fn,
@@ -288,7 +265,6 @@ class PluginManager:
                             source=source
                         )
                         
-                        # Override folder from config if specified
                         config_folder = insight_config.get("metadata", {}).get("folder")
                         if config_folder:
                             folder_name = config_folder
@@ -307,20 +283,17 @@ class PluginManager:
                             file=file_path.name
                         ))
                 
-                # Find all Insight subclasses in the module (skip if config-based insight found)
                 if not config_found:
                     for name, obj in inspect.getmembers(module, inspect.isclass):
                         if (issubclass(obj, Insight) and 
                             obj is not Insight and 
                             obj.__module__ == module_name and
-                            not inspect.isabstract(obj)):  # Skip abstract base classes
+                            not inspect.isabstract(obj)):
                             try:
                                 instance = obj()
-                                # Generate ID from file path for consistency with config-based insights
                                 generated_id = Insight._generate_id_from_path(
                                     file_path, root_path, source
                                 )
-                                # Wrap instance with auto-generated ID
                                 wrapped_instance = InsightIDWrapper(instance, generated_id)
                                 self.register_insight(wrapped_instance, folder_name, source)
                                 logger.info(f"Registered class-based insight: {wrapped_instance.id} ({wrapped_instance.name}) in folder: {folder_name or 'root'}")
@@ -348,7 +321,6 @@ class PluginManager:
                     file=file_path.name
                 ))
         
-        # Recursively process subdirectories
         subdirs = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('__')]
         for subdir in subdirs:
             self._discover_insights_recursive(root_path, subdir, source)
@@ -362,8 +334,6 @@ class PluginManager:
             folder: Folder name where the insight is located (None for root-level)
             source: Source identifier (built-in or external path)
         """
-        # IDs are now auto-generated from file paths, so they should be unique by construction
-        # If somehow a conflict occurs, log an error and skip registration
         if insight.id in self._insights:
             existing_source = self._insight_sources.get(insight.id)
             error_msg = (

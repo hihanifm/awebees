@@ -48,24 +48,18 @@ class Insight(ABC):
         Returns:
             Generated ID string
         """
-        # Get relative path from insights root
         try:
             relative_path = file_path.relative_to(insights_root)
         except ValueError:
-            # File not under root (external), use absolute path
             relative_path = file_path
         
-        # Remove .py extension
         relative_stem = relative_path.with_suffix('')
         
-        # Convert path parts to ID components
         if source == "built-in":
-            # Built-in: use all path components
             parts = [p for p in relative_stem.parts if p != '.']
             normalized_parts = [Insight._normalize_for_id(p) for p in parts]
             return '_'.join(normalized_parts) if normalized_parts else 'insight'
         else:
-            # External: include source hash for uniqueness
             source_hash = hashlib.md5(source.encode()).hexdigest()[:8]
             parts = [p for p in relative_stem.parts if p != '.']
             normalized_parts = [Insight._normalize_for_id(p) for p in parts]
@@ -122,7 +116,6 @@ class Insight(ABC):
     
     @property
     def ai_prompt_type(self) -> str:
-        # One of: "summarize", "explain", "recommend", "custom" (default: "explain")
         return "explain"
     
     @property
@@ -140,16 +133,13 @@ class Insight(ABC):
         """
         Wrapper around analyze() that automatically triggers AI analysis if ai_auto is True.
         """
-        # Call regular analyze
         result = await self.analyze(user_path, cancellation_event, progress_callback)
         
-        # Set AI metadata on result
         result.ai_enabled = self.ai_enabled
         result.ai_auto = self.ai_auto
         result.ai_prompt_type = self.ai_prompt_type
         result.ai_custom_prompt = self.ai_custom_prompt
         
-        # Check if AI should auto-run
         if self.ai_auto and self.ai_enabled:
             logger.info(f"AI Auto-trigger: Checking if AI should auto-run for insight (ai_auto={self.ai_auto}, ai_enabled={self.ai_enabled})")
             
@@ -163,14 +153,12 @@ class Insight(ABC):
                     logger.info(f"AI Auto-trigger: Starting auto-analysis with prompt_type={self.ai_prompt_type}")
                     ai_service = AIService()
                     
-                    # Run AI analysis
                     ai_result = await ai_service.analyze(
                         content=result.content,
                         prompt_type=self.ai_prompt_type,
                         custom_prompt=self.ai_custom_prompt
                     )
                     
-                    # Add to result
                     result.ai_analysis = ai_result
                     logger.info(f"AI Auto-trigger: Auto-analysis completed successfully")
                 except Exception as e:

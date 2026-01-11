@@ -42,7 +42,6 @@ class ConfigBasedInsight(FilterBasedInsight):
             }
         }
         
-        # Optional post-processing function
         def process_results(filter_result):
             return {
                 "content": "formatted output",
@@ -59,32 +58,25 @@ class ConfigBasedInsight(FilterBasedInsight):
         insights_root: Optional[Path] = None,
         source: str = "built-in"
     ):
-        # Initialize FilterBasedInsight
         super().__init__()
         
-        # file_path and insights_root are used for auto-generating ID from file path
         self._config = config
         self._process_results_fn = process_results_fn
         self._module_name = module_name or "ConfigBasedInsight"
         
-        # Validate config structure
         self._validate_config()
         
-        # Extract metadata
         metadata = config.get("metadata", {})
         
-        # Warn if ID is provided (deprecated)
         if "id" in metadata:
             logger.warning(
                 f"ID field in config is deprecated and will be ignored. "
                 f"ID is auto-generated from file path. Found ID: '{metadata.get('id')}'"
             )
         
-        # Generate ID from file path if available, otherwise use fallback
         if file_path and insights_root:
             self._id = Insight._generate_id_from_path(file_path, insights_root, source)
         else:
-            # Fallback: try to use ID from config if provided (for backward compatibility during transition)
             self._id = metadata.get("id", "unknown_insight")
             if self._id == "unknown_insight":
                 logger.warning(
@@ -96,25 +88,21 @@ class ConfigBasedInsight(FilterBasedInsight):
         self._description = metadata.get("description", "")
         self._folder = metadata.get("folder")
         
-        # Extract file filters configuration (required)
         self._file_filter_configs = config["file_filters"]
         
-        # Extract processing functions
         processing_config = config.get("processing", {})
-        self._final_level_processing = processing_config.get("final_level")  # Optional final processing function
+        self._final_level_processing = processing_config.get("final_level")
         
-        # Build execution graph as objects
         self.execution_graph = self._build_execution_graph(config)
         
-        # Extract AI configuration
         ai_config = config.get("ai", {})
-        self._ai_enabled = ai_config.get("enabled", True)  # Default: AI enabled
-        self._ai_auto = ai_config.get("auto", False)  # Default: manual trigger
-        self._ai_prompt_type = ai_config.get("prompt_type", "explain")  # Default: explain
-        self._ai_custom_prompt = ai_config.get("prompt")  # Optional custom prompt
-        self._ai_model = ai_config.get("model")  # Optional model override
-        self._ai_max_tokens = ai_config.get("max_tokens")  # Optional max_tokens override
-        self._ai_temperature = ai_config.get("temperature")  # Optional temperature override
+        self._ai_enabled = ai_config.get("enabled", True)
+        self._ai_auto = ai_config.get("auto", False)
+        self._ai_prompt_type = ai_config.get("prompt_type", "explain")
+        self._ai_custom_prompt = ai_config.get("prompt")
+        self._ai_model = ai_config.get("model")
+        self._ai_max_tokens = ai_config.get("max_tokens")
+        self._ai_temperature = ai_config.get("temperature")
         
         logger.info(f"ConfigBasedInsight initialized: {self._id} from {self._module_name}")
         logger.debug(f"ConfigBasedInsight: {len(self._file_filter_configs)} file filter config(s)")
@@ -132,7 +120,6 @@ class ConfigBasedInsight(FilterBasedInsight):
         if "name" not in metadata:
             raise ValueError("Config metadata must contain 'name'")
         
-        # file_filters is required
         if "file_filters" not in self._config:
             raise ValueError("Config must contain 'file_filters' (list)")
         
@@ -143,7 +130,6 @@ class ConfigBasedInsight(FilterBasedInsight):
         if len(file_filters) == 0:
             raise ValueError("Config file_filters must be a non-empty list")
         
-        # Validate each file filter config
         for idx, file_filter_config in enumerate(file_filters):
             if not isinstance(file_filter_config, dict):
                 raise ValueError(f"File filter config at index {idx} must be a dictionary")
@@ -155,7 +141,6 @@ class ConfigBasedInsight(FilterBasedInsight):
             if not isinstance(line_filters, list) or len(line_filters) == 0:
                 raise ValueError(f"File filter config at index {idx} must have non-empty 'line_filters' list")
             
-            # Validate each line filter
             for line_idx, line_filter in enumerate(line_filters):
                 if not isinstance(line_filter, dict):
                     raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must be a dictionary")
@@ -164,7 +149,6 @@ class ConfigBasedInsight(FilterBasedInsight):
     
     
     def _parse_regex_flags(self, flags_str: str) -> int:
-        # Parse comma-separated flag names (e.g., "IGNORECASE,MULTILINE") to integer flags
         if not flags_str:
             return 0
         
@@ -179,7 +163,6 @@ class ConfigBasedInsight(FilterBasedInsight):
         return flags
     
     def _parse_reading_mode(self, mode_str: str) -> ReadingMode:
-        # Parse reading mode string ("lines", "chunks", or "ripgrep") to ReadingMode enum
         mode_str = mode_str.lower()
         if mode_str == "lines":
             return ReadingMode.LINES
@@ -202,7 +185,7 @@ class ConfigBasedInsight(FilterBasedInsight):
                 regex_flags=self._parse_regex_flags(line_filter_config_dict.get("regex_flags", "")),
                 context_before=line_filter_config_dict.get("context_before", 0),
                 context_after=line_filter_config_dict.get("context_after", 0),
-                processing=line_filter_config_dict.get("processing")  # Optional line-filter level processing
+                processing=line_filter_config_dict.get("processing")
             )
             line_filter_objects.append(line_filter_obj)
         return line_filter_objects
@@ -210,8 +193,6 @@ class ConfigBasedInsight(FilterBasedInsight):
     def _build_execution_graph(self, config: Dict) -> ExecutionGraph:
         """Build execution graph as objects from config."""
         file_filters_config = config["file_filters"]
-        
-        # Build graph from config
         file_filter_objects = []
         
         for file_filter_config in file_filters_config:
@@ -220,18 +201,15 @@ class ConfigBasedInsight(FilterBasedInsight):
             processing_config = file_filter_config.get("processing", {})
             processing = processing_config.get("file_filter_level")
             
-            # Build line filter objects
             line_filter_objects = self._build_line_filter_objects(line_filters_config)
             
-            # Build file filter object
             file_filter_obj = FileFilterConfig(
-                file_patterns=file_patterns if file_patterns else None,  # None = dummy
+                file_patterns=file_patterns if file_patterns else None,
                 line_filters=line_filter_objects,
-                processing=processing  # Optional file-filter level processing
+                processing=processing
             )
             file_filter_objects.append(file_filter_obj)
         
-        # Build final execution graph
         return ExecutionGraph(
             file_filters=file_filter_objects,
             final_processing=self._final_level_processing
@@ -263,7 +241,6 @@ class ConfigBasedInsight(FilterBasedInsight):
     
     @property
     def ai_prompt_variables(self) -> Optional[dict]:
-        # These will be populated at runtime from the analysis result
         return {
             "insight_name": self._name,
             "insight_description": self._description

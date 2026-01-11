@@ -33,15 +33,12 @@ def normalize_path(path: str) -> str:
     if not path:
         return path
     
-    # First trim whitespace
     normalized = path.strip()
     
-    # Then strip surrounding quotes if matched
     if len(normalized) >= 2:
         first = normalized[0]
         last = normalized[-1]
         
-        # Only strip if both ends have the same quote type
         if (first == '"' and last == '"') or (first == "'" and last == "'"):
             normalized = normalized[1:-1]
     
@@ -75,19 +72,16 @@ async def select_files(request: FileSelectRequest):
     for path_idx, path in enumerate(request.paths, 1):
         logger.debug(f"Files API: Processing path {path_idx}/{len(request.paths)}: {path}")
         
-        # Normalize path: trim whitespace and strip surrounding quotes
         normalized_path = normalize_path(path)
         
         if not validate_file_path(normalized_path):
             logger.warning(f"Files API: Invalid or inaccessible path: {normalized_path}")
             continue
         
-        # Resolve to absolute path and add
         resolved_path = str(Path(normalized_path).resolve())
         validated_paths.append(resolved_path)
         logger.debug(f"Files API: Validated path: {resolved_path}")
     
-    # Remove duplicates while preserving order
     seen = set()
     unique_paths = []
     for path in validated_paths:
@@ -119,14 +113,9 @@ async def get_sample_files() -> Dict[str, Any]:
     """
     logger.info("Files API: Getting sample files information")
     
-    # Discover all samples (built-in + external)
     all_samples = discover_all_samples()
-    
-    # Convert to API response format
     samples = [sample.to_dict() for sample in all_samples]
     
-    # Maintain backward compatibility: also include built-in samples from SAMPLE_FILES
-    # if they weren't already discovered (fallback)
     discovered_ids = {sample["id"] for sample in samples}
     for sample_id, sample_info in SAMPLE_FILES.items():
         if sample_id not in discovered_ids:

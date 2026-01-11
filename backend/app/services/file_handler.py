@@ -38,8 +38,7 @@ async def read_file(file_path: str) -> str:
 
     try:
         file_size = os.path.getsize(file_path)
-        # Use mmap for files larger than 10MB
-        if file_size > 10 * 1024 * 1024:  # 10MB threshold
+        if file_size > 10 * 1024 * 1024:
             return await _read_file_mmap(file_path)
         else:
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -62,7 +61,6 @@ async def _read_file_mmap(file_path: str) -> str:
     try:
         with open(file_path, "rb") as f:
             with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                # Decode the memory-mapped bytes
                 return mm.read().decode("utf-8", errors="ignore")
     except Exception as e:
         logger.error(f"Error reading file with mmap {file_path}: {e}")
@@ -95,8 +93,6 @@ def read_file_chunks(file_path: str, chunk_size: int = 1048576, cancellation_eve
     if not validate_file_path(file_path):
         raise ValueError(f"Invalid or inaccessible file path: {file_path}")
     
-    # Read in binary mode for accurate byte-level chunking, then decode
-    # This is more efficient for large files than text mode
     with open(file_path, "rb") as f:
         while True:
             # Check for cancellation before reading next chunk

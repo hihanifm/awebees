@@ -24,11 +24,9 @@ class LineCount(Insight):
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
-        # Uses efficient line-by-line processing to handle large files
         import time
         start_time = time.time()
         
-        # Get files for this path
         file_paths = self._get_path_files(user_path)
         if not file_paths:
             logger.warning(f"LineCount: No files found for path: {user_path}")
@@ -46,7 +44,6 @@ class LineCount(Insight):
         total_non_empty = 0
         
         for file_idx, file_path in enumerate(file_paths, 1):
-            # Check for cancellation at start of each file
             if cancellation_event and cancellation_event.is_set():
                 logger.info(f"LineCount: Analysis cancelled")
                 raise CancelledError("Analysis cancelled")
@@ -54,7 +51,6 @@ class LineCount(Insight):
             file_start_time = time.time()
             logger.info(f"LineCount: Processing file {file_idx}/{len(file_paths)}: {file_path}")
             
-            # Get file size for progress tracking
             file_size_mb = 0.0
             try:
                 file_size_bytes = os.path.getsize(file_path)
@@ -62,7 +58,6 @@ class LineCount(Insight):
             except Exception:
                 pass
             
-            # Emit file_open event
             if progress_callback:
                 await progress_callback(ProgressEvent(
                     type="file_open",
@@ -82,7 +77,6 @@ class LineCount(Insight):
                 last_log_time = time.time()
                 last_progress_event_time = time.time()
                 
-                # Process file line by line to handle large files efficiently
                 for line in read_file_lines(file_path, cancellation_event=cancellation_event):
                     line_count += 1
                     if not line.strip():
@@ -90,7 +84,6 @@ class LineCount(Insight):
                     else:
                         non_empty_count += 1
                     
-                    # Emit progress event every 50k lines or every 2 seconds
                     if progress_callback and (line_count % 50000 == 0 or (time.time() - last_progress_event_time) >= 2.0):
                         await progress_callback(ProgressEvent(
                             type="insight_progress",
@@ -105,7 +98,6 @@ class LineCount(Insight):
                         ))
                         last_progress_event_time = time.time()
                     
-                    # Log progress for large files every 100k lines
                     if line_count % 100000 == 0:
                         elapsed = time.time() - last_log_time
                         logger.debug(f"LineCount: Processed {line_count:,} lines from {file_path} ({line_count/elapsed:.0f} lines/sec)")
@@ -137,7 +129,6 @@ class LineCount(Insight):
         total_elapsed = time.time() - start_time
         logger.info(f"LineCount: Analysis complete for path '{user_path}' - {total_lines:,} total lines across {len(file_paths)} file(s) in {total_elapsed:.2f}s")
         
-        # Format results
         result_text = f"Line Count Summary\n"
         result_text += f"{'=' * 50}\n\n"
         result_text += f"Path: {user_path}\n"

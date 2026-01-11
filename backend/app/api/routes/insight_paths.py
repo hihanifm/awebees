@@ -42,7 +42,6 @@ async def add_insight_path(request: InsightPathRequest):
     try:
         path = Path(request.path)
         
-        # Validate path exists
         if not path.exists():
             raise HTTPException(
                 status_code=400, 
@@ -55,11 +54,9 @@ async def add_insight_path(request: InsightPathRequest):
                 detail=f"Path is not a directory: {request.path}"
             )
         
-        # Add path
         config = InsightPathsConfig()
         config.add_path(str(path.absolute()))
         
-        # Reload insights from all sources
         plugin_manager = get_plugin_manager()
         plugin_manager.discover_all_insights()
         
@@ -81,11 +78,9 @@ async def add_insight_path(request: InsightPathRequest):
 @router.post("/remove")
 async def remove_insight_path(request: InsightPathRequest):
     try:
-        # Remove path
         config = InsightPathsConfig()
         config.remove_path(request.path)
         
-        # Reload insights from remaining sources
         plugin_manager = get_plugin_manager()
         plugin_manager.discover_all_insights()
         

@@ -19,11 +19,11 @@ router = APIRouter(prefix="/api/playground", tags=["playground"])
 class PlaygroundFilterRequest(BaseModel):
     file_path: str
     pattern: str
-    custom_flags: Optional[str] = None  # Custom ripgrep flags
+    custom_flags: Optional[str] = None
     case_insensitive: bool = True
     context_before: int = 0
     context_after: int = 0
-    max_count: Optional[int] = 1000  # Limit results to prevent memory issues
+    max_count: Optional[int] = 1000
 
 
 class FilterResult(BaseModel):
@@ -38,7 +38,6 @@ class FilterResult(BaseModel):
 async def filter_file(request: PlaygroundFilterRequest):
     logger.info(f"Playground Filter: pattern='{request.pattern}', file='{request.file_path}'")
     
-    # Validate file path
     if not validate_file_path(request.file_path):
         raise HTTPException(
             status_code=400,
@@ -51,26 +50,20 @@ async def filter_file(request: PlaygroundFilterRequest):
             detail=f"File not found: {request.file_path}"
         )
     
-    # Check if ripgrep is available
     if not is_ripgrep_available():
         raise HTTPException(
             status_code=503,
             detail="Ripgrep (rg) is not installed on the server"
         )
     
-    # Build ripgrep command string for display
     cmd_parts = ["rg"]
     
-    # Add custom flags first (if provided)
     if request.custom_flags and request.custom_flags.strip():
-        # Split custom flags and add them
         custom_flags_list = request.custom_flags.strip().split()
         cmd_parts.extend(custom_flags_list)
     
-    # Add pattern and file path
     cmd_parts.extend([request.pattern, request.file_path])
     
-    # Add UI helper flags
     if request.case_insensitive:
         cmd_parts.append("--ignore-case")
     if request.context_before > 0:
@@ -85,7 +78,6 @@ async def filter_file(request: PlaygroundFilterRequest):
     start_time = time.time()
     
     try:
-        # Execute ripgrep
         lines = []
         try:
             for line in ripgrep_search(
@@ -98,10 +90,8 @@ async def filter_file(request: PlaygroundFilterRequest):
             ):
                 lines.append(line)
         except subprocess.CalledProcessError as ripgrep_error:
-            # Re-raise to be caught by outer handler
             raise ripgrep_error
         except Exception as ripgrep_error:
-            # Wrap other exceptions
             logger.error(f"Playground Filter: Unexpected error in ripgrep_search: {ripgrep_error}", exc_info=True)
             raise
         
@@ -124,8 +114,6 @@ async def filter_file(request: PlaygroundFilterRequest):
         if hasattr(e, 'stderr') and e.stderr:
             stderr = e.stderr.decode('utf-8', errors='replace') if isinstance(e.stderr, bytes) else str(e.stderr)
         
-        # Check if error is related to invalid regex (common with unescaped special chars)
-        # Ripgrep error messages can vary, so check multiple patterns
         error_text = (stderr + " " + error_msg).lower()
         is_regex_error = (
             "regex parse error" in error_text or 
@@ -136,7 +124,6 @@ async def filter_file(request: PlaygroundFilterRequest):
         )
         
         if is_regex_error:
-            # Extract problematic characters and suggest escaping
             import re
             special_chars = r'[](){}.*+?^$|\\'
             found_special = [char for char in request.pattern if char in special_chars]
