@@ -13,11 +13,9 @@ INSIGHT_CONFIG = {
     },
     "file_filters": [
         {
-            "id": "dumpstate_files",
             "file_patterns": [r"dumpstate-", r"bugreport-", r"dumpstate.txt"],
             "line_filters": [
                 {
-                    "id": "errors",
                     "pattern": r"\b(ERROR|FATAL)\b",
                     "reading_mode": "ripgrep"
                 }

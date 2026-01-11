@@ -3,7 +3,11 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Awaitable
 import asyncio
+import logging
+from pathlib import Path
 from app.core.models import InsightResult, ProgressEvent
+
+logger = logging.getLogger(__name__)
 
 
 class Insight(ABC):
@@ -33,6 +37,29 @@ class Insight(ABC):
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
         pass
+    
+    def _get_path_files(self, user_path: str) -> List[str]:
+        """
+        Get files for a single user path (if folder, list recursively; if file, use directly).
+        
+        Args:
+            user_path: User input path (file or folder)
+            
+        Returns:
+            List of file paths
+        """
+        path_obj = Path(user_path)
+        if not path_obj.exists():
+            logger.warning(f"{self.__class__.__name__}: Path does not exist: {user_path}")
+            return []
+        
+        if path_obj.is_file():
+            return [str(path_obj.resolve())]
+        elif path_obj.is_dir():
+            files = [str(p.resolve()) for p in path_obj.rglob("*") if p.is_file()]
+            return sorted(files)
+        else:
+            return []
     
     @property
     def ai_enabled(self) -> bool: return True
@@ -71,8 +98,6 @@ class Insight(ABC):
         
         # Check if AI should auto-run
         if self.ai_auto and self.ai_enabled:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.info(f"AI Auto-trigger: Checking if AI should auto-run for insight (ai_auto={self.ai_auto}, ai_enabled={self.ai_enabled})")
             
             from app.services.ai_service import AIService

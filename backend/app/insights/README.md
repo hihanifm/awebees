@@ -35,9 +35,16 @@ INSIGHT_CONFIG = {
         "name": "My Insight",
         "description": "Finds interesting patterns"
     },
-    "filters": {
-        "line_pattern": r"\b(WARNING|ERROR)\b"
-    }
+    "file_filters": [
+        {
+            "file_patterns": [],  # Empty means process all files
+            "line_filters": [
+                {
+                    "pattern": r"\b(WARNING|ERROR)\b"
+                }
+            ]
+        }
+    ]
 }
 
 if __name__ == "__main__":
@@ -68,9 +75,16 @@ INSIGHT_CONFIG = {
         "name": "Error Summary",
         "description": "Analyzes and summarizes error patterns"
     },
-    "filters": {
-        "line_pattern": r"\b(ERROR|FATAL)\b"  # Required: regex pattern for matching
-    }
+    "file_filters": [
+        {
+            "file_patterns": [],  # Empty means process all files
+            "line_filters": [
+                {
+                    "pattern": r"\b(ERROR|FATAL)\b"  # Required: regex pattern for matching
+                }
+            ]
+        }
+    ]
 }
 
 
@@ -131,9 +145,16 @@ INSIGHT_CONFIG = {
         "name": "Display Name",   # Required: Human-readable name
         "description": "..."      # Required: What this insight does
     },
-    "filters": {
-        "line_pattern": r"REGEX"  # Required: Regex pattern to match lines
-    }
+    "file_filters": [
+        {
+            "file_patterns": [],  # Empty means process all files
+            "line_filters": [
+                {
+                    "pattern": r"REGEX"  # Required: Regex pattern to match lines
+                }
+            ]
+        }
+    ]
 }
 ```
 
@@ -150,27 +171,47 @@ INSIGHT_CONFIG = {
 #### Optional: File Filtering
 
 ```python
-"filters": {
-    "line_pattern": r"ERROR",
-    "file_patterns": [r"\.log$", r"\.txt$"]  # Only process .log and .txt files
-}
+"file_filters": [
+    {
+        "file_patterns": [r"\.log$", r"\.txt$"],  # Only process .log and .txt files
+        "line_filters": [
+            {
+                "pattern": r"ERROR"
+            }
+        ]
+    }
+]
 ```
 
 #### Optional: Override Reading Mode
 
 ```python
 # Use line-by-line mode instead of default ripgrep
-"filters": {
-    "line_pattern": r"ERROR",
-    "reading_mode": "lines"
-}
+"file_filters": [
+    {
+        "file_patterns": [],
+        "line_filters": [
+            {
+                "pattern": r"ERROR",
+                "reading_mode": "lines"
+            }
+        ]
+    }
+]
 
 # Or use chunks mode for memory efficiency
-"filters": {
-    "line_pattern": r"ERROR",
-    "reading_mode": "chunks",
-    "chunk_size": 1048576  # 1MB (optional, this is default)
-}
+"file_filters": [
+    {
+        "file_patterns": [],
+        "line_filters": [
+            {
+                "pattern": r"ERROR",
+                "reading_mode": "chunks",
+                "chunk_size": 1048576  # 1MB (optional, this is default)
+            }
+        ]
+    }
+]
 ```
 
 ## Reading Modes
@@ -187,9 +228,17 @@ Lens supports three reading modes for file processing, each optimized for differ
 **Fallback**: Automatically uses lines mode if ripgrep unavailable
 
 ```python
-"filters": {
-    "reading_mode": "ripgrep"  # Default mode (optional to specify)
-}
+"file_filters": [
+    {
+        "file_patterns": [],
+        "line_filters": [
+            {
+                "pattern": r"YOUR_PATTERN",
+                "reading_mode": "ripgrep"  # Default mode (optional to specify)
+            }
+        ]
+    }
+]
 ```
 
 ### 2. Chunks Mode
@@ -200,10 +249,18 @@ Lens supports three reading modes for file processing, each optimized for differ
 **Best for**: Files > 250MB, simple pattern matching
 
 ```python
-"filters": {
-    "reading_mode": "chunks",
-    "chunk_size": 1048576  # 1MB chunks (default)
-}
+"file_filters": [
+    {
+        "file_patterns": [],
+        "line_filters": [
+            {
+                "pattern": r"YOUR_PATTERN",
+                "reading_mode": "chunks",
+                "chunk_size": 1048576  # 1MB chunks (default)
+            }
+        ]
+    }
+]
 ```
 
 ### 3. Lines Mode
@@ -214,9 +271,17 @@ Lens supports three reading modes for file processing, each optimized for differ
 **Best for**: Files < 50MB when ripgrep is unavailable, insights with complex Python logic
 
 ```python
-"filters": {
-    "reading_mode": "lines"  # Explicit fallback mode
-}
+"file_filters": [
+    {
+        "file_patterns": [],
+        "line_filters": [
+            {
+                "pattern": r"YOUR_PATTERN",
+                "reading_mode": "lines"  # Explicit fallback mode
+            }
+        ]
+    }
+]
 ```
 
 ### Performance Comparison
@@ -252,9 +317,16 @@ INSIGHT_CONFIG = {
         "name": "AI-Enhanced Insight",
         "description": "Detects errors with AI analysis"
     },
-    "filters": {
-        "line_pattern": r"\b(ERROR|FATAL)\b"
-    },
+    "file_filters": [
+        {
+            "file_patterns": [],
+            "line_filters": [
+                {
+                    "pattern": r"\b(ERROR|FATAL)\b"
+                }
+            ]
+        }
+    ],
     "ai": {
         "enabled": True,
         "auto": False,  # Set to True for automatic AI analysis

@@ -1,7 +1,8 @@
 """Base classes and utilities for filter-based insights."""
 
 from enum import Enum
-from typing import List, Optional, Dict, Callable, Awaitable
+from typing import List, Optional, Dict, Callable, Awaitable, Any
+from dataclasses import dataclass
 import re
 import logging
 import asyncio
@@ -59,6 +60,44 @@ class FilterResult:
     def get_file_count(self) -> int: return len(self._lines_by_file)
     
     def get_total_line_count(self) -> int: return sum(len(lines) for lines in self._lines_by_file.values())
+
+
+@dataclass
+class LineFilterConfig:
+    """Configuration for a line filter."""
+    pattern: str
+    reading_mode: ReadingMode = ReadingMode.RIPGREP
+    chunk_size: int = 1048576
+    regex_flags: int = 0
+    context_before: int = 0
+    context_after: int = 0
+    processing: Optional[Callable[[FilterResult], Dict[str, Any]]] = None
+    
+    def to_line_filter(self) -> 'LineFilter':
+        """Create LineFilter instance from this config."""
+        return LineFilter(
+            pattern=self.pattern,
+            reading_mode=self.reading_mode,
+            chunk_size=self.chunk_size,
+            flags=self.regex_flags,
+            context_before=self.context_before,
+            context_after=self.context_after
+        )
+
+
+@dataclass
+class FileFilterConfig:
+    """Configuration for a file filter with its line filters."""
+    file_patterns: Optional[List[str]]  # None = default dummy filter (all files)
+    line_filters: List[LineFilterConfig]
+    processing: Optional[Callable[[List[Dict[str, Any]]], Dict[str, Any]]] = None  # file-filter level processing
+
+
+@dataclass
+class ExecutionGraph:
+    """Complete execution graph for an insight."""
+    file_filters: List[FileFilterConfig]
+    final_processing: Optional[Callable[[List[Dict[str, Any]]], Dict[str, Any]]] = None
 
 
 class FileFilter:
@@ -541,12 +580,186 @@ class FilterBasedInsight(Insight):
         else:
             return []
     
-    async def analyze(
+    def _apply_file_patterns(self, files: List[str], file_patterns: List[str]) -> List[str]:
+        """Apply file patterns to filter files."""
+        if not file_patterns:
+            return files
+        
+        import re
+        compiled_patterns = [re.compile(pattern) for pattern in file_patterns]
+        filtered_files = []
+        for file_path in files:
+            file_name = Path(file_path).name
+            if any(pattern.search(file_name) for pattern in compiled_patterns):
+                filtered_files.append(file_path)
+        return filtered_files
+    
+    def _combine_line_filter_results(self, line_filter_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Combine results from multiple line filters."""
+        combined_content = []
+        total_lines = 0
+        
+        for result in line_filter_results:
+            content = result.get("content", "")
+            combined_content.append(content)
+            total_lines += result.get("metadata", {}).get("line_count", 0)
+        
+        return {
+            "content": "\n".join(combined_content),
+            "metadata": {"total_lines": total_lines, "line_filter_count": len(line_filter_results)}
+        }
+    
+    def _combine_file_filter_results(self, file_filter_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Combine results from multiple file filters."""
+        combined_content = []
+        total_file_filters = len(file_filter_results)
+        
+        for result in file_filter_results:
+            content = result.get("content", "")
+            combined_content.append(content)
+        
+        return {
+            "content": "\n\n".join(combined_content),
+            "metadata": {"file_filter_count": total_file_filters}
+        }
+    
+    async def execute_graph(
         self,
+        execution_graph: ExecutionGraph,
         user_path: str,
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
+        """
+        Execute a graph of file-filters and line-filters.
+        
+        Args:
+            execution_graph: ExecutionGraph object with file_filters and final_processing
+            user_path: User input path (file or folder)
+            cancellation_event: Optional cancellation event
+            progress_callback: Optional progress callback
+            
+        Returns:
+            InsightResult
+        """
+        import time
+        start_time = time.time()
+        logger.info(f"{self.__class__.__name__}: Starting graph execution for path: {user_path}")
+        
+        # 1. Get files for path
+        path_files = self._get_path_files(user_path)
+        if not path_files:
+            logger.warning(f"{self.__class__.__name__}: No files found for path: {user_path}")
+            return InsightResult(
+                result_type="text",
+                content=f"No files found for path: {user_path}",
+                metadata={"user_path": user_path}
+            )
+        
+        # 2. Process each file-filter in the graph
+        file_filter_results = []
+        for file_filter_config in execution_graph.file_filters:
+            # Apply file filtering (or use all files if None/dummy)
+            if file_filter_config.file_patterns:
+                filtered_files = self._apply_file_patterns(path_files, file_filter_config.file_patterns)
+            else:
+                filtered_files = path_files  # Default dummy filter
+            
+            if not filtered_files:
+                continue
+            
+            # Process each line-filter for this file-filter
+            line_filter_results = []
+            for line_filter_config in file_filter_config.line_filters:
+                # Create LineFilter from config object
+                line_filter = line_filter_config.to_line_filter()
+                
+                # Apply line filter to files
+                file_filter_obj = FileFilter(filtered_files)
+                filter_result = await file_filter_obj.apply(line_filter, cancellation_event, progress_callback)
+                
+                # Apply line-filter level processing if provided
+                if line_filter_config.processing:
+                    processed = line_filter_config.processing(filter_result)
+                    line_filter_results.append(processed)
+                else:
+                    # Default: just return the filtered lines
+                    line_filter_results.append({
+                        "content": "\n".join(filter_result.get_lines()),
+                        "metadata": {"line_count": filter_result.get_total_line_count()}
+                    })
+            
+            # Apply file-filter level processing if provided
+            if file_filter_config.processing:
+                file_filter_result = file_filter_config.processing(line_filter_results)
+            else:
+                # Default: combine all line-filter results
+                file_filter_result = self._combine_line_filter_results(line_filter_results)
+            
+            file_filter_results.append(file_filter_result)
+        
+        # 3. Apply final processing if provided
+        if execution_graph.final_processing:
+            result = execution_graph.final_processing(file_filter_results)
+        else:
+            # Default: combine all file-filter results
+            result = self._combine_file_filter_results(file_filter_results)
+        
+        # Ensure result is a dict with content and metadata
+        if not isinstance(result, dict):
+            result = {"content": str(result), "metadata": {}}
+        if "content" not in result:
+            result["content"] = ""
+        if "metadata" not in result:
+            result["metadata"] = {}
+        
+        # Add user_path to metadata
+        result["metadata"]["user_path"] = user_path
+        
+        total_elapsed = time.time() - start_time
+        logger.info(f"{self.__class__.__name__}: Graph execution complete for path '{user_path}' in {total_elapsed:.2f}s")
+        
+        return InsightResult(
+            result_type="text",
+            content=result["content"],
+            metadata=result["metadata"]
+        )
+    
+    async def analyze(
+        self,
+        user_path: str,
+        cancellation_event: Optional[asyncio.Event] = None,
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None,
+        execution_graph: Optional[ExecutionGraph] = None
+    ) -> InsightResult:
+        """
+        Analyze files using either execution graph or simple properties.
+        
+        Args:
+            user_path: User input path (file or folder)
+            cancellation_event: Optional cancellation event
+            progress_callback: Optional progress callback
+            execution_graph: Optional execution graph (if provided, uses graph execution)
+        """
+        # If execution_graph provided as parameter, use graph execution
+        if execution_graph:
+            return await self.execute_graph(
+                execution_graph=execution_graph,
+                user_path=user_path,
+                cancellation_event=cancellation_event,
+                progress_callback=progress_callback
+            )
+        
+        # If execution_graph property exists on instance, use it
+        if hasattr(self, 'execution_graph') and self.execution_graph:
+            return await self.execute_graph(
+                execution_graph=self.execution_graph,
+                user_path=user_path,
+                cancellation_event=cancellation_event,
+                progress_callback=progress_callback
+            )
+        
+        # Otherwise, use simple single-pattern execution (backward compatibility)
         import time
         start_time = time.time()
         logger.info(f"{self.__class__.__name__}: Starting analysis of path: {user_path}")
