@@ -172,6 +172,9 @@ class AppConfig:
     # Enable profiling
     ENABLE_PROFILING: bool = os.getenv("ENABLE_PROFILING", "false").lower() == "true"
     
+    # Insight file limit - maximum number of files allowed per insight analysis
+    MAX_FILES: int = int(os.getenv("INSIGHT_MAX_FILES", "20"))
+    
     # Valid log levels
     VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     

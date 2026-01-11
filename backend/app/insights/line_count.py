@@ -34,6 +34,11 @@ class LineCount(Insight):
                 metadata={"user_path": user_path}
             )
         
+        # Check file count limit
+        limit_error = self._check_file_limit(file_paths, user_path)
+        if limit_error:
+            return limit_error
+        
         logger.info(f"LineCount: Starting analysis of path '{user_path}' with {len(file_paths)} file(s)")
         
         file_results = []

@@ -122,6 +122,47 @@ class Insight(ABC):
         else:
             return []
     
+    def _check_file_limit(self, file_paths: List[str], user_path: str) -> Optional[InsightResult]:
+        """
+        Check if file count exceeds the maximum limit.
+        
+        Args:
+            file_paths: List of file paths to check
+            user_path: Original user input path
+            
+        Returns:
+            InsightResult with error message if limit exceeded, None otherwise
+        """
+        from app.core.config import AppConfig
+        
+        max_files = AppConfig.MAX_FILES
+        file_count = len(file_paths)
+        
+        if file_count > max_files:
+            logger.warning(f"{self.__class__.__name__}: File limit exceeded - {file_count} files exceeds maximum of {max_files} files")
+            error_message = f"""Error: Maximum file limit exceeded
+
+The analysis path contains {file_count} files, which exceeds the maximum allowed limit of {max_files} files.
+
+To proceed, please:
+- Reduce the number of files in the selected path, or
+- Use more specific file filter patterns to narrow down the files, or
+- Increase the limit by setting INSIGHT_MAX_FILES environment variable (currently: {max_files})
+
+Path: {user_path}"""
+            return InsightResult(
+                result_type="text",
+                content=error_message,
+                metadata={
+                    "user_path": user_path,
+                    "file_count": file_count,
+                    "max_files": max_files,
+                    "error": True
+                }
+            )
+        
+        return None
+    
     @property
     def ai_enabled(self) -> bool: return True
     

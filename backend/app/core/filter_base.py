@@ -776,6 +776,11 @@ class FilterBasedInsight(Insight):
                 metadata={"user_path": user_path}
             )
         
+        # Check file count limit
+        limit_error = self._check_file_limit(path_files, user_path)
+        if limit_error:
+            return limit_error
+        
         # Check if user_path is a single file (file patterns should NOT be applied to individual files)
         # BUT: if it's a zip file that was expanded, we DO want to apply file patterns (path_files will have multiple entries)
         from pathlib import Path
@@ -919,6 +924,11 @@ class FilterBasedInsight(Insight):
                 content=f"No files found for path: {user_path}",
                 metadata={"user_path": user_path}
             )
+        
+        # Check file count limit
+        limit_error = self._check_file_limit(path_files, user_path)
+        if limit_error:
+            return limit_error
         
         # Apply file filtering if patterns provided (before creating FileFilter)
         file_patterns = self.file_filter_patterns
