@@ -29,6 +29,7 @@ export interface FileSelectRequest {
 export interface FileSelectResponse {
   files: string[];
   count: number;
+  invalid_paths?: string[];
 }
 
 export interface InsightsResponse {

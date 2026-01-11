@@ -50,6 +50,7 @@ class FileSelectRequest(BaseModel):
 class FileSelectResponse(BaseModel):
     files: List[str]
     count: int
+    invalid_paths: List[str] = []
 
 
 @router.post("/select", response_model=FileSelectResponse)
@@ -66,6 +67,7 @@ async def select_files(request: FileSelectRequest):
     logger.info(f"Files API: Received file selection request for {len(request.paths)} path(s)")
     
     validated_paths = []
+    invalid_paths = []
     
     for path_idx, path in enumerate(request.paths, 1):
         logger.debug(f"Files API: Processing path {path_idx}/{len(request.paths)}: {path}")
@@ -74,6 +76,7 @@ async def select_files(request: FileSelectRequest):
         
         if not validate_file_path(normalized_path):
             logger.warning(f"Files API: Invalid or inaccessible path: {normalized_path}")
+            invalid_paths.append(normalized_path)
             continue
         
         resolved_path = str(Path(normalized_path).resolve())
@@ -92,11 +95,14 @@ async def select_files(request: FileSelectRequest):
         logger.debug(f"Files API: Removed {duplicates_removed} duplicate path(s)")
     
     elapsed = time.time() - start_time
-    logger.info(f"Files API: File selection complete - {len(unique_paths)} unique path(s) validated in {elapsed:.2f}s")
+    logger.info(f"Files API: File selection complete - {len(unique_paths)} unique path(s) validated, {len(invalid_paths)} invalid path(s) in {elapsed:.2f}s")
+    if invalid_paths:
+        logger.info(f"Files API: Invalid paths: {invalid_paths}")
     
     return FileSelectResponse(
         files=unique_paths,
-        count=len(unique_paths)
+        count=len(unique_paths),
+        invalid_paths=invalid_paths
     )
 
 

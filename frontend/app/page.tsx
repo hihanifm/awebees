@@ -175,13 +175,28 @@ export default function Home() {
       if (selectResponse.files.length === 0) {
         // Check if original input might have spaces (wrong delimiter)
         const hasSpacesInInput = filePaths.trim().includes(" ") && !filePaths.trim().includes("\n");
-        const errorMessage = hasSpacesInInput
+        let errorMessage = hasSpacesInInput
           ? "No valid paths found. Make sure each path is on a separate line (use Enter/Return, not spaces)."
           : `No valid paths found. Please check that the paths exist and are accessible. You provided ${paths.length} path(s).`;
+        
+        // Add info about invalid paths if available
+        if (selectResponse.invalid_paths && selectResponse.invalid_paths.length > 0) {
+          errorMessage += ` Invalid path(s): ${selectResponse.invalid_paths.join(", ")}`;
+        }
+        
         setError(errorMessage);
         setProgressEvents([]); // Clear progress events to avoid stuck state
         setAnalyzing(false);
         return;
+      }
+      
+      // Warn about invalid paths but continue with valid ones
+      // Store invalid paths warning to show even after analysis completes
+      let invalidPathsWarning: string | null = null;
+      if (selectResponse.invalid_paths && selectResponse.invalid_paths.length > 0) {
+        invalidPathsWarning = `Some paths were invalid and skipped: ${selectResponse.invalid_paths.join(", ")}. Processing ${selectResponse.files.length} valid path(s).`;
+        logger.warn(invalidPathsWarning);
+        setError(invalidPathsWarning); // Show warning in UI
       }
 
       // Extract task ID from first progress event
@@ -204,6 +219,10 @@ export default function Home() {
 
       // Set final response (contains all path results)
       setAnalysisResponse(response);
+      // Keep invalid paths warning visible after analysis completes
+      if (invalidPathsWarning) {
+        setError(invalidPathsWarning);
+      }
     } catch (err) {
       if (err instanceof Error && err.message === "Analysis cancelled") {
         setError(t("errors.analysisCancelled"));
