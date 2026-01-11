@@ -634,8 +634,7 @@ def extract_file_from_zip(zip_path: str, internal_path: str, extract_to: Path) -
     """
     Extract a single file from zip to a directory.
     
-    For files smaller than MEMORY_EXTRACT_THRESHOLD: extracts to memory first, then writes to file.
-    For larger files: extracts directly to file.
+    Extracts directly to file using streaming for efficient memory usage.
     
     Args:
         zip_path: Path to the zip file
@@ -684,20 +683,10 @@ def extract_file_from_zip(zip_path: str, internal_path: str, extract_to: Path) -
             extracted_filename = f"{file_stem}_{path_hash}{file_suffix}"
             extracted_path = extract_to / extracted_filename
             
-            # Determine extraction method based on file size
-            uncompressed_size = zip_info.file_size
-            if uncompressed_size < ZipSecurityConfig.MEMORY_EXTRACT_THRESHOLD:
-                # Extract to memory first, then write to file
-                with zip_ref.open(sanitized_path, 'r') as file_in_zip:
-                    content = file_in_zip.read()
-                    with open(extracted_path, 'wb') as out_file:
-                        out_file.write(content)
-            else:
-                # Extract directly to file (more efficient for large files)
-                # Read in chunks and write to avoid loading entire file into memory
-                with zip_ref.open(sanitized_path, 'r') as file_in_zip:
-                    with open(extracted_path, 'wb') as out_file:
-                        shutil.copyfileobj(file_in_zip, out_file)
+            # Extract directly to file using streaming
+            with zip_ref.open(sanitized_path, 'r') as file_in_zip:
+                with open(extracted_path, 'wb') as out_file:
+                    shutil.copyfileobj(file_in_zip, out_file)
             
             logger.debug(f"FileHandler: Extracted {internal_path} from {zip_path} to {extracted_path}")
             return extracted_path

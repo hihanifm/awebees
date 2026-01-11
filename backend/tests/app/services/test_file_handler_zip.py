@@ -298,7 +298,7 @@ class TestExtractFileFromZip:
     """Tests for extract_file_from_zip() function."""
     
     def test_extract_file_from_zip_small_file(self, temp_dir, test_zip_file):
-        """Test extracting a small file (memory-first method)."""
+        """Test extracting a small file."""
         zip_path = test_zip_file("test.zip", {
             "file.txt": "small content"
         })
@@ -311,9 +311,9 @@ class TestExtractFileFromZip:
         assert extracted_path.read_text() == "small content"
     
     def test_extract_file_from_zip_large_file(self, temp_dir):
-        """Test extracting a large file (direct-to-disk method)."""
-        # Create a zip with a file larger than MEMORY_EXTRACT_THRESHOLD
-        large_content = "x" * (ZipSecurityConfig.MEMORY_EXTRACT_THRESHOLD + 1000)
+        """Test extracting a large file."""
+        # Create a zip with a large file (11 MB)
+        large_content = "x" * (11 * 1024 * 1024)
         zip_path = Path(temp_dir) / "test.zip"
         with zipfile.ZipFile(zip_path, 'w') as zip_ref:
             zip_ref.writestr("large.txt", large_content)
