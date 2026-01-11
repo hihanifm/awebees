@@ -8,7 +8,8 @@ INSIGHT_CONFIG = {
             "file_patterns": [],
             "line_filters": [
                 {
-                    "ripgrep_command": r"\b(ERROR|FATAL)\b"
+                    "ripgrep_command": r"\b(ERROR|FATAL)\b",
+                    "reading_mode": "lines"
                 }
             ]
         }
