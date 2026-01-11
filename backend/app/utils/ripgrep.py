@@ -6,7 +6,8 @@ Provides a Python interface to ripgrep (rg) command.
 import subprocess
 import logging
 import shutil
-from typing import Optional, Iterator
+import shlex
+from typing import Optional, Iterator, List
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -15,55 +16,58 @@ def is_ripgrep_available() -> bool:
     return shutil.which("rg") is not None
 
 def build_ripgrep_command(
-    pattern: str,
-    file_path: str,
-    case_insensitive: bool = True,
-    max_count: Optional[int] = None,
-    context_before: int = 0,
-    context_after: int = 0
+    ripgrep_command: str,
+    file_path: str
 ) -> str:
-    cmd_parts = ["rg", pattern, file_path, "--no-heading", "--no-line-number", "--text"]
+    """
+    Build ripgrep command string from raw ripgrep command.
     
-    if case_insensitive:
-        cmd_parts.append("--ignore-case")
-    
-    if max_count:
-        cmd_parts.extend(["--max-count", str(max_count)])
-    
-    if context_before > 0:
-        cmd_parts.extend(["--before-context", str(context_before)])
-    
-    if context_after > 0:
-        cmd_parts.extend(["--after-context", str(context_after)])
-    
-    return " ".join(cmd_parts)
+    Args:
+        ripgrep_command: Raw ripgrep command (everything after 'rg')
+        file_path: File path to search
+        
+    Returns:
+        Command string for display
+    """
+    return f"rg {ripgrep_command} {file_path} --no-heading --no-line-number --text"
 
 def ripgrep_search(
     file_path: str,
-    pattern: str,
-    case_insensitive: bool = True,
-    max_count: Optional[int] = None,
-    context_before: int = 0,
-    context_after: int = 0
+    ripgrep_command: str
 ) -> Iterator[str]:
+    """
+    Execute ripgrep with raw command string.
+    
+    Args:
+        file_path: File path to search
+        ripgrep_command: Raw ripgrep command (everything after 'rg', e.g., "-A 10 'ERROR'")
+        
+    Yields:
+        Matching lines
+    """
     if not is_ripgrep_available():
         raise FileNotFoundError("ripgrep (rg) is not installed")
     
-    # Build ripgrep command
-    cmd = ["rg", pattern, file_path, "--no-heading", "--no-line-number", "--text"]
+    # Parse the ripgrep command string
+    # If it's a simple pattern (doesn't start with -), pass it directly
+    # If it contains flags (starts with -), use shlex.split to parse
+    ripgrep_command_stripped = ripgrep_command.strip()
+    if ripgrep_command_stripped.startswith('-'):
+        # Contains flags, need to parse
+        try:
+            cmd_parts = shlex.split(ripgrep_command)
+        except ValueError:
+            # If parsing fails, treat as single argument
+            cmd_parts = [ripgrep_command]
+    else:
+        # Simple pattern - pass directly without parsing (preserves backslashes)
+        cmd_parts = [ripgrep_command]
     
-    # Add case-insensitive flag if requested
-    if case_insensitive:
-        cmd.append("--ignore-case")
-    
-    if max_count:
-        cmd.extend(["--max-count", str(max_count)])
-    
-    if context_before > 0:
-        cmd.extend(["--before-context", str(context_before)])
-    
-    if context_after > 0:
-        cmd.extend(["--after-context", str(context_after)])
+    # Build ripgrep command: rg [user_flags] file_path [standard_flags]
+    cmd = ["rg"]
+    cmd.extend(cmd_parts)
+    cmd.append(file_path)
+    cmd.extend(["--no-heading", "--no-line-number", "--text"])
     
     logger.info(f"Running ripgrep: {' '.join(cmd)}")
     
@@ -78,12 +82,10 @@ def ripgrep_search(
         )
         
         # Read stdout line by line
-        lines_yielded = 0
         for line in process.stdout:
             # Decode with error handling for non-UTF-8 bytes (common in binary files)
             decoded_line = line.decode('utf-8', errors='replace').rstrip('\n')
             yield decoded_line
-            lines_yielded += 1
         
         # Wait for process to complete
         process.wait()

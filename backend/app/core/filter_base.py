@@ -67,8 +67,6 @@ class LineFilterConfig:
     reading_mode: ReadingMode = ReadingMode.RIPGREP
     chunk_size: int = 1048576
     regex_flags: int = 0
-    context_before: int = 0
-    context_after: int = 0
     processing: Optional[Callable[[FilterResult], Dict[str, Any]]] = None
     
     def to_line_filter(self) -> 'LineFilter':
@@ -77,9 +75,7 @@ class LineFilterConfig:
             pattern=self.pattern,
             reading_mode=self.reading_mode,
             chunk_size=self.chunk_size,
-            flags=self.regex_flags,
-            context_before=self.context_before,
-            context_after=self.context_after
+            flags=self.regex_flags
         )
 
 
@@ -278,9 +274,7 @@ class LineFilter:
         pattern: str,
         reading_mode: ReadingMode = ReadingMode.LINES,
         chunk_size: int = 1048576,
-        flags: int = 0,
-        context_before: int = 0,
-        context_after: int = 0
+        flags: int = 0
     ):
         """
         Initialize line filter.
@@ -290,15 +284,11 @@ class LineFilter:
             reading_mode: Reading mode - LINES (default) or CHUNKS
             chunk_size: Chunk size in bytes (only used for CHUNKS mode, default: 1MB)
             flags: Regex flags (e.g., re.IGNORECASE)
-            context_before: Number of lines to include before each match (default: 0)
-            context_after: Number of lines to include after each match (default: 0)
         """
         self.pattern = pattern
         self.reading_mode = reading_mode
         self.chunk_size = chunk_size
         self.flags = flags
-        self.context_before = context_before
-        self.context_after = context_after
         self._compiled_pattern = re.compile(pattern, flags)
     
     async def filter_lines(
@@ -579,15 +569,9 @@ class LineFilter:
                 raise CancelledError("Analysis cancelled")
             
             # Build ripgrep command for display
-            import re
-            case_insensitive = bool(self.flags & re.IGNORECASE)
             command = build_ripgrep_command(
-                pattern=self.pattern,
-                file_path=actual_file_path,
-                case_insensitive=case_insensitive,
-                max_count=None,
-                context_before=self.context_before,
-                context_after=self.context_after
+                ripgrep_command=self.pattern,  # pattern field now contains ripgrep_command
+                file_path=actual_file_path
             )
             
             # Run ripgrep in executor to avoid blocking
@@ -598,10 +582,7 @@ class LineFilter:
                 try:
                     for line in ripgrep_search(
                         actual_file_path,
-                        self.pattern,
-                        case_insensitive=case_insensitive,
-                        context_before=self.context_before,
-                        context_after=self.context_after
+                        self.pattern  # pattern field now contains ripgrep_command
                     ):
                         # Check for cancellation periodically
                         if cancellation_event and cancellation_event.is_set():

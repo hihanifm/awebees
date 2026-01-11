@@ -142,8 +142,8 @@ class ConfigBasedInsight(FilterBasedInsight):
             for line_idx, line_filter in enumerate(line_filters):
                 if not isinstance(line_filter, dict):
                     raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must be a dictionary")
-                if "pattern" not in line_filter:
-                    raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must contain 'pattern'")
+                if "ripgrep_command" not in line_filter:
+                    raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must contain 'ripgrep_command'")
     
     
     def _parse_regex_flags(self, flags_str: str) -> int:
@@ -177,12 +177,10 @@ class ConfigBasedInsight(FilterBasedInsight):
         line_filter_objects = []
         for line_filter_config_dict in line_filters_config:
             line_filter_obj = LineFilterConfig(
-                pattern=line_filter_config_dict["pattern"],
+                pattern=line_filter_config_dict["ripgrep_command"],  # Store ripgrep_command as pattern
                 reading_mode=self._parse_reading_mode(line_filter_config_dict.get("reading_mode", "ripgrep")),
                 chunk_size=line_filter_config_dict.get("chunk_size", 1048576),
                 regex_flags=self._parse_regex_flags(line_filter_config_dict.get("regex_flags", "")),
-                context_before=line_filter_config_dict.get("context_before", 0),
-                context_after=line_filter_config_dict.get("context_after", 0),
                 processing=line_filter_config_dict.get("processing")
             )
             line_filter_objects.append(line_filter_obj)

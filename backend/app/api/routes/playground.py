@@ -18,9 +18,7 @@ class PlaygroundFilterRequest(BaseModel):
     file_path: str
     pattern: str
     custom_flags: Optional[str] = None
-    case_insensitive: bool = True
-    context_before: int = 0
-    context_after: int = 0
+    case_insensitive: bool = False
     max_count: Optional[int] = 1000
 
 
@@ -64,10 +62,6 @@ async def filter_file(request: PlaygroundFilterRequest):
     
     if request.case_insensitive:
         cmd_parts.append("--ignore-case")
-    if request.context_before > 0:
-        cmd_parts.extend(["--before-context", str(request.context_before)])
-    if request.context_after > 0:
-        cmd_parts.extend(["--after-context", str(request.context_after)])
     if request.max_count:
         cmd_parts.extend(["--max-count", str(request.max_count)])
     
@@ -82,9 +76,7 @@ async def filter_file(request: PlaygroundFilterRequest):
                 file_path=request.file_path,
                 pattern=request.pattern,
                 case_insensitive=request.case_insensitive,
-                max_count=request.max_count,
-                context_before=request.context_before,
-                context_after=request.context_after
+                max_count=request.max_count
             ):
                 lines.append(line)
         except subprocess.CalledProcessError as ripgrep_error:

@@ -361,8 +361,6 @@ class TestLineFilter:
         assert line_filter.reading_mode == ReadingMode.LINES
         assert line_filter.chunk_size == 1048576
         assert line_filter.flags == 0
-        assert line_filter.context_before == 0
-        assert line_filter.context_after == 0
         assert line_filter._compiled_pattern is not None
     
     def test_init_with_custom_params(self):
@@ -371,16 +369,12 @@ class TestLineFilter:
             pattern=r"test",
             reading_mode=ReadingMode.CHUNKS,
             chunk_size=2048,
-            flags=re.IGNORECASE,
-            context_before=2,
-            context_after=3
+            flags=re.IGNORECASE
         )
         
         assert line_filter.reading_mode == ReadingMode.CHUNKS
         assert line_filter.chunk_size == 2048
         assert line_filter.flags == re.IGNORECASE
-        assert line_filter.context_before == 2
-        assert line_filter.context_after == 3
     
     def test_init_compiles_pattern(self):
         """Test that pattern is compiled on initialization."""
