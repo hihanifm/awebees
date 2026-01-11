@@ -65,6 +65,20 @@ export function getMostRecentInput(storageKey: string): string | null {
 }
 
 /**
+ * Delete a specific value from the history for a given storage key.
+ */
+export function deleteInputHistoryItem(storageKey: string, value: string): void {
+  try {
+    const cachedValues = getInputHistory(storageKey);
+    const filteredValues = cachedValues.filter((v) => v !== value);
+    const serialized = JSON.stringify(filteredValues);
+    localStorage.setItem(storageKey, serialized);
+  } catch (error) {
+    console.error(`Failed to delete input history item from localStorage for key ${storageKey}:`, error);
+  }
+}
+
+/**
  * Clear all cached values for a given storage key.
  */
 export function clearInputHistory(storageKey: string): void {

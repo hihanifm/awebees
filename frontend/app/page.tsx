@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TextareaWithHistory } from "@/components/ui/textarea-with-history";
 import { InsightList } from "@/components/insight-list/InsightList";
 import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
@@ -13,7 +14,7 @@ import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 import { useTranslation } from "@/lib/i18n";
 import { logger } from "@/lib/logger";
-import { saveInputHistory, getMostRecentInput, getInputHistory } from "@/lib/input-history-storage";
+import { getMostRecentInput } from "@/lib/input-history-storage";
 
 /**
  * Strip surrounding quotes from a string if they match at both ends.
@@ -48,9 +49,7 @@ export default function Home() {
   const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
   const [availableSamples, setAvailableSamples] = useState<any[]>([]);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
-  const [cachedPaths, setCachedPaths] = useState<string[]>([]);
   const [customParams, setCustomParams] = useState<Record<string, any> | undefined>(undefined);
-  const [selectedCachedPath, setSelectedCachedPath] = useState<string>("");
 
   // Stream backend errors on mount
   useEffect(() => {
@@ -78,8 +77,6 @@ export default function Home() {
     if (lastPath) {
       setFilePaths(lastPath);
     }
-    // Load cached paths for dropdown
-    setCachedPaths(getInputHistory(STORAGE_KEY));
   }, []);
 
   // Load available samples on mount and auto-select first one
@@ -97,10 +94,7 @@ export default function Home() {
               setSelectedSampleId(firstSample.id);
               // Auto-load the first sample
               if (firstSample.exists) {
-                const STORAGE_KEY = "lens_file_paths_history";
                 setFilePaths(firstSample.path);
-                saveInputHistory(STORAGE_KEY, firstSample.path);
-                setCachedPaths(getInputHistory(STORAGE_KEY));
               }
             }
           }
@@ -118,22 +112,10 @@ export default function Home() {
     if (selectedSampleId && availableSamples.length > 0) {
       const selectedSample = availableSamples.find(s => s.id === selectedSampleId);
       if (selectedSample && selectedSample.exists) {
-        const STORAGE_KEY = "lens_file_paths_history";
         setFilePaths(selectedSample.path);
-        saveInputHistory(STORAGE_KEY, selectedSample.path);
-        setCachedPaths(getInputHistory(STORAGE_KEY));
       }
     }
   }, [selectedSampleId, availableSamples]);
-
-  // Save filePaths to history when it changes
-  useEffect(() => {
-    if (filePaths && filePaths.trim()) {
-      const STORAGE_KEY = "lens_file_paths_history";
-      saveInputHistory(STORAGE_KEY, filePaths);
-      setCachedPaths(getInputHistory(STORAGE_KEY));
-    }
-  }, [filePaths]);
 
   const handleCancel = async () => {
     if (currentTaskId) {
@@ -171,7 +153,7 @@ export default function Home() {
     setCurrentTaskId(null);
 
     try {
-      // Paths are already saved to history via useEffect
+      // Paths are already saved to history via TextareaWithHistory component
 
       // Add initial progress event to show widget immediately
       setProgressEvents([{
@@ -262,38 +244,10 @@ export default function Home() {
               <section>
                 <h2 className="text-lg font-semibold mb-4">{t("app.enterFilePaths")}</h2>
             <div className="space-y-2">
-              {cachedPaths.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-muted-foreground whitespace-nowrap">
-                    Recent paths:
-                  </label>
-                  <Select
-                    value={selectedCachedPath || undefined}
-                    onValueChange={(value) => {
-                      setFilePaths(value);
-                      // Reset after a short delay to allow Select to close
-                      setTimeout(() => setSelectedCachedPath(""), 100);
-                    }}
-                    disabled={analyzing}
-                  >
-                    <SelectTrigger className="w-full text-left">
-                      <SelectValue placeholder="Select a recent path..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cachedPaths.map((path) => (
-                        <SelectItem key={path} value={path}>
-                          <span className="font-mono text-sm truncate block" title={path}>
-                            {path}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <textarea
+              <TextareaWithHistory
                 value={filePaths}
-                onChange={(e) => setFilePaths(e.target.value)}
+                onChange={setFilePaths}
+                storageKey="lens_file_paths_history"
                 placeholder={t("app.filePathsPlaceholder")}
                 className="w-full h-[3.5rem] rounded-md border border-input bg-muted px-4 py-2 font-mono text-sm resize-y"
                 rows={2}
