@@ -119,7 +119,9 @@
     "apiOnline": "API Online",
     "apiOffline": "API Offline",
     "checking": "Checking...",
-    "profiling": "Profiling"
+    "profiling": "Profiling",
+    "backendLog": "Backend Log",
+    "frontendLog": "Frontend Log"
   },
   "progress": {
     "analysisProgress": "Analysis Progress",

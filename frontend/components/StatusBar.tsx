@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Code, Server, Info, CheckCircle2, AlertCircle, Activity } from "lucide-react";
+import { Code, Server, Info, CheckCircle2, AlertCircle, Activity, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { useTranslation } from "@/lib/i18n";
@@ -26,6 +26,11 @@ export function StatusBar({}: StatusBarProps) {
   const [versionLoading, setVersionLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
   const [profilingEnabled, setProfilingEnabled] = useState<boolean>(false);
+
+  const openLog = (logType: "backend" | "frontend") => {
+    const logUrl = API_URL ? `${API_URL}/api/logs/${logType}` : `/api/logs/${logType}`;
+    window.open(logUrl, "_blank");
+  };
 
   // Fetch version and profiling status from API
   useEffect(() => {
@@ -135,6 +140,26 @@ export function StatusBar({}: StatusBarProps) {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Log viewer buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openLog("backend")}
+              className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+              title={t("statusBar.backendLog")}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("statusBar.backendLog")}</span>
+            </button>
+            <button
+              onClick={() => openLog("frontend")}
+              className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+              title={t("statusBar.frontendLog")}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("statusBar.frontendLog")}</span>
+            </button>
+          </div>
+
           {/* API URL (truncated if long) */}
           <div className="hidden items-center gap-1.5 md:flex">
             <span className="truncate font-mono text-[10px] max-w-[200px]">
