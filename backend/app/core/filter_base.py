@@ -542,9 +542,8 @@ class LineFilter:
             
             # Get task_id from context variable if not provided
             if task_id is None:
-                from app.core.task_manager import get_task_manager
-                task_manager = get_task_manager()
-                task_id = task_manager.get_current_task_id()
+                from app.core.task_manager import get_context_param
+                task_id = get_context_param("task_id")
             
             if not task_id:
                 logger.warning(f"LineFilter: Cannot extract zip file {file_path} for ripgrep - task_id not available in context. Skipping file.")

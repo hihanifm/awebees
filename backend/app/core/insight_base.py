@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Callable, Awaitable
+from typing import List, Optional, Callable, Awaitable, Any
 import asyncio
 import logging
 import re
@@ -178,6 +178,27 @@ Path: {user_path}"""
     
     @property
     def ai_prompt_variables(self) -> Optional[dict]: return None
+    
+    def get_context_param(self, key: str, default: Any = None) -> Any:
+        """
+        Get a parameter from the analysis context.
+        
+        This allows insights to access custom parameters and other context data
+        (like task_id) that was set for the current analysis.
+        
+        Args:
+            key: Parameter key (e.g., "task_id", "android_package_name")
+            default: Default value if key not found
+            
+        Returns:
+            Parameter value or default
+            
+        Example:
+            package_name = self.get_context_param("android_package_name")
+            task_id = self.get_context_param("task_id")
+        """
+        from app.core.task_manager import get_context_param as _get_context_param
+        return _get_context_param(key, default)
     
     async def analyze_with_ai(
         self,

@@ -1,4 +1,4 @@
-from typing import List, AsyncGenerator, Optional
+from typing import List, AsyncGenerator, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -23,6 +23,7 @@ router = APIRouter(prefix="/api/analyze", tags=["analyze"])
 class AnalysisRequest(BaseModel):
     insight_ids: List[str]
     file_paths: List[str]
+    custom_params: Optional[Dict[str, Any]] = None
 
 
 class AnalysisResultItem(BaseModel):
@@ -52,15 +53,19 @@ async def _run_analysis_with_progress(
     request: AnalysisRequest,
     progress_queue: asyncio.Queue
 ) -> AnalysisResponse:
-    from app.core.task_manager import _current_task_id
+    from app.core.task_manager import set_analysis_context
     
     task_manager = get_task_manager()
     task = task_manager.get_task(task_id)
     if not task:
         raise ValueError(f"Task {task_id} not found")
     
-    # Set task_id in context variable so it's accessible throughout the async call chain
-    _current_task_id.set(task_id)
+    # Store custom_params in task for backup/reference
+    if request.custom_params:
+        task.custom_params = request.custom_params
+    
+    # Set analysis context with task_id and custom_params
+    set_analysis_context(task_id, request.custom_params)
     
     plugin_manager = get_plugin_manager()
     results = []

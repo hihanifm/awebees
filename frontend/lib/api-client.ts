@@ -60,12 +60,18 @@ export const apiClient = {
    * Execute selected insights on the provided files.
    * @param insightIds List of insight IDs to execute.
    * @param filePaths List of absolute file paths on the server.
+   * @param customParams Optional custom parameters (key-value pairs).
    */
   async analyze(
     insightIds: string[],
-    filePaths: string[]
+    filePaths: string[],
+    customParams?: Record<string, any>
   ): Promise<AnalysisResponse> {
-    const requestBody: AnalysisRequest = { insight_ids: insightIds, file_paths: filePaths };
+    const requestBody: AnalysisRequest = { 
+      insight_ids: insightIds, 
+      file_paths: filePaths,
+      custom_params: customParams
+    };
     return fetchJSON<AnalysisResponse>("/api/analyze", {
       method: "POST",
       body: JSON.stringify(requestBody),
@@ -77,14 +83,20 @@ export const apiClient = {
    * @param insightIds List of insight IDs to execute.
    * @param filePaths List of absolute file paths on the server.
    * @param onProgress Callback for progress events.
+   * @param customParams Optional custom parameters (key-value pairs).
    * @returns Promise that resolves with the analysis results, or rejects if cancelled/errored.
    */
   async analyzeWithProgress(
     insightIds: string[],
     filePaths: string[],
-    onProgress: (event: ProgressEvent) => void
+    onProgress: (event: ProgressEvent) => void,
+    customParams?: Record<string, any>
   ): Promise<AnalysisResponse> {
-    const requestBody: AnalysisRequest = { insight_ids: insightIds, file_paths: filePaths };
+    const requestBody: AnalysisRequest = { 
+      insight_ids: insightIds, 
+      file_paths: filePaths,
+      custom_params: customParams
+    };
 
     return new Promise((resolve, reject) => {
       // Use fetch with ReadableStream for SSE

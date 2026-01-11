@@ -39,6 +39,7 @@ export interface InsightsResponse {
 export interface AnalysisRequest {
   insight_ids: string[];
   file_paths: string[];
+  custom_params?: Record<string, any>;
 }
 
 export interface AnalysisResultItem {

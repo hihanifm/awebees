@@ -5,18 +5,21 @@ import tempfile
 import shutil
 import contextvars
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from dataclasses import dataclass, field
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Context variable for current task ID (accessible anywhere in the async call chain)
-# This allows accessing task_id without passing it through every function parameter
-_current_task_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar('current_task_id', default=None)
+# Reserved system keys that cannot be overridden by custom_params
+_RESERVED_KEYS = {"task_id"}
 
-# Export for use in analyze route
-__all__ = ['_current_task_id']
+# Context variable for analysis context (accessible anywhere in the async call chain)
+# Stores all analysis context data including task_id and custom_params in a flat dictionary
+_analysis_context: contextvars.ContextVar[Optional[Dict[str, Any]]] = contextvars.ContextVar('analysis_context', default=None)
+
+# Export for backward compatibility during migration (deprecated)
+__all__ = ['_analysis_context', 'get_analysis_context', 'get_context_param', 'set_analysis_context']
 
 
 @dataclass
@@ -28,6 +31,7 @@ class AnalysisTask:
     created_at: float = field(default_factory=time.time)
     progress_info: Dict = field(default_factory=dict)
     temp_dir: Optional[Path] = None  # Temporary directory for extracted zip files
+    custom_params: Optional[Dict[str, Any]] = None  # Store custom params for backup/reference
 
 
 class TaskManager:
@@ -108,7 +112,10 @@ class TaskManager:
         Returns:
             Current task ID if set in context, None otherwise
         """
-        return _current_task_id.get()
+        context = _analysis_context.get()
+        if context:
+            return context.get("task_id")
+        return None
     
     def get_task_temp_dir(self, task_id: Optional[str] = None) -> Optional[Path]:
         """
@@ -124,7 +131,9 @@ class TaskManager:
             Path to temporary directory, or None if task not found
         """
         if task_id is None:
-            task_id = _current_task_id.get()
+            context = _analysis_context.get()
+            if context:
+                task_id = context.get("task_id")
         
         if task_id is None:
             return None
@@ -205,4 +214,53 @@ def get_task_manager() -> TaskManager:
     if _task_manager is None:
         _task_manager = TaskManager()
     return _task_manager
+
+
+def get_analysis_context() -> Optional[Dict[str, Any]]:
+    """
+    Get the current analysis context dictionary.
+    
+    Returns:
+        Context dictionary with task_id and custom_params, or None if not set
+    """
+    return _analysis_context.get()
+
+
+def get_context_param(key: str, default: Any = None) -> Any:
+    """
+    Get a parameter from the analysis context.
+    
+    Args:
+        key: Parameter key (e.g., "task_id", "android_package_name")
+        default: Default value if key not found
+        
+    Returns:
+        Parameter value or default
+    """
+    context = _analysis_context.get()
+    if context:
+        return context.get(key, default)
+    return default
+
+
+def set_analysis_context(task_id: str, custom_params: Optional[Dict[str, Any]] = None) -> None:
+    """
+    Set the analysis context with task_id and custom_params.
+    
+    Filters out reserved system keys from custom_params to prevent override.
+    Creates a flat dictionary with task_id and all custom params at the same level.
+    
+    Args:
+        task_id: Task ID (always set, cannot be overridden)
+        custom_params: Optional dictionary of custom parameters
+    """
+    context: Dict[str, Any] = {"task_id": task_id}
+    
+    if custom_params:
+        # Filter out reserved keys to prevent override
+        filtered_params = {k: v for k, v in custom_params.items() if k not in _RESERVED_KEYS}
+        context.update(filtered_params)
+    
+    _analysis_context.set(context)
+    logger.debug(f"TaskManager: Set analysis context with task_id={task_id}, custom_params_keys={list(custom_params.keys()) if custom_params else []}")
 

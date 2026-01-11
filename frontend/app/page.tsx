@@ -8,6 +8,7 @@ import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
 import { ProgressWidget } from "@/components/progress/ProgressWidget";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { StatusBar } from "@/components/StatusBar";
+import { CustomParamsInput } from "@/components/custom-params/CustomParamsInput";
 import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 import { useTranslation } from "@/lib/i18n";
@@ -48,6 +49,7 @@ export default function Home() {
   const [availableSamples, setAvailableSamples] = useState<any[]>([]);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
   const [cachedPaths, setCachedPaths] = useState<string[]>([]);
+  const [customParams, setCustomParams] = useState<Record<string, any> | undefined>(undefined);
   const [selectedCachedPath, setSelectedCachedPath] = useState<string>("");
 
   // Stream backend errors on mount
@@ -330,6 +332,7 @@ export default function Home() {
               selectedInsightIds={selectedInsightIds}
               onSelectionChange={setSelectedInsightIds}
             />
+            <CustomParamsInput value={customParams} onChange={setCustomParams} />
           </section>
 
           {/* Progress Widget */}
