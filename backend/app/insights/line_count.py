@@ -13,9 +13,6 @@ logger = logging.getLogger(__name__)
 
 class LineCount(Insight):
     @property
-    def id(self) -> str: return "line_count"
-    
-    @property
     def name(self) -> str: return "Line Count"
     
     @property

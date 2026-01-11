@@ -82,7 +82,7 @@ class ConfigBasedInsight(FilterBasedInsight):
         
         # Generate ID from file path if available, otherwise use fallback
         if file_path and insights_root:
-            self._id = self._generate_id_from_path(file_path, insights_root, source)
+            self._id = Insight._generate_id_from_path(file_path, insights_root, source)
         else:
             # Fallback: try to use ID from config if provided (for backward compatibility during transition)
             self._id = metadata.get("id", "unknown_insight")
@@ -162,40 +162,6 @@ class ConfigBasedInsight(FilterBasedInsight):
                 if "pattern" not in line_filter:
                     raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must contain 'pattern'")
     
-    @staticmethod
-    def _normalize_for_id(text: str) -> str:
-        # Normalize text for use in ID: lowercase, alphanumeric + underscores only
-        return re.sub(r'[^a-z0-9]+', '_', text.lower()).strip('_')
-    
-    @staticmethod
-    def _generate_id_from_path(
-        file_path: Path,
-        insights_root: Path,
-        source: str
-    ) -> str:
-        # Get relative path from insights root
-        try:
-            relative_path = file_path.relative_to(insights_root)
-        except ValueError:
-            # File not under root (external), use absolute path
-            relative_path = file_path
-        
-        # Remove .py extension
-        relative_stem = relative_path.with_suffix('')
-        
-        # Convert path parts to ID components
-        if source == "built-in":
-            # Built-in: use all path components
-            parts = [p for p in relative_stem.parts if p != '.']
-            normalized_parts = [ConfigBasedInsight._normalize_for_id(p) for p in parts]
-            return '_'.join(normalized_parts) if normalized_parts else 'insight'
-        else:
-            # External: include source hash for uniqueness
-            source_hash = hashlib.md5(source.encode()).hexdigest()[:8]
-            parts = [p for p in relative_stem.parts if p != '.']
-            normalized_parts = [ConfigBasedInsight._normalize_for_id(p) for p in parts]
-            base_id = '_'.join(normalized_parts) if normalized_parts else 'insight'
-            return f"ext_{source_hash}_{base_id}"
     
     def _parse_regex_flags(self, flags_str: str) -> int:
         # Parse comma-separated flag names (e.g., "IGNORECASE,MULTILINE") to integer flags

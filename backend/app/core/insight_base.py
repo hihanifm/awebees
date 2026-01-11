@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Awaitable
 import asyncio
 import logging
+import re
+import hashlib
 from pathlib import Path
 from app.core.models import InsightResult, ProgressEvent
 
@@ -14,10 +16,61 @@ class Insight(ABC):
     """Base class for all insights."""
     
     @property
-    @abstractmethod
     def id(self) -> str:
-        """Unique identifier for this insight (auto-generated from file path)."""
-        pass
+        """
+        Unique identifier for this insight (auto-generated from file path).
+        
+        For class-based insights, this is automatically generated from the file path
+        by the plugin manager. If you need to override it (not recommended), you can
+        do so in your class, but it's better to let the system auto-generate it.
+        """
+        raise NotImplementedError("ID should be auto-generated from file path. If you see this error, the insight was not properly wrapped by the plugin manager.")
+    
+    @staticmethod
+    def _normalize_for_id(text: str) -> str:
+        """Normalize text for use in ID: lowercase, alphanumeric + underscores only."""
+        return re.sub(r'[^a-z0-9]+', '_', text.lower()).strip('_')
+    
+    @staticmethod
+    def _generate_id_from_path(
+        file_path: Path,
+        insights_root: Path,
+        source: str
+    ) -> str:
+        """
+        Generate insight ID from file path.
+        
+        Args:
+            file_path: Path to the insight file
+            insights_root: Root directory for insights
+            source: Source identifier (built-in or external path)
+            
+        Returns:
+            Generated ID string
+        """
+        # Get relative path from insights root
+        try:
+            relative_path = file_path.relative_to(insights_root)
+        except ValueError:
+            # File not under root (external), use absolute path
+            relative_path = file_path
+        
+        # Remove .py extension
+        relative_stem = relative_path.with_suffix('')
+        
+        # Convert path parts to ID components
+        if source == "built-in":
+            # Built-in: use all path components
+            parts = [p for p in relative_stem.parts if p != '.']
+            normalized_parts = [Insight._normalize_for_id(p) for p in parts]
+            return '_'.join(normalized_parts) if normalized_parts else 'insight'
+        else:
+            # External: include source hash for uniqueness
+            source_hash = hashlib.md5(source.encode()).hexdigest()[:8]
+            parts = [p for p in relative_stem.parts if p != '.']
+            normalized_parts = [Insight._normalize_for_id(p) for p in parts]
+            base_id = '_'.join(normalized_parts) if normalized_parts else 'insight'
+            return f"ext_{source_hash}_{base_id}"
     
     @property
     @abstractmethod
@@ -131,3 +184,51 @@ class Insight(ABC):
                 result.ai_analysis_error = "AI is not configured. Please enable AI in settings."
         
         return result
+
+
+class InsightIDWrapper(Insight):
+    """
+    Wrapper class that injects an auto-generated ID into a class-based insight instance.
+    
+    This allows class-based insights to have IDs generated from file paths, just like
+    config-based insights, without requiring changes to the insight class itself.
+    """
+    
+    def __init__(self, insight: Insight, generated_id: str):
+        """
+        Wrap an insight instance with an auto-generated ID.
+        
+        Args:
+            insight: The insight instance to wrap
+            generated_id: The ID to use (generated from file path)
+        """
+        self._insight = insight
+        self._generated_id = generated_id
+    
+    @property
+    def id(self) -> str:
+        """Return the auto-generated ID."""
+        return self._generated_id
+    
+    @property
+    def name(self) -> str:
+        """Delegate to wrapped insight."""
+        return self._insight.name
+    
+    @property
+    def description(self) -> str:
+        """Delegate to wrapped insight."""
+        return self._insight.description
+    
+    async def analyze(
+        self,
+        user_path: str,
+        cancellation_event: Optional[asyncio.Event] = None,
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
+    ) -> InsightResult:
+        """Delegate to wrapped insight."""
+        return await self._insight.analyze(user_path, cancellation_event, progress_callback)
+    
+    def __getattr__(self, name: str):
+        """Delegate all other attribute access to the wrapped insight."""
+        return getattr(self._insight, name)

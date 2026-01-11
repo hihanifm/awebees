@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import logging
 
-from app.core.insight_base import Insight
+from app.core.insight_base import Insight, InsightIDWrapper
 from app.core.config_insight import ConfigBasedInsight
 from app.core.models import InsightMetadata, ErrorEvent
 
@@ -196,8 +196,14 @@ class PluginManager:
                             not inspect.isabstract(obj)):  # Skip abstract base classes
                             try:
                                 instance = obj()
-                                self.register_insight(instance, folder_name, source)
-                                logger.info(f"Registered external class-based insight: {instance.id} ({instance.name}) from {source}")
+                                # Generate ID from file path for consistency with config-based insights
+                                generated_id = Insight._generate_id_from_path(
+                                    file_path, root_path, source
+                                )
+                                # Wrap instance with auto-generated ID
+                                wrapped_instance = InsightIDWrapper(instance, generated_id)
+                                self.register_insight(wrapped_instance, folder_name, source)
+                                logger.info(f"Registered external class-based insight: {wrapped_instance.id} ({wrapped_instance.name}) from {source}")
                             except Exception as e:
                                 error_msg = f"Failed to instantiate insight {name}: {e}"
                                 logger.error(error_msg)
@@ -208,7 +214,7 @@ class PluginManager:
                                     details=str(e),
                                     folder=folder_name,
                                     file=file_path.name,
-                                    insight_id=getattr(instance, 'id', None) if 'instance' in locals() else None
+                                    insight_id=getattr(wrapped_instance, 'id', None) if 'wrapped_instance' in locals() else None
                                 ))
             except Exception as e:
                 error_msg = f"Failed to import external module {file_path.stem}: {e}"
@@ -310,8 +316,14 @@ class PluginManager:
                             not inspect.isabstract(obj)):  # Skip abstract base classes
                             try:
                                 instance = obj()
-                                self.register_insight(instance, folder_name, source)
-                                logger.info(f"Registered class-based insight: {instance.id} ({instance.name}) in folder: {folder_name or 'root'}")
+                                # Generate ID from file path for consistency with config-based insights
+                                generated_id = Insight._generate_id_from_path(
+                                    file_path, root_path, source
+                                )
+                                # Wrap instance with auto-generated ID
+                                wrapped_instance = InsightIDWrapper(instance, generated_id)
+                                self.register_insight(wrapped_instance, folder_name, source)
+                                logger.info(f"Registered class-based insight: {wrapped_instance.id} ({wrapped_instance.name}) in folder: {folder_name or 'root'}")
                             except Exception as e:
                                 error_msg = f"Failed to instantiate insight {name}: {e}"
                                 logger.error(error_msg)
@@ -322,7 +334,7 @@ class PluginManager:
                                     details=str(e),
                                     folder=folder_name,
                                     file=file_path.name,
-                                    insight_id=getattr(instance, 'id', None) if 'instance' in locals() else None
+                                    insight_id=getattr(wrapped_instance, 'id', None) if 'wrapped_instance' in locals() else None
                                 ))
             except Exception as e:
                 error_msg = f"Failed to import module {file_path.stem}: {e}"
