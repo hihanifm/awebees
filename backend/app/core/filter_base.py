@@ -668,6 +668,24 @@ class FilterBasedInsight(Insight):
             # File patterns should NOT be applied to individual files (only to folder contents)
             if file_filter_config.file_patterns and not is_single_file:
                 filtered_files = self._apply_file_patterns(path_files, file_filter_config.file_patterns)
+                # Emit progress event even if filtered_files is empty
+                if not filtered_files and progress_callback:
+                    try:
+                        await progress_callback(ProgressEvent(
+                            type="path_result",
+                            message=f"Completed analysis for path: {user_path}",
+                            task_id="",  # Will be set by callback
+                            insight_id="",  # Will be set by callback
+                            file_path=user_path,
+                            data={
+                                "file_patterns": file_filter_config.file_patterns,
+                                "matched_files": 0,
+                                "total_files": len(path_files)
+                            }
+                        ))
+                        logger.debug(f"{self.__class__.__name__}: path_result event emitted for empty file filter (patterns: {file_filter_config.file_patterns})")
+                    except Exception as e:
+                        logger.error(f"{self.__class__.__name__}: Error emitting path_result event: {e}", exc_info=True)
             else:
                 filtered_files = path_files  # Default dummy filter or single file (pass through)
             

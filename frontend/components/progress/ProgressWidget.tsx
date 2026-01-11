@@ -113,7 +113,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
                   <div
                     key={index}
                     className={cn(
-                      "text-xs font-mono",
+                      "text-xs font-mono space-y-1",
                       event.type === "error"
                         ? "text-red-600 dark:text-red-400"
                         : event.type === "cancelled"
@@ -123,7 +123,14 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
                         : "text-foreground"
                     )}
                   >
-                    [{event.type}] {event.message}
+                    <div>
+                      [{event.type}] {event.message}
+                    </div>
+                    {event.data && Object.keys(event.data).length > 0 && (
+                      <div className="pl-4 text-xs text-muted-foreground font-sans">
+                        {JSON.stringify(event.data, null, 2)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
