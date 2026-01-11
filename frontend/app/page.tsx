@@ -12,8 +12,7 @@ import { apiClient } from "@/lib/api-client";
 import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 import { useTranslation } from "@/lib/i18n";
 import { logger } from "@/lib/logger";
-
-const LAST_PATH_KEY = "lens_last_file_paths";
+import { savePath, getMostRecentPath, getCachedPaths } from "@/lib/path-storage";
 
 /**
  * Strip surrounding quotes from a string if they match at both ends.
@@ -48,6 +47,8 @@ export default function Home() {
   const [backendErrors, setBackendErrors] = useState<ErrorEvent[]>([]);
   const [availableSamples, setAvailableSamples] = useState<any[]>([]);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
+  const [cachedPaths, setCachedPaths] = useState<string[]>([]);
+  const [selectedCachedPath, setSelectedCachedPath] = useState<string>("");
 
   // Stream backend errors on mount
   useEffect(() => {
@@ -70,10 +71,12 @@ export default function Home() {
 
   // Load last used paths from localStorage on mount
   useEffect(() => {
-    const lastPaths = localStorage.getItem(LAST_PATH_KEY);
-    if (lastPaths) {
-      setFilePaths(lastPaths);
+    const lastPath = getMostRecentPath();
+    if (lastPath) {
+      setFilePaths(lastPath);
     }
+    // Load cached paths for dropdown
+    setCachedPaths(getCachedPaths());
   }, []);
 
   // Load available samples on mount and auto-select first one
@@ -92,7 +95,8 @@ export default function Home() {
               // Auto-load the first sample
               if (firstSample.exists) {
                 setFilePaths(firstSample.path);
-                localStorage.setItem(LAST_PATH_KEY, firstSample.path);
+                savePath(firstSample.path);
+                setCachedPaths(getCachedPaths());
               }
             }
           }
@@ -111,7 +115,8 @@ export default function Home() {
       const selectedSample = availableSamples.find(s => s.id === selectedSampleId);
       if (selectedSample && selectedSample.exists) {
         setFilePaths(selectedSample.path);
-        localStorage.setItem(LAST_PATH_KEY, selectedSample.path);
+        savePath(selectedSample.path);
+        setCachedPaths(getCachedPaths());
       }
     }
   }, [selectedSampleId, availableSamples]);
@@ -152,8 +157,9 @@ export default function Home() {
     setCurrentTaskId(null);
 
     try {
-      // Save paths to localStorage for next time
-      localStorage.setItem(LAST_PATH_KEY, filePaths);
+      // Save paths to cache
+      savePath(filePaths);
+      setCachedPaths(getCachedPaths());
 
       // Add initial progress event to show widget immediately
       setProgressEvents([{
@@ -219,6 +225,35 @@ export default function Home() {
               <section>
                 <h2 className="text-lg font-semibold mb-4">{t("app.enterFilePaths")}</h2>
             <div className="space-y-2">
+              {cachedPaths.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">
+                    Recent paths:
+                  </label>
+                  <Select
+                    value={selectedCachedPath || undefined}
+                    onValueChange={(value) => {
+                      setFilePaths(value);
+                      // Reset after a short delay to allow Select to close
+                      setTimeout(() => setSelectedCachedPath(""), 100);
+                    }}
+                    disabled={analyzing}
+                  >
+                    <SelectTrigger className="w-full text-left">
+                      <SelectValue placeholder="Select a recent path..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cachedPaths.map((path) => (
+                        <SelectItem key={path} value={path}>
+                          <span className="font-mono text-sm truncate block" title={path}>
+                            {path}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <textarea
                 value={filePaths}
                 onChange={(e) => setFilePaths(e.target.value)}
