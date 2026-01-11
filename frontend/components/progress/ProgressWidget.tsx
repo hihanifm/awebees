@@ -52,11 +52,37 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
     .reverse()
     .find((e) => e.type === "insight_start" || e.type === "insight_complete");
 
+  // Helper function to recursively remove content field from data objects
+  const omitContentField = (obj: any): any => {
+    if (obj === null || obj === undefined) {
+      return obj;
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => omitContentField(item));
+    }
+    
+    if (typeof obj === 'object') {
+      const filtered: any = {};
+      for (const key in obj) {
+        if (key === 'content') {
+          // Skip the content field
+          continue;
+        }
+        filtered[key] = omitContentField(obj[key]);
+      }
+      return filtered;
+    }
+    
+    return obj;
+  };
+
   const handleCopy = () => {
     const text = events.map((event) => {
       let line = `[${event.type}] ${event.message}`;
       if (event.data && Object.keys(event.data).length > 0) {
-        line += `\n${JSON.stringify(event.data, null, 2)}`;
+        const filteredData = omitContentField(event.data);
+        line += `\n${JSON.stringify(filteredData, null, 2)}`;
       }
       return line;
     }).join("\n");
@@ -184,7 +210,7 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
                       </div>
                       {event.data && Object.keys(event.data).length > 0 && (
                         <div className="pl-4 text-xs text-muted-foreground font-sans">
-                          {JSON.stringify(event.data, null, 2)}
+                          {JSON.stringify(omitContentField(event.data), null, 2)}
                         </div>
                       )}
                     </div>
