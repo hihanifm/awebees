@@ -466,6 +466,34 @@ export const apiClient = {
     return fetchJSON("/api/insight-paths/sources");
   },
 
+  /**
+   * Get the default insights repository path.
+   */
+  async getDefaultRepository(): Promise<string | null> {
+    const response = await fetchJSON<{ default_repository: string | null }>("/api/insight-paths/default");
+    return response.default_repository;
+  },
+
+  /**
+   * Set the default insights repository path.
+   * @param path Directory path to set as default repository
+   */
+  async setDefaultRepository(path: string): Promise<void> {
+    await fetchJSON("/api/insight-paths/default", {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    });
+  },
+
+  /**
+   * Clear the default insights repository from JSON config.
+   */
+  async clearDefaultRepository(): Promise<void> {
+    await fetchJSON("/api/insight-paths/default", {
+      method: "DELETE",
+    });
+  },
+
   // Playground API methods
   /**
    * Execute ripgrep filter on a file for playground.

@@ -62,6 +62,15 @@ class PluginManager:
         paths_config = InsightPathsConfig()
         self._external_paths = paths_config.get_paths()
         
+        # Include default repository in discovery if set (and not already in external_paths)
+        default_repo = paths_config.get_default_repository()
+        if default_repo:
+            if default_repo not in self._external_paths:
+                logger.info(f"Discovering insights from default repository: {default_repo}")
+                self._discover_from_external(default_repo)
+            else:
+                logger.debug(f"Default repository {default_repo} already in external paths, skipping duplicate discovery")
+        
         for external_path in self._external_paths:
             logger.info(f"Discovering external insights from: {external_path}")
             self._discover_from_external(external_path)

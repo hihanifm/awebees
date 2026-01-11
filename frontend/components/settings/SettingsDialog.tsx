@@ -54,6 +54,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [isLoadingPaths, setIsLoadingPaths] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Default repository state
+  const [defaultRepository, setDefaultRepository] = useState<string | null>(null);
+  const [isLoadingDefaultRepo, setIsLoadingDefaultRepo] = useState(false);
+
   // Logging state
   const [backendLogLevel, setBackendLogLevel] = useState<string>("INFO");
   const [frontendLogLevel, setFrontendLogLevel] = useState<LogLevel>("INFO");
@@ -112,6 +116,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         });
       } finally {
         setIsLoadingPaths(false);
+      }
+    };
+
+    const loadDefaultRepository = async () => {
+      setIsLoadingDefaultRepo(true);
+      try {
+        const repo = await apiClient.getDefaultRepository();
+        setDefaultRepository(repo);
+      } catch (error) {
+        logger.error("Failed to load default repository:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load default repository",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingDefaultRepo(false);
       }
     };
 
@@ -197,6 +218,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (open) {
       loadSettings();
       loadInsightPaths();
+      loadDefaultRepository();
       loadThemeSettings();
       loadLanguageSettings();
       loadLoggingSettings();
@@ -335,6 +357,46 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       });
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleSaveDefaultRepository = async () => {
+    const pathToSave = defaultRepository?.trim() || "";
+    
+    // If empty, clear it
+    if (!pathToSave) {
+      try {
+        await apiClient.clearDefaultRepository();
+        setDefaultRepository(null);
+        toast({
+          title: "Success",
+          description: "Cleared default repository",
+        });
+      } catch (error) {
+        logger.error("Failed to clear default repository:", error);
+        toast({
+          title: "Error",
+          description: String(error),
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    try {
+      await apiClient.setDefaultRepository(pathToSave);
+      setDefaultRepository(pathToSave);
+      toast({
+        title: "Success",
+        description: `Saved default repository: ${pathToSave}`,
+      });
+    } catch (error) {
+      logger.error("Failed to save default repository:", error);
+      toast({
+        title: "Error",
+        description: String(error),
+        variant: "destructive",
+      });
     }
   };
 
@@ -714,6 +776,40 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <p className="text-xs text-muted-foreground">
                 {t("settings.refreshInsightsHint")}
               </p>
+            </div>
+
+            {/* Default Insights Repository */}
+            <div className="space-y-2 mt-6 pt-6 border-t">
+              <Label>Default Insights Repository</Label>
+              <p className="text-sm text-muted-foreground">
+                Where new insights will be created when needed. Can be set via .env file (DEFAULT_INSIGHTS_REPOSITORY) as a default, or configured here (this setting takes precedence).
+              </p>
+              
+              {isLoadingDefaultRepo ? (
+                <div className="flex items-center justify-center py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter path to default repository"
+                    value={defaultRepository || ""}
+                    onChange={(e) => setDefaultRepository(e.target.value || null)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSaveDefaultRepository();
+                      }
+                    }}
+                    className="font-mono"
+                  />
+                  <Button
+                    onClick={handleSaveDefaultRepository}
+                    className="font-bold"
+                  >
+                    Save
+                  </Button>
+                </div>
+              )}
             </div>
           </TabsContent>
 
