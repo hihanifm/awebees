@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { ProgressEvent } from "@/lib/api-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Loader2, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 
@@ -15,6 +16,8 @@ interface ProgressWidgetProps {
 
 export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidgetProps) {
   const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const latestEvent = events[events.length - 1];
   const isComplete = latestEvent?.type === "analysis_complete" || latestEvent?.type === "result";
   const isCancelled = latestEvent?.type === "cancelled";
@@ -48,6 +51,23 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
     .slice()
     .reverse()
     .find((e) => e.type === "insight_start" || e.type === "insight_complete");
+
+  const handleCopy = () => {
+    const text = events.map((event) => {
+      let line = `[${event.type}] ${event.message}`;
+      if (event.data && Object.keys(event.data).length > 0) {
+        line += `\n${JSON.stringify(event.data, null, 2)}`;
+      }
+      return line;
+    }).join("\n");
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleToggleExpand = () => {
+    setIsExpanded((prev) => !prev);
+  };
 
   return (
     <Card>
@@ -105,35 +125,72 @@ export function ProgressWidget({ events, currentTaskId, onCancel }: ProgressWidg
           {/* Event History (all events, scrollable) */}
           {events.length > 0 && (
             <div className="mt-4 space-y-1">
-              <div className="text-xs font-semibold text-muted-foreground mb-2">
-                {t("progress.activityHistory")} ({events.length} {t("progress.events")}):
-              </div>
-              <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-4 bg-muted">
-                {events.map((event, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "text-xs font-mono space-y-1",
-                      event.type === "error"
-                        ? "text-red-600 dark:text-red-400"
-                        : event.type === "cancelled"
-                        ? "text-orange-600 dark:text-orange-400"
-                        : event.type === "analysis_complete" || event.type === "result"
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-foreground"
-                    )}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {t("progress.activityHistory")} ({events.length} {t("progress.events")}):
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopy}
+                    className="text-primary hover:bg-primary/10 h-6 px-2"
                   >
-                    <div>
-                      [{event.type}] {event.message}
-                    </div>
-                    {event.data && Object.keys(event.data).length > 0 && (
-                      <div className="pl-4 text-xs text-muted-foreground font-sans">
-                        {JSON.stringify(event.data, null, 2)}
-                      </div>
+                    {copied ? (
+                      <>
+                        <Check className="h-3 w-3 mr-1" />
+                        {t("common.copied")}
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3 mr-1" />
+                        {t("common.copy")}
+                      </>
                     )}
-                  </div>
-                ))}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleToggleExpand}
+                    className="text-primary hover:bg-primary/10 h-6 w-6 p-0"
+                    title={isExpanded ? "Collapse" : "Expand"}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
               </div>
+              {isExpanded && (
+                <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-4 bg-muted">
+                  {events.map((event, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "text-xs font-mono space-y-1",
+                        event.type === "error"
+                          ? "text-red-600 dark:text-red-400"
+                          : event.type === "cancelled"
+                          ? "text-orange-600 dark:text-orange-400"
+                          : event.type === "analysis_complete" || event.type === "result"
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-foreground"
+                      )}
+                    >
+                      <div>
+                        [{event.type}] {event.message}
+                      </div>
+                      {event.data && Object.keys(event.data).length > 0 && (
+                        <div className="pl-4 text-xs text-muted-foreground font-sans">
+                          {JSON.stringify(event.data, null, 2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
