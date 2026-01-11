@@ -1,5 +1,3 @@
-"""Utility for running insights standalone (outside of the FastAPI server)."""
-
 import asyncio
 import logging
 import sys

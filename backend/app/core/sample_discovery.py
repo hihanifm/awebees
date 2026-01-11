@@ -1,5 +1,3 @@
-"""Sample file discovery from insight paths."""
-
 import json
 import logging
 import os

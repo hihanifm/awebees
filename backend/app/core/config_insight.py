@@ -1,5 +1,3 @@
-"""Config-based insight implementation for declarative insight definitions."""
-
 import re
 import logging
 import hashlib

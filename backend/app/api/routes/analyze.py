@@ -1,5 +1,3 @@
-"""API routes for analysis execution."""
-
 from typing import List, AsyncGenerator, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse

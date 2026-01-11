@@ -1,5 +1,3 @@
-"""Utility for running config-based insights standalone."""
-
 import asyncio
 import logging
 import sys

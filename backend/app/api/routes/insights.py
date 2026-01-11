@@ -1,5 +1,3 @@
-"""API routes for insights."""
-
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List

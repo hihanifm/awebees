@@ -1,5 +1,3 @@
-"""API routes for logging configuration."""
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, validator
 from typing import Literal

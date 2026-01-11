@@ -12,10 +12,8 @@ from app.core.plugin_manager import get_plugin_manager
 from app.core.config import AppConfig
 from app.api.routes import files, insights, analyze, errors, insight_paths, playground, logging as logging_routes, help
 
-# Load environment variables
 load_dotenv()
 
-# Configure logging with dynamic level from AppConfig
 log_level = getattr(logging, AppConfig.LOG_LEVEL.upper(), logging.INFO)
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
@@ -77,12 +75,9 @@ app = FastAPI(
     version=get_version()
 )
 
-# Get configuration from environment variables
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:34000")
 serve_frontend = os.getenv("SERVE_FRONTEND", "false").lower() in ("true", "1", "yes")
 
-# CORS configuration
-# In production when serving frontend from backend, CORS is less critical but keep for flexibility
 if serve_frontend:
     # When serving frontend from backend, allow same origin and configured frontend URL
     app.add_middleware(
@@ -101,10 +96,9 @@ else:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        max_age=3600,  # Cache preflight responses for 1 hour (reduces OPTIONS requests)
+        max_age=3600,
     )
 
-# Register API routes
 app.include_router(files.router)
 app.include_router(insights.router)
 app.include_router(analyze.router)
@@ -171,7 +165,6 @@ async def hello():
     return {"message": "Hello from backend"}
 
 
-# Serve frontend static files in production mode
 if serve_frontend:
     # Get project root (backend/app/main.py -> backend/ -> root/)
     project_root = Path(__file__).parent.parent.parent

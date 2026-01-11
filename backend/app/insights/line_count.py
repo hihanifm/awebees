@@ -1,5 +1,3 @@
-"""Insight to count lines in log files."""
-
 from typing import List, Optional, Callable, Awaitable
 import logging
 import asyncio

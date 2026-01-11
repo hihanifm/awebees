@@ -1,5 +1,3 @@
-"""Service for handling file operations."""
-
 import os
 import mmap
 from pathlib import Path

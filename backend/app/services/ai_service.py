@@ -1,5 +1,3 @@
-"""OpenAI-compatible API service for AI-powered analysis."""
-
 import os
 import json
 import logging
@@ -11,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class AIService:
-    """Service for AI-powered analysis using OpenAI-compatible APIs."""
     
     def __init__(
         self,
@@ -22,17 +19,6 @@ class AIService:
         temperature: float = 0.7,
         timeout: int = 60
     ):
-        """
-        Initialize AI service.
-        
-        Args:
-            base_url: API base URL (default: https://api.openai.com/v1)
-            api_key: API key (default: from OPENAI_API_KEY env var)
-            model: Model name (default: gpt-4o-mini)
-            max_tokens: Max tokens in response
-            temperature: Sampling temperature (0-2)
-            timeout: Request timeout in seconds
-        """
         self.base_url = base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")

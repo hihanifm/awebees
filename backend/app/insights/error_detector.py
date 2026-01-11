@@ -1,5 +1,3 @@
-"""Insight to detect errors in log files - Config-based implementation."""
-
 INSIGHT_CONFIG = {
     "metadata": {
         "name": "Error Detector",

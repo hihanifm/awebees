@@ -1,5 +1,3 @@
-"""Base classes and utilities for filter-based insights."""
-
 from enum import Enum
 from typing import List, Optional, Dict, Callable, Awaitable, Any
 from dataclasses import dataclass

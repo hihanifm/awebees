@@ -1,5 +1,3 @@
-"""Plugin manager for discovering and registering insights."""
-
 import importlib
 import importlib.util
 import inspect

@@ -1,5 +1,3 @@
-"""Configuration for external insight paths."""
-
 import json
 import logging
 from pathlib import Path

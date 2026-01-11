@@ -1,5 +1,3 @@
-"""Pydantic models for insight results and API requests/responses."""
-
 from typing import Literal, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field

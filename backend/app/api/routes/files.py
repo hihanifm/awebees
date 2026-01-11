@@ -1,5 +1,3 @@
-"""API routes for file selection."""
-
 from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel

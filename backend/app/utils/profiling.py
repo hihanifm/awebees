@@ -1,5 +1,3 @@
-"""Profiling utilities for performance analysis."""
-
 import os
 import cProfile
 import pstats

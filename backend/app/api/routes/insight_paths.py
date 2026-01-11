@@ -1,5 +1,3 @@
-"""API routes for managing external insight paths."""
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List

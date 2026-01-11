@@ -1,5 +1,3 @@
-"""Application constants and configuration values."""
-
 from pathlib import Path
 
 # Get project paths

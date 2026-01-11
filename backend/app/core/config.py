@@ -1,16 +1,9 @@
-"""Configuration settings for the Lens application."""
-
 import os
-from pathlib import Path
 from typing import Dict, Any, Optional
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
+from app.utils.env_persistence import update_env_file
 
 
 class AIConfig:
-    """Configuration for AI-powered analysis."""
     
     # Global AI toggle
     ENABLED: bool = os.getenv("AI_ENABLED", "false").lower() == "true"
@@ -83,23 +76,8 @@ Be specific and practical. Prioritize recommendations by severity."""
         return config
     
     @classmethod
-    def _get_env_file_path(cls) -> Path:
-        # Start from this file's location and go up to backend directory
-        backend_dir = Path(__file__).parent.parent.parent
-        return backend_dir / ".env"
-    
-    @classmethod
     def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
-        import logging
-        import tempfile
-        import shutil
-        logger = logging.getLogger(__name__)
-        
-        env_file = cls._get_env_file_path()
-        logger.info(f"Persisting AI config to .env file: {env_file}")
-        
-        # Mapping of config keys to environment variable names
-        env_key_mapping = {
+        key_mapping = {
             "enabled": "AI_ENABLED",
             "base_url": "OPENAI_BASE_URL",
             "api_key": "OPENAI_API_KEY",
@@ -108,134 +86,16 @@ Be specific and practical. Prioritize recommendations by severity."""
             "temperature": "OPENAI_TEMPERATURE",
             "timeout": "OPENAI_TIMEOUT"
         }
-        
-        try:
-            # Read existing .env file or create empty dict
-            env_vars = {}
-            if env_file.exists():
-                try:
-                    with open(env_file, 'r') as f:
-                        for line in f:
-                            line = line.strip()
-                            # Skip empty lines and comments
-                            if not line or line.startswith('#'):
-                                continue
-                            # Parse KEY=VALUE
-                            if '=' in line:
-                                key, value = line.split('=', 1)
-                                env_vars[key.strip()] = value.strip()
-                    logger.debug(f"Read {len(env_vars)} existing env vars from .env file")
-                except Exception as e:
-                    logger.warning(f"Failed to read existing .env file: {e}")
-            
-            # Update with new values
-            updated_keys = []
-            for config_key, value in updates.items():
-                if config_key in env_key_mapping:
-                    env_key = env_key_mapping[config_key]
-                    # Convert boolean to string
-                    if isinstance(value, bool):
-                        env_vars[env_key] = "true" if value else "false"
-                    else:
-                        env_vars[env_key] = str(value)
-                    updated_keys.append(env_key)
-                    logger.debug(f"Updated {env_key}={env_vars[env_key]}")
-            
-            if not updated_keys:
-                logger.warning("No AI config keys to update")
-                return
-            
-            # Write to temporary file first, then atomically replace
-            # This prevents corruption if hot reload happens during write
-            temp_file = None
-            try:
-                # Create temp file in same directory
-                temp_fd, temp_file = tempfile.mkstemp(
-                    suffix='.env.tmp',
-                    dir=env_file.parent,
-                    text=True
-                )
-                
-                with open(temp_fd, 'w') as f:
-                    f.write("# Lens AI Configuration\n")
-                    f.write("# Auto-generated from settings panel\n\n")
-                    
-                    # Write AI settings first
-                    ai_keys = ["AI_ENABLED", "OPENAI_BASE_URL", "OPENAI_API_KEY", 
-                               "OPENAI_MODEL", "OPENAI_MAX_TOKENS", "OPENAI_TEMPERATURE", 
-                               "OPENAI_TIMEOUT"]
-                    for key in ai_keys:
-                        if key in env_vars:
-                            f.write(f"{key}={env_vars[key]}\n")
-                    
-                    # Write other environment variables
-                    f.write("\n# Other Settings\n")
-                    for key, value in env_vars.items():
-                        if key not in ai_keys:
-                            f.write(f"{key}={value}\n")
-                    
-                    # Ensure all data is written to disk
-                    f.flush()
-                    os.fsync(temp_fd)
-                
-                # Atomically replace the original file
-                shutil.move(temp_file, env_file)
-                temp_file = None  # Don't try to delete it
-                
-                # Ensure the move is synced to disk
-                try:
-                    os.sync()
-                except AttributeError:
-                    # os.sync() not available on all platforms (e.g., Windows)
-                    pass
-                
-                logger.info(f"Successfully persisted AI config to .env file (updated: {', '.join(updated_keys)})")
-                
-                # Verify the write by reading back
-                try:
-                    with open(env_file, 'r') as f:
-                        content = f.read()
-                        for key in updated_keys:
-                            if f"{key}=" not in content:
-                                logger.warning(f"Verification failed: {key} not found in .env file after write")
-                            else:
-                                logger.debug(f"Verified: {key} is in .env file")
-                except Exception as e:
-                    logger.warning(f"Failed to verify .env file write: {e}")
-                    
-            except PermissionError as e:
-                logger.error(f"Permission denied writing to .env file: {e}")
-                raise
-            except Exception as e:
-                logger.error(f"Failed to write .env file: {e}", exc_info=True)
-                raise
-            finally:
-                # Clean up temp file if it still exists
-                if temp_file and Path(temp_file).exists():
-                    try:
-                        Path(temp_file).unlink()
-                    except Exception:
-                        pass
-                        
-        except Exception as e:
-            logger.error(f"Failed to persist AI config to .env file: {e}", exc_info=True)
-            raise
+        update_env_file(updates, key_mapping)
     
     @classmethod
     def reload_from_env(cls) -> None:
-        """
-        Reload configuration from environment variables.
-        
-        Useful after .env file is updated to ensure class variables
-        reflect the latest values from disk.
-        """
         import logging
+        from dotenv import load_dotenv
         logger = logging.getLogger(__name__)
         
-        # Reload .env file
         load_dotenv(override=True)
         
-        # Update class variables from environment
         old_enabled = cls.ENABLED
         old_api_key_set = bool(cls.API_KEY)
         
@@ -253,13 +113,6 @@ Be specific and practical. Prioritize recommendations by severity."""
     
     @classmethod
     def update_from_dict(cls, config: Dict[str, Any], persist: bool = True) -> None:
-        """
-        Update configuration from dictionary.
-        
-        Args:
-            config: Configuration dictionary
-            persist: Whether to persist changes to .env file (default: True)
-        """
         import logging
         logger = logging.getLogger(__name__)
         
@@ -291,16 +144,11 @@ Be specific and practical. Prioritize recommendations by severity."""
             cls.TIMEOUT = int(config["timeout"])
             logger.debug(f"Updated TIMEOUT={cls.TIMEOUT}")
         
-        # Persist to .env file if requested
         if persist:
             cls._persist_to_env(config)
-            # Note: Class variables are already updated above
-            # The .env file is written for persistence across restarts
-            # Hot reload will naturally reload from .env on next module import
 
 
 class AppConfig:
-    """General application configuration."""
     
     # Server settings
     HOST: str = os.getenv("HOST", "0.0.0.0")
@@ -351,69 +199,11 @@ class AppConfig:
             cls._persist_to_env({"log_level": log_level})
     
     @classmethod
-    def _get_env_file_path(cls) -> Path:
-        # Start from this file's location and go up to backend directory
-        backend_dir = Path(__file__).parent.parent.parent
-        return backend_dir / ".env"
-    
-    @classmethod
     def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
-        env_file = cls._get_env_file_path()
-        
-        # Mapping of config keys to environment variable names
-        env_key_mapping = {
+        key_mapping = {
             "log_level": "LOG_LEVEL"
         }
-        
-        # Read existing .env file or create empty dict
-        env_vars = {}
-        if env_file.exists():
-            with open(env_file, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    # Skip empty lines and comments
-                    if not line or line.startswith('#'):
-                        continue
-                    # Parse KEY=VALUE
-                    if '=' in line:
-                        key, value = line.split('=', 1)
-                        env_vars[key.strip()] = value.strip()
-        
-        # Update with new values
-        for config_key, value in updates.items():
-            if config_key in env_key_mapping:
-                env_key = env_key_mapping[config_key]
-                env_vars[env_key] = str(value)
-        
-        # Write back to .env file
-        with open(env_file, 'w') as f:
-            f.write("# Lens Configuration\n")
-            f.write("# Auto-generated from settings panel\n\n")
-            
-            # Write AI settings first
-            ai_keys = ["AI_ENABLED", "OPENAI_BASE_URL", "OPENAI_API_KEY", 
-                       "OPENAI_MODEL", "OPENAI_MAX_TOKENS", "OPENAI_TEMPERATURE", 
-                       "OPENAI_TIMEOUT"]
-            has_ai_settings = any(key in env_vars for key in ai_keys)
-            if has_ai_settings:
-                f.write("# AI Configuration\n")
-                for key in ai_keys:
-                    if key in env_vars:
-                        f.write(f"{key}={env_vars[key]}\n")
-                f.write("\n")
-            
-            # Write logging settings
-            if "LOG_LEVEL" in env_vars:
-                f.write("# Logging Configuration\n")
-                f.write(f"LOG_LEVEL={env_vars['LOG_LEVEL']}\n")
-                f.write("\n")
-            
-            # Write other environment variables
-            other_keys = [k for k in env_vars.keys() if k not in ai_keys and k != "LOG_LEVEL"]
-            if other_keys:
-                f.write("# Other Settings\n")
-                for key in other_keys:
-                    f.write(f"{key}={env_vars[key]}\n")
+        update_env_file(updates, key_mapping)
 
 
 # Export config classes

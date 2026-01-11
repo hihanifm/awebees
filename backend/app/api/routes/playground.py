@@ -1,5 +1,3 @@
-"""API routes for playground experimentation."""
-
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel

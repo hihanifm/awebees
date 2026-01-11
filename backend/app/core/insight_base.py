@@ -1,5 +1,3 @@
-"""Base interface for insights."""
-
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Awaitable
 import asyncio

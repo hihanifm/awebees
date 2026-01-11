@@ -1,5 +1,3 @@
-"""Task manager for tracking and cancelling analysis tasks."""
-
 import asyncio
 import uuid
 import time

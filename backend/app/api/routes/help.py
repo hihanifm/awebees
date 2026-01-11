@@ -1,5 +1,3 @@
-"""API routes for help documentation."""
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse, FileResponse
 import logging
