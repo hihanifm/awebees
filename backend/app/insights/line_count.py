@@ -2,6 +2,7 @@ from typing import List, Optional, Callable, Awaitable
 import logging
 import asyncio
 import os
+import time
 from app.core.insight_base import Insight
 from app.core.models import InsightResult, ProgressEvent
 from app.services.file_handler import read_file_lines, CancelledError
@@ -22,7 +23,6 @@ class LineCount(Insight):
         cancellation_event: Optional[asyncio.Event] = None,
         progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
     ) -> InsightResult:
-        import time
         start_time = time.time()
         
         file_paths = self._get_path_files(user_path)
