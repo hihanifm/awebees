@@ -96,8 +96,8 @@ class ConfigBasedInsight(FilterBasedInsight):
         self._description = metadata.get("description", "")
         self._folder = metadata.get("folder")
         
-        # Extract file filters configuration (optional - if not present, insight processes all files)
-        self._file_filter_configs = config.get("file_filters", [])
+        # Extract file filters configuration (required)
+        self._file_filter_configs = config["file_filters"]
         
         # Extract processing functions
         processing_config = config.get("processing", {})
@@ -132,34 +132,35 @@ class ConfigBasedInsight(FilterBasedInsight):
         if "name" not in metadata:
             raise ValueError("Config metadata must contain 'name'")
         
-        # file_filters is optional - if not present, insights handle filtering themselves
-        # Only validate if file_filters is specified
-        if "file_filters" in self._config:
-            file_filters = self._config["file_filters"]
-            if not isinstance(file_filters, list):
-                raise ValueError("Config file_filters must be a list if specified")
+        # file_filters is required
+        if "file_filters" not in self._config:
+            raise ValueError("Config must contain 'file_filters' (list)")
+        
+        file_filters = self._config["file_filters"]
+        if not isinstance(file_filters, list):
+            raise ValueError("Config file_filters must be a list")
+        
+        if len(file_filters) == 0:
+            raise ValueError("Config file_filters must be a non-empty list")
+        
+        # Validate each file filter config
+        for idx, file_filter_config in enumerate(file_filters):
+            if not isinstance(file_filter_config, dict):
+                raise ValueError(f"File filter config at index {idx} must be a dictionary")
             
-            if len(file_filters) == 0:
-                raise ValueError("Config file_filters must be a non-empty list if specified")
+            if "line_filters" not in file_filter_config:
+                raise ValueError(f"File filter config at index {idx} must contain 'line_filters' (list)")
             
-            # Validate each file filter config
-            for idx, file_filter_config in enumerate(file_filters):
-                if not isinstance(file_filter_config, dict):
-                    raise ValueError(f"File filter config at index {idx} must be a dictionary")
-                
-                if "line_filters" not in file_filter_config:
-                    raise ValueError(f"File filter config at index {idx} must contain 'line_filters' (list)")
-                
-                line_filters = file_filter_config["line_filters"]
-                if not isinstance(line_filters, list) or len(line_filters) == 0:
-                    raise ValueError(f"File filter config at index {idx} must have non-empty 'line_filters' list")
-                
-                # Validate each line filter
-                for line_idx, line_filter in enumerate(line_filters):
-                    if not isinstance(line_filter, dict):
-                        raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must be a dictionary")
-                    if "pattern" not in line_filter:
-                        raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must contain 'pattern'")
+            line_filters = file_filter_config["line_filters"]
+            if not isinstance(line_filters, list) or len(line_filters) == 0:
+                raise ValueError(f"File filter config at index {idx} must have non-empty 'line_filters' list")
+            
+            # Validate each line filter
+            for line_idx, line_filter in enumerate(line_filters):
+                if not isinstance(line_filter, dict):
+                    raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must be a dictionary")
+                if "pattern" not in line_filter:
+                    raise ValueError(f"Line filter at index {line_idx} in file filter {idx} must contain 'pattern'")
     
     @staticmethod
     def _normalize_for_id(text: str) -> str:
@@ -242,52 +243,27 @@ class ConfigBasedInsight(FilterBasedInsight):
     
     def _build_execution_graph(self, config: Dict) -> ExecutionGraph:
         """Build execution graph as objects from config."""
-        file_filters_config = config.get("file_filters", [])
+        file_filters_config = config["file_filters"]
         
         # Build graph from config
         file_filter_objects = []
         
-        if not file_filters_config:
-            # No file_filters specified - create a dummy file filter
-            # Check for top-level line_filters array
-            line_filters_config = config.get("line_filters", [])
+        for file_filter_config in file_filters_config:
+            file_patterns = file_filter_config.get("file_patterns", [])
+            line_filters_config = file_filter_config.get("line_filters", [])
+            processing_config = file_filter_config.get("processing", {})
+            processing = processing_config.get("file_filter_level")
             
-            if not line_filters_config:
-                raise ValueError(
-                    "No file_filters specified and no top-level line_filters found. "
-                    "At least one line filter is required. "
-                    "Use file_filters: [{file_patterns: [], line_filters: [{pattern: '...'}]}] or "
-                    "line_filters: [{pattern: '...'}]"
-                )
-            
-            # Build line filter objects from top-level line_filters
+            # Build line filter objects
             line_filter_objects = self._build_line_filter_objects(line_filters_config)
             
-            # Create dummy file filter with all line filters
-            dummy_file_filter = FileFilterConfig(
-                file_patterns=None,  # None = default dummy (all files)
+            # Build file filter object
+            file_filter_obj = FileFilterConfig(
+                file_patterns=file_patterns if file_patterns else None,  # None = dummy
                 line_filters=line_filter_objects,
-                processing=None
+                processing=processing  # Optional file-filter level processing
             )
-            file_filter_objects.append(dummy_file_filter)
-        else:
-            # Build graph from config
-            for file_filter_config in file_filters_config:
-                file_patterns = file_filter_config.get("file_patterns", [])
-                line_filters_config = file_filter_config.get("line_filters", [])
-                processing_config = file_filter_config.get("processing", {})
-                processing = processing_config.get("file_filter_level")
-                
-                # Build line filter objects
-                line_filter_objects = self._build_line_filter_objects(line_filters_config)
-                
-                # Build file filter object
-                file_filter_obj = FileFilterConfig(
-                    file_patterns=file_patterns if file_patterns else None,  # None = dummy
-                    line_filters=line_filter_objects,
-                    processing=processing  # Optional file-filter level processing
-                )
-                file_filter_objects.append(file_filter_obj)
+            file_filter_objects.append(file_filter_obj)
         
         # Build final execution graph
         return ExecutionGraph(
