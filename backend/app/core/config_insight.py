@@ -224,55 +224,70 @@ class ConfigBasedInsight(FilterBasedInsight):
             logger.warning(f"Unknown reading mode: {mode_str}, defaulting to 'ripgrep'")
             return ReadingMode.RIPGREP
     
+    def _build_line_filter_objects(self, line_filters_config: List[Dict]) -> List[LineFilterConfig]:
+        """Build line filter objects from config list."""
+        line_filter_objects = []
+        for line_filter_config_dict in line_filters_config:
+            line_filter_obj = LineFilterConfig(
+                pattern=line_filter_config_dict["pattern"],
+                reading_mode=self._parse_reading_mode(line_filter_config_dict.get("reading_mode", "ripgrep")),
+                chunk_size=line_filter_config_dict.get("chunk_size", 1048576),
+                regex_flags=self._parse_regex_flags(line_filter_config_dict.get("regex_flags", "")),
+                context_before=line_filter_config_dict.get("context_before", 0),
+                context_after=line_filter_config_dict.get("context_after", 0),
+                processing=line_filter_config_dict.get("processing")  # Optional line-filter level processing
+            )
+            line_filter_objects.append(line_filter_obj)
+        return line_filter_objects
+    
     def _build_execution_graph(self, config: Dict) -> ExecutionGraph:
         """Build execution graph as objects from config."""
         file_filters_config = config.get("file_filters", [])
         
-        if not file_filters_config:
-            # No file_filters specified - use default file filter with default line filter
-            default_line_filter = LineFilterConfig(
-                pattern=".*",  # Match all lines
-                reading_mode=ReadingMode.RIPGREP
-            )
-            default_file_filter = FileFilterConfig(
-                file_patterns=None,  # None = default dummy (all files)
-                line_filters=[default_line_filter],
-                processing=None
-            )
-            return ExecutionGraph(
-                file_filters=[default_file_filter],
-                final_processing=self._final_level_processing
-            )
-        
         # Build graph from config
         file_filter_objects = []
-        for file_filter_config in file_filters_config:
-            file_patterns = file_filter_config.get("file_patterns", [])
-            line_filters_config = file_filter_config.get("line_filters", [])
-            processing_config = file_filter_config.get("processing", {})
-            processing = processing_config.get("file_filter_level")
+        
+        if not file_filters_config:
+            # No file_filters specified - create a dummy file filter
+            # Check for top-level line_filters array
+            line_filters_config = config.get("line_filters", [])
             
-            # Build line filter objects
-            line_filter_objects = []
-            for line_filter_config_dict in line_filters_config:
-                line_filter_obj = LineFilterConfig(
-                    pattern=line_filter_config_dict["pattern"],
-                    reading_mode=self._parse_reading_mode(line_filter_config_dict.get("reading_mode", "ripgrep")),
-                    chunk_size=line_filter_config_dict.get("chunk_size", 1048576),
-                    regex_flags=self._parse_regex_flags(line_filter_config_dict.get("regex_flags", "")),
-                    context_before=line_filter_config_dict.get("context_before", 0),
-                    context_after=line_filter_config_dict.get("context_after", 0),
-                    processing=line_filter_config_dict.get("processing")  # Optional line-filter level processing
+            if not line_filters_config:
+                raise ValueError(
+                    "No file_filters specified and no top-level line_filters found. "
+                    "At least one line filter is required. "
+                    "Use file_filters: [{file_patterns: [], line_filters: [{pattern: '...'}]}] or "
+                    "line_filters: [{pattern: '...'}]"
                 )
-                line_filter_objects.append(line_filter_obj)
             
-            # Build file filter object
-            file_filter_obj = FileFilterConfig(
-                file_patterns=file_patterns if file_patterns else None,  # None = dummy
+            # Build line filter objects from top-level line_filters
+            line_filter_objects = self._build_line_filter_objects(line_filters_config)
+            
+            # Create dummy file filter with all line filters
+            dummy_file_filter = FileFilterConfig(
+                file_patterns=None,  # None = default dummy (all files)
                 line_filters=line_filter_objects,
-                processing=processing  # Optional file-filter level processing
+                processing=None
             )
-            file_filter_objects.append(file_filter_obj)
+            file_filter_objects.append(dummy_file_filter)
+        else:
+            # Build graph from config
+            for file_filter_config in file_filters_config:
+                file_patterns = file_filter_config.get("file_patterns", [])
+                line_filters_config = file_filter_config.get("line_filters", [])
+                processing_config = file_filter_config.get("processing", {})
+                processing = processing_config.get("file_filter_level")
+                
+                # Build line filter objects
+                line_filter_objects = self._build_line_filter_objects(line_filters_config)
+                
+                # Build file filter object
+                file_filter_obj = FileFilterConfig(
+                    file_patterns=file_patterns if file_patterns else None,  # None = dummy
+                    line_filters=line_filter_objects,
+                    processing=processing  # Optional file-filter level processing
+                )
+                file_filter_objects.append(file_filter_obj)
         
         # Build final execution graph
         return ExecutionGraph(
