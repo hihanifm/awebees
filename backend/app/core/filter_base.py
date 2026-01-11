@@ -656,14 +656,20 @@ class FilterBasedInsight(Insight):
                 metadata={"user_path": user_path}
             )
         
+        # Check if user_path is a single file (file patterns should NOT be applied to individual files)
+        from pathlib import Path
+        path_obj = Path(user_path)
+        is_single_file = path_obj.is_file()
+        
         # 2. Process each file-filter in the graph
         file_filter_results = []
         for file_filter_config in execution_graph.file_filters:
             # Apply file filtering (or use all files if None/dummy)
-            if file_filter_config.file_patterns:
+            # File patterns should NOT be applied to individual files (only to folder contents)
+            if file_filter_config.file_patterns and not is_single_file:
                 filtered_files = self._apply_file_patterns(path_files, file_filter_config.file_patterns)
             else:
-                filtered_files = path_files  # Default dummy filter
+                filtered_files = path_files  # Default dummy filter or single file (pass through)
             
             if not filtered_files:
                 continue
