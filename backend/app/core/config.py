@@ -212,7 +212,6 @@ class ZipSecurityConfig:
     # Size limits (in bytes, converted from MB/GB)
     MAX_FILE_SIZE: int = int(os.getenv("ZIP_MAX_FILE_SIZE", str(500 * 1024 * 1024)))  # 500 MB default
     MAX_TOTAL_SIZE: int = int(os.getenv("ZIP_MAX_TOTAL_SIZE", str(5 * 1024 * 1024 * 1024)))  # 5 GB default
-    MEMORY_EXTRACT_THRESHOLD: int = int(os.getenv("ZIP_MEMORY_EXTRACT_THRESHOLD", str(10 * 1024 * 1024)))  # 10 MB default
     
     # Other limits
     MAX_COMPRESSION_RATIO: int = int(os.getenv("ZIP_MAX_COMPRESSION_RATIO", "1000"))
@@ -230,7 +229,6 @@ class ZipSecurityConfig:
         
         cls.MAX_FILE_SIZE = int(os.getenv("ZIP_MAX_FILE_SIZE", str(500 * 1024 * 1024)))
         cls.MAX_TOTAL_SIZE = int(os.getenv("ZIP_MAX_TOTAL_SIZE", str(5 * 1024 * 1024 * 1024)))
-        cls.MEMORY_EXTRACT_THRESHOLD = int(os.getenv("ZIP_MEMORY_EXTRACT_THRESHOLD", str(10 * 1024 * 1024)))
         cls.MAX_COMPRESSION_RATIO = int(os.getenv("ZIP_MAX_COMPRESSION_RATIO", "1000"))
         cls.MAX_RECURSION_DEPTH = int(os.getenv("ZIP_MAX_RECURSION_DEPTH", "3"))
         cls.MAX_FILES = int(os.getenv("ZIP_MAX_FILES", "1000"))
