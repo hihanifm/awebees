@@ -15,7 +15,11 @@ from app.api.routes import files, insights, analyze, errors, insight_paths, play
 load_dotenv()
 
 log_level = getattr(logging, AppConfig.LOG_LEVEL.upper(), logging.INFO)
-logging.basicConfig(level=log_level)
+logging.basicConfig(
+    level=log_level,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger(__name__)
 
 
