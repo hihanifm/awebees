@@ -85,21 +85,37 @@ class Insight(ABC):
     
     def _get_path_files(self, user_path: str) -> List[str]:
         """
-        Get files for a single user path (if folder, list recursively; if file, use directly).
+        Get files for a single user path (if folder, list recursively; if file, use directly; if zip file, list contents).
         
         Args:
             user_path: User input path (file or folder)
             
         Returns:
-            List of file paths
+            List of file paths (or virtual zip paths for files inside zip archives)
         """
+        from app.services.file_handler import is_zip_file, list_zip_contents
+        
         path_obj = Path(user_path)
         if not path_obj.exists():
             logger.warning(f"{self.__class__.__name__}: Path does not exist: {user_path}")
             return []
         
         if path_obj.is_file():
-            return [str(path_obj.resolve())]
+            resolved_path = str(path_obj.resolve())
+            # Check if it's a zip file - if so, list its contents
+            if is_zip_file(resolved_path):
+                logger.info(f"{self.__class__.__name__}: Expanding zip file: {resolved_path}")
+                try:
+                    zip_files = list_zip_contents(resolved_path, recursive=True)
+                    logger.debug(f"{self.__class__.__name__}: Found {len(zip_files)} file(s) inside zip {resolved_path}")
+                    return zip_files
+                except Exception as e:
+                    logger.error(f"{self.__class__.__name__}: Error listing zip contents {resolved_path}: {e}", exc_info=True)
+                    # Fall back to treating it as a regular file
+                    logger.warning(f"{self.__class__.__name__}: Falling back to treating {resolved_path} as regular file")
+                    return [resolved_path]
+            else:
+                return [resolved_path]
         elif path_obj.is_dir():
             files = [str(p.resolve()) for p in path_obj.rglob("*") if p.is_file()]
             return sorted(files)

@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from app.core.insight_base import Insight
 from app.core.models import InsightResult, ProgressEvent
-from app.services.file_handler import read_file_lines, read_file_chunks, CancelledError
+from app.services.file_handler import read_file_lines, read_file_chunks, CancelledError, parse_zip_path, extract_file_from_zip, ZIP_VIRTUAL_PATH_SEPARATOR, is_zip_file, list_zip_contents
 from app.utils.ripgrep import is_ripgrep_available, ripgrep_search, build_ripgrep_command
 
 logger = logging.getLogger(__name__)
@@ -115,15 +115,14 @@ class FileFilter:
     
     def filter_files(self, *patterns: str) -> 'FileFilter':
         """
-        Apply file filtering patterns to folders.
+        Apply file filtering patterns to files and folders.
         
-        File filtering is only applied when input contains folder paths.
-        Individual file paths pass through unchanged.
         Patterns match against the filename only (not the full path).
+        For virtual zip paths (zip_path::internal/file.txt), matches against the internal filename.
         Multiple patterns use OR logic - a file matches if it matches any pattern.
         
         Args:
-            *patterns: One or more regex patterns for filtering files in folders
+            *patterns: One or more regex patterns for filtering files
             
         Returns:
             Self for chaining
@@ -146,14 +145,63 @@ class FileFilter:
         logger.info(f"FileFilter: Processing {len(self._file_paths)} input path(s)")
         all_files = []
         
+        # Collect virtual paths separately to apply patterns
+        virtual_paths = []
+        real_paths = []
+        
         for path in self._file_paths:
+            if ZIP_VIRTUAL_PATH_SEPARATOR in path:
+                virtual_paths.append(path)
+            else:
+                real_paths.append(path)
+        
+        # Apply patterns to virtual paths if patterns are set
+        import re
+        if self._file_patterns and len(self._file_patterns) > 0 and virtual_paths:
+            compiled_patterns = [re.compile(pattern) for pattern in self._file_patterns]
+            matching_virtual = []
+            for file_path in virtual_paths:
+                # Extract filename from virtual path
+                _, internal_path = file_path.split(ZIP_VIRTUAL_PATH_SEPARATOR, 1)
+                file_name = Path(internal_path).name
+                if any(pattern.search(file_name) for pattern in compiled_patterns):
+                    matching_virtual.append(file_path)
+            all_files.extend(matching_virtual)
+        elif virtual_paths:
+            # No patterns: include all virtual paths
+            all_files.extend(virtual_paths)
+        
+        # Process real paths (files and folders)
+        for path in real_paths:
             path_obj = Path(path)
             
             if path_obj.is_file():
-                # Individual file paths pass through unchanged (filtering only applies to folders)
                 resolved_path = str(path_obj.resolve())
-                logger.debug(f"FileFilter: Added individual file: {resolved_path}")
-                all_files.append(resolved_path)
+                # Check if it's a zip file - if so, list its contents
+                if is_zip_file(resolved_path):
+                    logger.info(f"FileFilter: Expanding zip file: {resolved_path}")
+                    try:
+                        zip_files = list_zip_contents(resolved_path, recursive=True)
+                        logger.debug(f"FileFilter: Found {len(zip_files)} file(s) inside zip {resolved_path}")
+                        all_files.extend(zip_files)
+                    except Exception as e:
+                        logger.error(f"FileFilter: Error listing zip contents {resolved_path}: {e}", exc_info=True)
+                        # Fall back to treating it as a regular file
+                        logger.warning(f"FileFilter: Falling back to treating {resolved_path} as regular file")
+                        all_files.append(resolved_path)
+                else:
+                    # Individual file paths: apply patterns if set, otherwise pass through
+                    if self._file_patterns and len(self._file_patterns) > 0:
+                        file_name = path_obj.name
+                        compiled_patterns = [re.compile(pattern) for pattern in self._file_patterns]
+                        if any(pattern.search(file_name) for pattern in compiled_patterns):
+                            logger.debug(f"FileFilter: Added individual file (matched pattern): {resolved_path}")
+                            all_files.append(resolved_path)
+                        else:
+                            logger.debug(f"FileFilter: Skipped individual file (no pattern match): {resolved_path}")
+                    else:
+                        logger.debug(f"FileFilter: Added individual file: {resolved_path}")
+                        all_files.append(resolved_path)
             elif path_obj.is_dir():
                 # Folder paths: expand to files and apply filtering
                 try:
@@ -169,14 +217,14 @@ class FileFilter:
                             compiled_patterns = [re.compile(pattern) for pattern in self._file_patterns]
                             matching_files = []
                             for file_path in folder_files:
-                                file_name = Path(file_path).name
-                                matches = [p for p in compiled_patterns if p.search(file_name)]
-                                if matches:
-                                    matching_patterns = [p.pattern for p in matches]
-                                    logger.debug(f"FileFilter: File '{file_name}' matched pattern(s): {matching_patterns}")
-                                    matching_files.append(file_path)
+                                # Extract filename - handle virtual zip paths (zip_path::internal/file.txt)
+                                if ZIP_VIRTUAL_PATH_SEPARATOR in file_path:
+                                    _, internal_path = file_path.split(ZIP_VIRTUAL_PATH_SEPARATOR, 1)
+                                    file_name = Path(internal_path).name
                                 else:
-                                    logger.debug(f"FileFilter: File '{file_name}' did not match any pattern")
+                                    file_name = Path(file_path).name
+                                if any(pattern.search(file_name) for pattern in compiled_patterns):
+                                    matching_files.append(file_path)
                             logger.info(f"FileFilter: {len(matching_files)} files matched filter pattern(s) from {len(folder_files)} total files in folder {path}")
                             all_files.extend(matching_files)
                         except re.error as e:
@@ -257,8 +305,10 @@ class LineFilter:
         self,
         file_paths: List[str],
         cancellation_event: Optional[asyncio.Event] = None,
-        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None,
+        task_id: Optional[str] = None
     ) -> FilterResult:
+        # task_id parameter is kept for backward compatibility, but we'll use context variable if not provided
         """
         Filter lines from files using the configured pattern and reading mode.
         
@@ -290,9 +340,11 @@ class LineFilter:
             # Get file size for progress tracking
             file_size_mb = 0.0
             try:
-                file_size_bytes = os.path.getsize(file_path)
-                file_size_mb = file_size_bytes / (1024 * 1024)
-                logger.debug(f"LineFilter: File size: {file_size_mb:.2f} MB ({file_size_bytes:,} bytes)")
+                # Skip size check for zip virtual paths (can't use os.path.getsize)
+                if ZIP_VIRTUAL_PATH_SEPARATOR not in file_path:
+                    file_size_bytes = os.path.getsize(file_path)
+                    file_size_mb = file_size_bytes / (1024 * 1024)
+                    logger.debug(f"LineFilter: File size: {file_size_mb:.2f} MB ({file_size_bytes:,} bytes)")
             except Exception as e:
                 logger.warning(f"LineFilter: Could not get file size for {file_path}: {e}")
             
@@ -338,7 +390,7 @@ class LineFilter:
                         execution_method = "python_lines"
                     else:
                         logger.debug(f"LineFilter: Using ripgrep mode (10-100x faster) for {file_path}")
-                        file_lines, command = await self._filter_ripgrep_mode(file_path, cancellation_event, progress_callback)
+                        file_lines, command = await self._filter_ripgrep_mode(file_path, cancellation_event, progress_callback, task_id)
                         execution_method = "ripgrep"
                 
                 # Store execution method (use first file's method as representative)
@@ -472,11 +524,56 @@ class LineFilter:
         self,
         file_path: str,
         cancellation_event: Optional[asyncio.Event] = None,
-        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None
+        progress_callback: Optional[Callable[[ProgressEvent], Awaitable[None]]] = None,
+        task_id: Optional[str] = None
     ) -> tuple[List[str], str]:
+        # task_id parameter is kept for backward compatibility, but we'll use context variable if not provided
         matching_lines = []
         
         logger.debug(f"LineFilter: Starting ripgrep filtering for {file_path}")
+        
+        # Check if it's a zip virtual path
+        zip_path_info = parse_zip_path(file_path)
+        actual_file_path = file_path
+        
+        if zip_path_info:
+            zip_path, internal_path = zip_path_info
+            logger.debug(f"LineFilter: Detected zip virtual path: {file_path}")
+            
+            # Get task_id from context variable if not provided
+            if task_id is None:
+                from app.core.task_manager import get_task_manager
+                task_manager = get_task_manager()
+                task_id = task_manager.get_current_task_id()
+            
+            if not task_id:
+                logger.warning(f"LineFilter: Cannot extract zip file {file_path} for ripgrep - task_id not available in context. Skipping file.")
+                return [], f"zip extraction skipped (no task_id): {file_path}"
+            
+            # Get task temp directory and extract file
+            try:
+                from app.core.task_manager import get_task_manager
+                task_manager = get_task_manager()
+                temp_dir = task_manager.get_task_temp_dir(task_id)
+                
+                if not temp_dir:
+                    logger.warning(f"LineFilter: Cannot get temp directory for task {task_id}. Skipping zip file {file_path}.")
+                    return [], f"zip extraction skipped (no temp dir): {file_path}"
+                
+                # Extract file to temp directory
+                extracted_path = extract_file_from_zip(zip_path, internal_path, temp_dir)
+                
+                if not extracted_path:
+                    logger.warning(f"LineFilter: Failed to extract zip file {file_path}. Skipping file.")
+                    return [], f"zip extraction failed: {file_path}"
+                
+                actual_file_path = str(extracted_path)
+                logger.debug(f"LineFilter: Extracted zip file to {actual_file_path} for ripgrep")
+                
+            except Exception as e:
+                logger.error(f"LineFilter: Error extracting zip file {file_path}: {e}. Skipping file.")
+                return [], f"zip extraction error: {file_path}"
+        
         try:
             # Check for cancellation before starting
             if cancellation_event and cancellation_event.is_set():
@@ -487,7 +584,7 @@ class LineFilter:
             case_insensitive = bool(self.flags & re.IGNORECASE)
             command = build_ripgrep_command(
                 pattern=self.pattern,
-                file_path=file_path,
+                file_path=actual_file_path,
                 case_insensitive=case_insensitive,
                 max_count=None,
                 context_before=self.context_before,
@@ -501,7 +598,7 @@ class LineFilter:
                 results = []
                 try:
                     for line in ripgrep_search(
-                        file_path,
+                        actual_file_path,
                         self.pattern,
                         case_insensitive=case_insensitive,
                         context_before=self.context_before,
@@ -528,9 +625,14 @@ class LineFilter:
             raise
         except Exception as e:
             logger.error(f"LineFilter: Ripgrep failed for {file_path}: {e}, falling back to line-by-line mode")
-            # Fall back to line-by-line mode on error
-            matching_lines, command = await self._filter_lines_mode(file_path, cancellation_event)
-            return matching_lines, command
+            # Fall back to line-by-line mode on error (only for non-zip files or if extraction succeeded but ripgrep failed)
+            if not zip_path_info:
+                matching_lines, command = await self._filter_lines_mode(file_path, cancellation_event)
+                return matching_lines, command
+            else:
+                # For zip files, if ripgrep fails after extraction, we skip (extraction already succeeded, so file exists)
+                logger.warning(f"LineFilter: Ripgrep failed for extracted zip file {file_path}. Skipping file.")
+                return [], f"ripgrep failed after extraction: {file_path}"
 
 
 class FilterBasedInsight(Insight):
@@ -563,7 +665,7 @@ class FilterBasedInsight(Insight):
         raise NotImplementedError("Subclasses must implement _process_filtered_lines")
     
     def _get_path_files(self, user_path: str) -> List[str]:
-        """Get files for a single user path (if folder, list recursively; if file, use directly)."""
+        """Get files for a single user path (if folder, list recursively; if file, use directly; if zip file, list contents)."""
         from pathlib import Path
         path_obj = Path(user_path)
         if not path_obj.exists():
@@ -571,7 +673,21 @@ class FilterBasedInsight(Insight):
             return []
         
         if path_obj.is_file():
-            return [str(path_obj.resolve())]
+            resolved_path = str(path_obj.resolve())
+            # Check if it's a zip file - if so, list its contents
+            if is_zip_file(resolved_path):
+                logger.info(f"{self.__class__.__name__}: Expanding zip file: {resolved_path}")
+                try:
+                    zip_files = list_zip_contents(resolved_path, recursive=True)
+                    logger.debug(f"{self.__class__.__name__}: Found {len(zip_files)} file(s) inside zip {resolved_path}")
+                    return zip_files
+                except Exception as e:
+                    logger.error(f"{self.__class__.__name__}: Error listing zip contents {resolved_path}: {e}", exc_info=True)
+                    # Fall back to treating it as a regular file
+                    logger.warning(f"{self.__class__.__name__}: Falling back to treating {resolved_path} as regular file")
+                    return [resolved_path]
+            else:
+                return [resolved_path]
         elif path_obj.is_dir():
             files = [str(p.resolve()) for p in path_obj.rglob("*") if p.is_file()]
             return sorted(files)
@@ -587,7 +703,13 @@ class FilterBasedInsight(Insight):
         compiled_patterns = [re.compile(pattern) for pattern in file_patterns]
         filtered_files = []
         for file_path in files:
-            file_name = Path(file_path).name
+            # Extract filename - handle virtual zip paths (zip_path::internal/file.txt)
+            if ZIP_VIRTUAL_PATH_SEPARATOR in file_path:
+                # For virtual paths, use the internal filename part (only the filename, not the path)
+                _, internal_path = file_path.split(ZIP_VIRTUAL_PATH_SEPARATOR, 1)
+                file_name = Path(internal_path).name
+            else:
+                file_name = Path(file_path).name
             if any(pattern.search(file_name) for pattern in compiled_patterns):
                 filtered_files.append(file_path)
         return filtered_files
@@ -655,15 +777,16 @@ class FilterBasedInsight(Insight):
             )
         
         # Check if user_path is a single file (file patterns should NOT be applied to individual files)
+        # BUT: if it's a zip file that was expanded, we DO want to apply file patterns (path_files will have multiple entries)
         from pathlib import Path
         path_obj = Path(user_path)
-        is_single_file = path_obj.is_file()
+        is_single_file = path_obj.is_file() and len(path_files) == 1
         
         # 2. Process each file-filter in the graph
         file_filter_results = []
         for file_filter_config in execution_graph.file_filters:
             # Apply file filtering (or use all files if None/dummy)
-            # File patterns should NOT be applied to individual files (only to folder contents)
+            # File patterns should NOT be applied to individual files (only to folder contents or expanded zip files)
             if file_filter_config.file_patterns and not is_single_file:
                 filtered_files = self._apply_file_patterns(path_files, file_filter_config.file_patterns)
                 # Emit progress event even if filtered_files is empty
@@ -806,7 +929,13 @@ class FilterBasedInsight(Insight):
             compiled_patterns = [re.compile(pattern) for pattern in file_patterns]
             filtered_path_files = []
             for file_path in path_files:
-                file_name = Path(file_path).name
+                # Extract filename - handle virtual zip paths (zip_path::internal/file.txt)
+                if ZIP_VIRTUAL_PATH_SEPARATOR in file_path:
+                    # For virtual paths, use the internal filename part
+                    _, internal_path = file_path.split(ZIP_VIRTUAL_PATH_SEPARATOR, 1)
+                    file_name = Path(internal_path).name
+                else:
+                    file_name = Path(file_path).name
                 if any(pattern.search(file_name) for pattern in compiled_patterns):
                     filtered_path_files.append(file_path)
             path_files = filtered_path_files

@@ -52,10 +52,15 @@ async def _run_analysis_with_progress(
     request: AnalysisRequest,
     progress_queue: asyncio.Queue
 ) -> AnalysisResponse:
+    from app.core.task_manager import _current_task_id
+    
     task_manager = get_task_manager()
     task = task_manager.get_task(task_id)
     if not task:
         raise ValueError(f"Task {task_id} not found")
+    
+    # Set task_id in context variable so it's accessible throughout the async call chain
+    _current_task_id.set(task_id)
     
     plugin_manager = get_plugin_manager()
     results = []
@@ -175,6 +180,9 @@ async def _run_analysis_with_progress(
         ))
         task_manager.update_task_status(task_id, "completed")
         
+        # Clean up temporary directory for extracted zip files
+        task_manager.cleanup_task_temp_dir(task_id)
+        
         return AnalysisResponse(
             results=results,
             total_time=total_elapsed,
@@ -183,9 +191,13 @@ async def _run_analysis_with_progress(
         
     except CancelledError:
         task_manager.update_task_status(task_id, "cancelled")
+        # Clean up temporary directory on cancellation
+        task_manager.cleanup_task_temp_dir(task_id)
         raise
     except Exception as e:
         task_manager.update_task_status(task_id, "error")
+        # Clean up temporary directory on error
+        task_manager.cleanup_task_temp_dir(task_id)
         await progress_queue.put(ProgressEvent(
             type="error",
             message=f"Analysis failed: {str(e)}",

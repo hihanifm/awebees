@@ -206,6 +206,38 @@ class AppConfig:
         update_env_file(updates, key_mapping)
 
 
+class ZipSecurityConfig:
+    """Configuration for zip file security and extraction limits."""
+    
+    # Size limits (in bytes, converted from MB/GB)
+    MAX_FILE_SIZE: int = int(os.getenv("ZIP_MAX_FILE_SIZE", str(500 * 1024 * 1024)))  # 500 MB default
+    MAX_TOTAL_SIZE: int = int(os.getenv("ZIP_MAX_TOTAL_SIZE", str(5 * 1024 * 1024 * 1024)))  # 5 GB default
+    MEMORY_EXTRACT_THRESHOLD: int = int(os.getenv("ZIP_MEMORY_EXTRACT_THRESHOLD", str(10 * 1024 * 1024)))  # 10 MB default
+    
+    # Other limits
+    MAX_COMPRESSION_RATIO: int = int(os.getenv("ZIP_MAX_COMPRESSION_RATIO", "1000"))
+    MAX_RECURSION_DEPTH: int = int(os.getenv("ZIP_MAX_RECURSION_DEPTH", "3"))
+    MAX_FILES: int = int(os.getenv("ZIP_MAX_FILES", "1000"))
+    
+    @classmethod
+    def reload_from_env(cls) -> None:
+        """Reload configuration from environment variables."""
+        import logging
+        from dotenv import load_dotenv
+        logger = logging.getLogger(__name__)
+        
+        load_dotenv(override=True)
+        
+        cls.MAX_FILE_SIZE = int(os.getenv("ZIP_MAX_FILE_SIZE", str(500 * 1024 * 1024)))
+        cls.MAX_TOTAL_SIZE = int(os.getenv("ZIP_MAX_TOTAL_SIZE", str(5 * 1024 * 1024 * 1024)))
+        cls.MEMORY_EXTRACT_THRESHOLD = int(os.getenv("ZIP_MEMORY_EXTRACT_THRESHOLD", str(10 * 1024 * 1024)))
+        cls.MAX_COMPRESSION_RATIO = int(os.getenv("ZIP_MAX_COMPRESSION_RATIO", "1000"))
+        cls.MAX_RECURSION_DEPTH = int(os.getenv("ZIP_MAX_RECURSION_DEPTH", "3"))
+        cls.MAX_FILES = int(os.getenv("ZIP_MAX_FILES", "1000"))
+        
+        logger.debug(f"Reloaded ZipSecurityConfig from .env - MAX_FILE_SIZE={cls.MAX_FILE_SIZE / (1024*1024):.0f}MB, MAX_TOTAL_SIZE={cls.MAX_TOTAL_SIZE / (1024*1024*1024):.0f}GB")
+
+
 # Export config classes
-__all__ = ["AIConfig", "AppConfig"]
+__all__ = ["AIConfig", "AppConfig", "ZipSecurityConfig"]
 
