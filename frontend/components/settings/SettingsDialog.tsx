@@ -185,6 +185,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return;
       }
 
+      // Only fetch models if AI is enabled
+      const isEnabled = localSettings?.enabled ?? settings.enabled;
+      if (!isEnabled) {
+        // Use defaults if AI is disabled
+        const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+        setAvailableModels(defaultModels);
+        setModelsSource('defaults');
+        return;
+      }
+
       setIsLoadingModels(true);
       try {
         const result = await apiClient.getAvailableModels(baseUrl, apiKey);
