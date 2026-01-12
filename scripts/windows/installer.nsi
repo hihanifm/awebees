@@ -121,10 +121,100 @@ FunctionEnd
 Function CheckRipgrep
     DetailPrint "Checking for ripgrep installation..."
     
-    ; Try to detect ripgrep by checking if 'rg' command works
-    ; Use cmd /c to properly handle command execution
+    ; #region agent log - Debug: Verify function is called
+    ; Write debug info to log file
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" w
+    FileWrite $R1 "=== Ripgrep Detection Debug ===$\r$\n"
+    FileWrite $R1 "Function CheckRipgrep CALLED$\r$\n"
+    ; Get system PATH
+    ReadEnvStr $R2 "PATH"
+    FileWrite $R1 "System PATH: $R2$\r$\n"
+    FileClose $R1
+    ; Capture where.exe output to file
+    ExecWait 'cmd /c where rg > "$TEMP\rg-where-output.txt" 2>&1' $R3
+    ; #endregion agent log
+    
+    ; Method 1: Try direct command execution (current method)
+    ; #region agent log - Debug: Before executing rg --version
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "About to execute: cmd /c rg --version$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
     ExecWait 'cmd /c rg --version' $0
+    
+    ; #region agent log - Debug: Log Method 1 result
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "Method 1 (rg --version): exit code=$0$\r$\n"
+    FileWrite $R1 "About to check: IntCmp $0 0 RipgrepFound$\r$\n"
+    ; Read where.exe output if available
+    IfFileExists "$TEMP\rg-where-output.txt" 0 skipWhereRead
+        ClearErrors
+        FileOpen $R4 "$TEMP\rg-where-output.txt" r
+        IfErrors skipWhereRead
+        FileRead $R4 $R5
+        FileWrite $R1 "where.exe output: $R5$\r$\n"
+        FileClose $R4
+    skipWhereRead:
+    FileClose $R1
+    ; #endregion agent log
+    
+    ; Check if exit code is 0 (success)
     IntCmp $0 0 RipgrepFound
+    
+    ; #region agent log - Debug: Method 1 check failed
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "IntCmp result: exit code $0 != 0, continuing to next check$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
+    
+    ; #region agent log - Debug: Method 1 failed, try alternative methods
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "Method 1 failed, trying alternative detection...$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
+    
+    ; Method 2: Try with where.exe result (if it found rg, use that path)
+    IfFileExists "$TEMP\rg-where-output.txt" 0 tryMethod3
+        ClearErrors
+        FileOpen $R4 "$TEMP\rg-where-output.txt" r
+        IfErrors tryMethod3
+        FileRead $R4 $R5
+        FileClose $R4
+        ; Try executing rg from the path found by where.exe
+        ExecWait 'cmd /c "$R5" --version' $0
+        ; #region agent log - Debug: Log Method 2 result
+        FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+        FileWrite $R1 "Method 2 (where.exe path): exit code=$0, path=$R5$\r$\n"
+        FileClose $R1
+        ; #endregion agent log
+        IntCmp $0 0 RipgrepFound
+    tryMethod3:
+    
+    ; Method 3: Check common installation locations
+    ; Check Program Files
+    IfFileExists "$PROGRAMFILES\ripgrep\rg.exe" RipgrepFound
+    IfFileExists "$PROGRAMFILES(x86)\ripgrep\rg.exe" RipgrepFound
+    ; Check user AppData (common for winget user installs)
+    ReadEnvStr $R6 "LOCALAPPDATA"
+    StrCmp $R6 "" skipUserCheck
+        IfFileExists "$R6\Microsoft\WindowsApps\rg.exe" RipgrepFound
+        ; Also check ProgramData for system installs
+    skipUserCheck:
+    ReadEnvStr $R7 "ProgramData"
+    StrCmp $R7 "" skipProgramData
+        IfFileExists "$R7\Microsoft\WindowsApps\rg.exe" RipgrepFound
+    skipProgramData:
+    ; #region agent log - Debug: Log Method 3 results
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "Method 3 (file system check): not found in common locations$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
+    
+    ; #region agent log - Debug: All detection methods failed
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "All detection methods failed - showing 'not installed' message$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
     
     ; Ripgrep not found, ask user if they want to install it
     MessageBox MB_YESNO|MB_ICONQUESTION "Ripgrep (rg) is not installed.$\n$\nRipgrep enables 10-100x faster pattern matching (optional but recommended).$\nWould you like to install it automatically using winget?" IDNO RipgrepSkipped
@@ -167,7 +257,22 @@ Function CheckRipgrep
     RipgrepFound:
     DetailPrint "Ripgrep is already installed"
     
+    ; #region agent log - Debug: Log successful detection
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "JUMPED TO RipgrepFound LABEL$\r$\n"
+    FileWrite $R1 "Result: Ripgrep FOUND$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
+    
     RipgrepDone:
+    
+    ; #region agent log - Debug: Log final result if not found
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "Result: Ripgrep NOT FOUND (or skipped)$\r$\n"
+    FileWrite $R1 "Debug log location: $TEMP\lens-installer-debug.log$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
+    
 FunctionEnd
 
 ; Function to uninstall previous version if it exists
@@ -256,8 +361,20 @@ Section "Lens Application" SecApp
     ; Check for Python before installation
     Call CheckPython
     
+    ; #region agent log - Debug: About to call CheckRipgrep
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "=== About to call CheckRipgrep ===$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
+    
     ; Check and optionally install ripgrep (optional component)
     Call CheckRipgrep
+    
+    ; #region agent log - Debug: CheckRipgrep returned
+    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
+    FileWrite $R1 "=== CheckRipgrep returned ===$\r$\n"
+    FileClose $R1
+    ; #endregion agent log
     
     SetOutPath "$INSTDIR"
     
