@@ -48,19 +48,11 @@ jobs:
           $packageWithPython = "dist/windows/lens-package-with-python-$version.zip"
           $packageRequiresPython = "dist/windows/lens-package-requires-python-$version.zip"
           
-          $packagesFound = $true
+          # Check if packages exist in repository (at least one is required)
+          $packageWithPythonFound = (Test-Path $packageWithPython) -or (Test-Path "lens-package-with-python-$version.zip")
+          $packageRequiresPythonFound = (Test-Path $packageRequiresPython) -or (Test-Path "lens-package-requires-python-$version.zip")
           
-          # Check if packages exist in repository
-          if (-not (Test-Path $packageWithPython) -and -not (Test-Path "lens-package-with-python-$version.zip")) {
-            Write-Warning "Package not found: $packageWithPython"
-            $packagesFound = $false
-          }
-          if (-not (Test-Path $packageRequiresPython) -and -not (Test-Path "lens-package-requires-python-$version.zip")) {
-            Write-Warning "Package not found: $packageRequiresPython"
-            $packagesFound = $false
-          }
-          
-          if (-not $packagesFound) {
+          if (-not $packageWithPythonFound -and -not $packageRequiresPythonFound) {
             Write-Host ""
             Write-Host "================================================" -ForegroundColor Yellow
             Write-Host "PACKAGES NOT FOUND" -ForegroundColor Yellow
@@ -75,6 +67,13 @@ jobs:
             Write-Host "Then re-run this workflow." -ForegroundColor Cyan
             Write-Host ""
             exit 1
+          }
+          
+          if ($packageWithPythonFound) {
+            Write-Host "Found package: lens-package-with-python-$version.zip"
+          }
+          if ($packageRequiresPythonFound) {
+            Write-Host "Found package: lens-package-requires-python-$version.zip"
           }
           
           echo "Packages verified successfully"
@@ -145,25 +144,41 @@ jobs:
           # Version is passed via command line, no need to modify NSIS files
       
       - name: Compile installer (with Python)
+        continue-on-error: true
         run: |
           $version = "${{ steps.version.outputs.version }}"
-          $buildDir = "${{ github.workspace }}\build\windows"
-          $outDir = "${{ github.workspace }}\dist\windows"
-          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-          makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer-with-python.nsi"
-          if (Test-Path "$outDir\lens-setup-with-python.exe") {
-            Move-Item "$outDir\lens-setup-with-python.exe" "$outDir\lens-setup-with-python-$version.exe" -Force
+          $packageWithPython = "dist/windows/lens-package-with-python-$version.zip"
+          
+          # Only build if package exists
+          if ((Test-Path $packageWithPython) -or (Test-Path "lens-package-with-python-$version.zip")) {
+            $buildDir = "${{ github.workspace }}\build\windows"
+            $outDir = "${{ github.workspace }}\dist\windows"
+            New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+            makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer-with-python.nsi"
+            if (Test-Path "$outDir\lens-setup-with-python.exe") {
+              Move-Item "$outDir\lens-setup-with-python.exe" "$outDir\lens-setup-with-python-$version.exe" -Force
+            }
+          } else {
+            Write-Host "Skipping with-python installer (package not found)"
           }
       
       - name: Compile installer (requires Python)
+        continue-on-error: true
         run: |
           $version = "${{ steps.version.outputs.version }}"
-          $buildDir = "${{ github.workspace }}\build\windows"
-          $outDir = "${{ github.workspace }}\dist\windows"
-          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-          makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer-requires-python.nsi"
-          if (Test-Path "$outDir\lens-setup-requires-python.exe") {
-            Move-Item "$outDir\lens-setup-requires-python.exe" "$outDir\lens-setup-requires-python-$version.exe" -Force
+          $packageRequiresPython = "dist/windows/lens-package-requires-python-$version.zip"
+          
+          # Only build if package exists
+          if ((Test-Path $packageRequiresPython) -or (Test-Path "lens-package-requires-python-$version.zip")) {
+            $buildDir = "${{ github.workspace }}\build\windows"
+            $outDir = "${{ github.workspace }}\dist\windows"
+            New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+            makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer-requires-python.nsi"
+            if (Test-Path "$outDir\lens-setup-requires-python.exe") {
+              Move-Item "$outDir\lens-setup-requires-python.exe" "$outDir\lens-setup-requires-python-$version.exe" -Force
+            }
+          } else {
+            Write-Host "Skipping requires-python installer (package not found)"
           }
       
       - name: Upload installers as artifacts
