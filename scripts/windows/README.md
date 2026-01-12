@@ -4,10 +4,9 @@ This directory contains scripts and configuration for building Windows productio
 
 ## Overview
 
-The build system creates two Windows installer variants:
+The build system creates a single Windows installer that automatically installs Python and ripgrep via winget if needed:
 
-1. **Self-contained installer** - Bundles Python runtime (~150-200MB)
-2. **Python-required installer** - Requires Python 3.x pre-installed (~50-100MB)
+1. **Windows Installer** - Auto-installs Python 3.12 and ripgrep via winget if not already installed (~50-100MB)
 
 ## Build Process
 
@@ -27,7 +26,6 @@ This will:
 - Create ZIP archives in `dist/windows/`
 
 Output:
-- `dist/windows/lens-package-with-python-{version}.zip`
 - `dist/windows/lens-package-requires-python-{version}.zip`
 
 ### Step 2: Create Installers (GitHub Actions)
@@ -62,8 +60,7 @@ The GitHub Actions workflow will:
 - `lens-stop.bat` - Stop application script (Windows)
 - `lens-status.bat` - Status check script (Windows)
 - `lens-logs.bat` - View backend logs (Windows)
-- `installer-with-python.nsi` - NSIS script for self-contained installer
-- `installer-requires-python.nsi` - NSIS script for Python-required installer
+- `installer-requires-python.nsi` - NSIS script for installer (auto-installs Python and ripgrep via winget)
 - `build-config.json` - Build configuration
 
 ## Configuration
@@ -130,11 +127,12 @@ C:\Program Files (x86)\LensAI\logs\backend.log
 **Installer doesn't work:**
 - Test on clean Windows VM
 - Check Windows Event Viewer for errors
-- Verify Python installation (for requires-python variant)
+- Verify winget is available (Windows 10 1809+ or Windows 11)
+- If winget is not available, Python must be installed manually
 
 **Application won't start:**
 - Check logs: `lens-logs.bat` or `logs\backend.log`
-- Verify Python is installed (for requires-python variant)
+- Verify Python is installed (installer should auto-install via winget)
 - Check if the backend port is already in use (default: 34001, or `PORT` from `backend\.env`)
 - Run `lens-status.bat` to check if backend is running
 

@@ -185,7 +185,19 @@ export default function PlaygroundPage() {
       });
       setFilterResult(result);
     } catch (err) {
-      setFilterError(err instanceof Error ? err.message : t("errors.filterFailed"));
+      const errorMessage = err instanceof Error ? err.message : t("errors.filterFailed");
+      // Check if this is a ripgrep not installed error
+      if (errorMessage.includes("ripgrep") || errorMessage.includes("rg") || errorMessage.includes("not installed")) {
+        setFilterError(
+          "Ripgrep (rg) is not installed on the server. " +
+          "Please install ripgrep for faster pattern matching. " +
+          "Windows: winget install BurntSushi.ripgrep.MSVC | " +
+          "macOS: brew install ripgrep | " +
+          "Linux: sudo apt-get install ripgrep (or equivalent)"
+        );
+      } else {
+        setFilterError(errorMessage);
+      }
     } finally {
       setFiltering(false);
     }

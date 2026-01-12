@@ -49,7 +49,7 @@ async def filter_file(request: PlaygroundFilterRequest):
     if not is_ripgrep_available():
         raise HTTPException(
             status_code=503,
-            detail="Ripgrep (rg) is not installed on the server"
+            detail="Ripgrep (rg) is not installed on the server. Install: Windows: winget install BurntSushi.ripgrep.MSVC | macOS: brew install ripgrep | Linux: sudo apt-get install ripgrep"
         )
     
     cmd_parts = ["rg"]

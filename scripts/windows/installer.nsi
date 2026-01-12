@@ -1,14 +1,14 @@
-; NSIS Installer Script for LensAI (Requires Python)
-; This installer requires Python to be pre-installed
+; NSIS Installer Script for LensAI
+; This installer automatically installs Python and ripgrep via winget if needed
 
 !include "MUI2.nsh"
 
 ; Installer Information
-Name "LensAI (Requires Python)"
+Name "LensAI"
 !ifdef OUTDIR
-OutFile "${OUTDIR}\lens-setup-requires-python.exe"
+OutFile "${OUTDIR}\lens-setup.exe"
 !else
-OutFile "lens-setup-requires-python.exe"
+OutFile "lens-setup.exe"
 !endif
 InstallDir "$PROGRAMFILES\LensAI"
 RequestExecutionLevel admin
@@ -31,7 +31,7 @@ VIAddVersionKey "ProductName" "${APP_NAME}"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "CompanyName" "${PUBLISHER}"
 VIAddVersionKey "FileVersion" "${VERSION}"
-VIAddVersionKey "FileDescription" "${APP_NAME} Installer (Requires Python)"
+VIAddVersionKey "FileDescription" "${APP_NAME} Installer"
 VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 
 ; Interface Settings
@@ -59,17 +59,104 @@ VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
 
-; Function to check for Python
+; Function to check and optionally install Python
 Function CheckPython
     ClearErrors
     ExecWait 'python --version' $0
     IfErrors 0 PythonFound
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Python is not installed or not in PATH.$\n$\nLensAI requires Python 3.x to be installed.$\nWould you like to open the Python download page?" IDNO NoPython
+    
+    ; Python not found, ask user if they want to install it
+    MessageBox MB_YESNO|MB_ICONQUESTION "Python 3.x is not installed or not in PATH.$\n$\nLensAI requires Python 3.x.$\nWould you like to install Python automatically using winget?" IDNO PythonSkipped
+    
+    ; Check if winget is available
+    ClearErrors
+    ExecWait 'winget --version' $0
+    IfErrors WingetNotFound
+    
+    ; Install Python via winget
+    DetailPrint "Installing Python via winget..."
+    ExecWait 'winget install Python.Python.3.12 --silent --accept-source-agreements --accept-package-agreements' $0
+    IfErrors WingetInstallFailed
+    
+    ; Wait a bit for Python to be added to PATH
+    Sleep 2000
+    
+    ; Verify installation
+    ClearErrors
+    ExecWait 'python --version' $0
+    IfErrors PythonInstallFailed
+    DetailPrint "Python installed successfully"
+    Goto PythonFound
+    
+    WingetNotFound:
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "winget is not available on this system.$\n$\nPython installation via winget is not possible.$\nWould you like to open the Python download page?" IDNO PythonSkipped
     ExecShell "open" "https://www.python.org/downloads/"
     Abort
-    NoPython:
+    
+    WingetInstallFailed:
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Failed to install Python via winget.$\n$\nWould you like to open the Python download page?" IDNO PythonSkipped
+    ExecShell "open" "https://www.python.org/downloads/"
     Abort
+    
+    PythonInstallFailed:
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Python installation completed but verification failed.$\n$\nYou may need to restart your system or add Python to PATH manually.$\nWould you like to open the Python download page?" IDNO PythonSkipped
+    ExecShell "open" "https://www.python.org/downloads/"
+    Abort
+    
+    PythonSkipped:
+    MessageBox MB_OK|MB_ICONSTOP "Python installation is required to continue.$\n$\nPlease install Python 3.x and run the installer again.$\nDownload: https://www.python.org/downloads/"
+    Abort
+    
     PythonFound:
+    DetailPrint "Python is already installed"
+FunctionEnd
+
+; Function to check and optionally install ripgrep
+Function CheckRipgrep
+    ClearErrors
+    ExecWait 'rg --version' $0
+    IfErrors 0 RipgrepFound
+    
+    ; Ripgrep not found, ask user if they want to install it
+    MessageBox MB_YESNO|MB_ICONQUESTION "Ripgrep (rg) is not installed.$\n$\nRipgrep enables 10-100x faster pattern matching (optional but recommended).$\nWould you like to install it automatically using winget?" IDNO RipgrepSkipped
+    
+    ; Check if winget is available
+    ClearErrors
+    ExecWait 'winget --version' $0
+    IfErrors WingetNotFound
+    
+    ; Install ripgrep via winget
+    DetailPrint "Installing ripgrep via winget..."
+    ExecWait 'winget install BurntSushi.ripgrep.MSVC --silent --accept-source-agreements --accept-package-agreements' $0
+    IfErrors WingetInstallFailed
+    
+    ; Verify installation
+    ClearErrors
+    ExecWait 'rg --version' $0
+    IfErrors RipgrepInstallFailed
+    DetailPrint "Ripgrep installed successfully"
+    Goto RipgrepFound
+    
+    WingetNotFound:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "winget is not available on this system.$\n$\nRipgrep installation skipped. You can install it manually later:$\nwinget install BurntSushi.ripgrep.MSVC"
+    Goto RipgrepSkipped
+    
+    WingetInstallFailed:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Failed to install ripgrep via winget.$\n$\nYou can install it manually later:$\nwinget install BurntSushi.ripgrep.MSVC"
+    Goto RipgrepSkipped
+    
+    RipgrepInstallFailed:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Ripgrep installation completed but verification failed.$\n$\nYou may need to restart your system or add ripgrep to PATH manually."
+    Goto RipgrepSkipped
+    
+    RipgrepSkipped:
+    DetailPrint "Ripgrep installation skipped (optional component)"
+    Goto RipgrepDone
+    
+    RipgrepFound:
+    DetailPrint "Ripgrep is already installed"
+    
+    RipgrepDone:
 FunctionEnd
 
 ; Function to uninstall previous version if it exists
@@ -109,10 +196,13 @@ Section "Lens Application" SecApp
     ; Check for Python before installation
     Call CheckPython
     
+    ; Check and optionally install ripgrep (optional component)
+    Call CheckRipgrep
+    
     SetOutPath "$INSTDIR"
     
     ; Extract package contents
-    File /r "${BUILD_DIR}\lens-app-requires-python\*"
+    File /r "${BUILD_DIR}\lens-app\*"
     
     ; Create virtual environment and install dependencies
     DetailPrint "Creating virtual environment..."

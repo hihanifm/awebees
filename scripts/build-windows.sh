@@ -63,9 +63,10 @@ if [ -f "$DOCS_INDEX" ]; then
     # macOS and Linux sed have different syntax, so we use a temp file approach
     sed "s/Version [0-9]\+\.[0-9]\+\.[0-9]\+/Version $VERSION/g" "$DOCS_INDEX" > "$DOCS_INDEX.tmp"
     sed "s|/v[0-9]\+\.[0-9]\+\.[0-9]\+/|/v$VERSION/|g" "$DOCS_INDEX.tmp" > "$DOCS_INDEX.tmp2"
-    sed "s/lens-setup-with-python-[0-9]\+\.[0-9]\+\.[0-9]\+\.exe/lens-setup-with-python-$VERSION.exe/g" "$DOCS_INDEX.tmp2" > "$DOCS_INDEX.tmp3"
-    sed "s/lens-setup-requires-python-[0-9]\+\.[0-9]\+\.[0-9]\+\.exe/lens-setup-requires-python-$VERSION.exe/g" "$DOCS_INDEX.tmp3" > "$DOCS_INDEX"
-    rm -f "$DOCS_INDEX.tmp" "$DOCS_INDEX.tmp2" "$DOCS_INDEX.tmp3"
+    sed "s/lens-setup-requires-python-[0-9]\+\.[0-9]\+\.[0-9]\+\.exe/lens-setup-requires-python-$VERSION.exe/g" "$DOCS_INDEX.tmp2" > "$DOCS_INDEX.tmp3"
+    sed "s/lens-setup-with-python-[0-9]\+\.[0-9]\+\.[0-9]\+\.exe/lens-setup-requires-python-$VERSION.exe/g" "$DOCS_INDEX.tmp3" > "$DOCS_INDEX"
+    rm -f "$DOCS_INDEX.tmp3"
+    rm -f "$DOCS_INDEX.tmp" "$DOCS_INDEX.tmp2"
     echo -e "${GREEN}✓ Download page updated to version $VERSION${NC}"
 else
     echo -e "${YELLOW}Warning: docs/index.html not found, skipping update${NC}"
@@ -105,20 +106,18 @@ rm -rf "$DIST_DIR"/lens-app-*
 echo -e "${GREEN}✓ Build directories created${NC}"
 echo ""
 
-# Prepare both package variants
-echo "Preparing packages..."
-"$SCRIPT_DIR/windows/prepare-package.sh" "with-python" "$VERSION" "$BUILD_DIR" "$DIST_DIR"
-"$SCRIPT_DIR/windows/verify-package.sh" "$BUILD_DIR/lens-app-with-python" "with-python"
-
+# Prepare package (single variant - auto-installs Python via winget)
+echo "Preparing package..."
 "$SCRIPT_DIR/windows/prepare-package.sh" "requires-python" "$VERSION" "$BUILD_DIR" "$DIST_DIR"
 "$SCRIPT_DIR/windows/verify-package.sh" "$BUILD_DIR/lens-app-requires-python" "requires-python"
 
 echo ""
-echo -e "${GREEN}✓ Windows packages prepared and verified successfully!${NC}"
+echo -e "${GREEN}✓ Windows package prepared and verified successfully!${NC}"
 echo ""
-echo "Packages created in: $DIST_DIR"
-echo "  - lens-package-with-python-${VERSION}.zip"
+echo "Package created in: $DIST_DIR"
 echo "  - lens-package-requires-python-${VERSION}.zip"
+echo ""
+echo "Note: Installer will auto-install Python and ripgrep via winget if not already installed"
 echo ""
 echo "Next steps:"
 echo "  1. Review the packages"

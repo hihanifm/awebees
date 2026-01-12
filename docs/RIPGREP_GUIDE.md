@@ -121,3 +121,27 @@ rg -A 2 -B 2 "2024-01-15 14:" log.txt | rg "ERROR"
 ```bash
 rg -c "ERROR" --type log
 ```
+
+## Block Extraction (Start:End Patterns)
+
+Ripgrep doesn't have native range syntax. Use these approaches:
+
+### Extract block with fixed context after start pattern
+```bash
+rg -A 50 "START_PATTERN" log.txt
+```
+
+### Extract block between patterns (combine with sed)
+```bash
+rg -n "START_PATTERN\|END_PATTERN" log.txt | sed -n '/START_PATTERN/,/END_PATTERN/p'
+```
+
+### Extract block between patterns (combine with awk)
+```bash
+awk '/START_PATTERN/,/END_PATTERN/' log.txt
+```
+
+### Multiline block extraction (requires PCRE2-enabled ripgrep)
+```bash
+rg --pcre2 -z -o '(?s)START_PATTERN.*?END_PATTERN' log.txt
+```

@@ -231,15 +231,13 @@ After setup completes successfully:
 
 ## Using the Windows ZIP Packages (No Git Needed)
 
-If you downloaded a prebuilt ZIP from GitHub (for example `dist/windows/lens-package-with-python-4.0.0.zip`):
+If you downloaded a prebuilt ZIP from GitHub (for example `dist/windows/lens-package-requires-python-4.0.0.zip`):
 
 1. Extract the ZIP anywhere (e.g. `C:\\Users\\You\\Downloads\\LensAI\\`)
 2. Open the extracted folder (it contains `lens-start.bat`, `lens-stop.bat`, etc.)
 3. Double-click `lens-start.bat` (or run it from Command Prompt)
 
-**Variants:**
-- **with-python**: includes an embedded Python runtime (recommended for easiest setup)
-- **requires-python**: requires Python 3.x installed and available in PATH
+**Note:** The installer will automatically install Python and ripgrep via winget if they are not already installed.
 
 **Playground:**
 - After starting, open `http://127.0.0.1:34001/playground`

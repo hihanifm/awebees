@@ -59,6 +59,54 @@ VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
 
+; Function to check and optionally install ripgrep
+Function CheckRipgrep
+    ClearErrors
+    ExecWait 'rg --version' $0
+    IfErrors 0 RipgrepFound
+    
+    ; Ripgrep not found, ask user if they want to install it
+    MessageBox MB_YESNO|MB_ICONQUESTION "Ripgrep (rg) is not installed.$\n$\nRipgrep enables 10-100x faster pattern matching (optional but recommended).$\nWould you like to install it automatically using winget?" IDNO RipgrepSkipped
+    
+    ; Check if winget is available
+    ClearErrors
+    ExecWait 'winget --version' $0
+    IfErrors WingetNotFound
+    
+    ; Install ripgrep via winget
+    DetailPrint "Installing ripgrep via winget..."
+    ExecWait 'winget install BurntSushi.ripgrep.MSVC --silent --accept-source-agreements --accept-package-agreements' $0
+    IfErrors WingetInstallFailed
+    
+    ; Verify installation
+    ClearErrors
+    ExecWait 'rg --version' $0
+    IfErrors RipgrepInstallFailed
+    DetailPrint "Ripgrep installed successfully"
+    Goto RipgrepFound
+    
+    WingetNotFound:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "winget is not available on this system.$\n$\nRipgrep installation skipped. You can install it manually later:$\nwinget install BurntSushi.ripgrep.MSVC"
+    Goto RipgrepSkipped
+    
+    WingetInstallFailed:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Failed to install ripgrep via winget.$\n$\nYou can install it manually later:$\nwinget install BurntSushi.ripgrep.MSVC"
+    Goto RipgrepSkipped
+    
+    RipgrepInstallFailed:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Ripgrep installation completed but verification failed.$\n$\nYou may need to restart your system or add ripgrep to PATH manually."
+    Goto RipgrepSkipped
+    
+    RipgrepSkipped:
+    DetailPrint "Ripgrep installation skipped (optional component)"
+    Goto RipgrepDone
+    
+    RipgrepFound:
+    DetailPrint "Ripgrep is already installed"
+    
+    RipgrepDone:
+FunctionEnd
+
 ; Function to uninstall previous version if it exists
 Function uninstallPrevious
     ; Check if LensAI is already installed by looking for the registry key
@@ -92,6 +140,9 @@ Section "Lens Application" SecApp
     
     ; Uninstall previous version if it exists
     Call uninstallPrevious
+    
+    ; Check and optionally install ripgrep (optional component)
+    Call CheckRipgrep
     
     SetOutPath "$INSTDIR"
     
