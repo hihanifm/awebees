@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AnalysisResponse } from "@/lib/api-types";
 import { analyzeWithAI, getAIConfig } from "@/lib/api-client";
@@ -671,42 +670,25 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                                     </div>
                                   )}
 
-                                  {/* Prompt Type Selector */}
-                                  <div className="flex gap-2">
-                                    <Select
-                                      value={promptTypes[pathKey] || "explain"}
-                                      onValueChange={(value) => handlePromptTypeChange(resultItem.insight_id, pathIndex, value)}
-                                    >
-                                      <SelectTrigger className="w-[180px]">
-                                        <SelectValue placeholder="Select prompt type" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="summarize">Summarize</SelectItem>
-                                        <SelectItem value="explain">Explain</SelectItem>
-                                        <SelectItem value="recommend">Recommend</SelectItem>
-                                        <SelectItem value="custom">Custom</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-
-                                    <Button
-                                      onClick={() => handleAIAnalyzeForPath(resultItem.insight_id, pathIndex, pathResult.content)}
-                                      disabled={aiStates[pathKey]?.status === "streaming"}
-                                      size="sm"
-                                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
-                                    >
-                                      {aiStates[pathKey]?.status === "streaming" ? (
-                                        <>
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
-                                          Analyzing...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Sparkles className="mr-2 h-4 w-4 text-white" />
-                                          Analyze
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
+                                  {/* Analyze Button */}
+                                  <Button
+                                    onClick={() => handleAIAnalyzeForPath(resultItem.insight_id, pathIndex, pathResult.content)}
+                                    disabled={aiStates[pathKey]?.status === "streaming"}
+                                    size="sm"
+                                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
+                                  >
+                                    {aiStates[pathKey]?.status === "streaming" ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
+                                        Analyzing...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles className="mr-2 h-4 w-4 text-white" />
+                                        Analyze
+                                      </>
+                                    )}
+                                  </Button>
 
                                   {/* Custom Prompt Textarea */}
                                   {showCustomPrompt[pathKey] && (
