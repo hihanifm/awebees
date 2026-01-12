@@ -740,8 +740,13 @@ class TestFilterBasedInsight:
         file_path = test_file("test.txt", "line 1\nMATCH\nline 3")
         
         class CaseInsight(self.ConcreteFilterInsight):
-            def __init__(self):
-                self.regex_flags = re.IGNORECASE
+            @property
+            def reading_mode(self):
+                return ReadingMode.LINES
+            
+            @property
+            def regex_flags(self):
+                return re.IGNORECASE
         
         insight = CaseInsight()
         result = await insight.analyze(file_path)
