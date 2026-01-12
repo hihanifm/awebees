@@ -322,6 +322,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         title: "Success",
         description: `Added path: ${newPath.trim()}. Found ${result.insights_count} total insights.`,
       });
+      // Dispatch event to refresh insights in InsightList
+      window.dispatchEvent(new CustomEvent('insights-refreshed'));
     } catch (error) {
       logger.error("Failed to add insight path:", error);
       toast({
@@ -340,6 +342,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         title: "Success",
         description: `Removed path: ${path}. ${result.insights_count} insights remaining.`,
       });
+      // Dispatch event to refresh insights in InsightList
+      window.dispatchEvent(new CustomEvent('insights-refreshed'));
     } catch (error) {
       logger.error("Failed to remove insight path:", error);
       toast({
@@ -358,6 +362,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         title: "Success",
         description: `Refreshed ${result.insights_count} insights`,
       });
+      // Dispatch event to refresh insights in InsightList
+      window.dispatchEvent(new CustomEvent('insights-refreshed'));
     } catch (error) {
       logger.error("Failed to refresh insights:", error);
       toast({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,7 +21,19 @@ interface InsightListProps {
 
 export function InsightList({ selectedInsightIds, onSelectionChange, disabled }: InsightListProps) {
   const { t } = useTranslation();
-  const { insights, loading, error } = useInsights();
+  const { insights, loading, error, refresh } = useInsights();
+
+  // Listen for insight refresh events from settings
+  useEffect(() => {
+    const handleRefresh = () => {
+      refresh();
+    };
+
+    window.addEventListener('insights-refreshed', handleRefresh);
+    return () => {
+      window.removeEventListener('insights-refreshed', handleRefresh);
+    };
+  }, [refresh]);
 
   const handleToggle = (insightId: string) => {
     if (selectedInsightIds.includes(insightId)) {
