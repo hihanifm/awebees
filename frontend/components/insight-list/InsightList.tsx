@@ -77,8 +77,8 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
 
   return (
     <div className="space-y-2">
-      <div className="overflow-y-auto max-h-[400px] pr-2 border rounded-md">
-        <Accordion type="multiple" className="w-full" defaultValue={sortedFolders}>
+      <div className="h-[400px] overflow-y-auto pr-2 border rounded-md">
+        <Accordion type="multiple" className="w-full" defaultValue={sortedFolders.slice(0, 3)}>
           {sortedFolders.map((folder) => (
             <AccordionItem key={folder} value={folder} className="px-3 border-b">
               <AccordionTrigger className="text-sm font-semibold py-2">
