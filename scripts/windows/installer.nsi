@@ -16,6 +16,7 @@ RequestExecutionLevel admin
 ; Build directory (passed from GitHub Actions)
 !ifndef BUILD_DIR
 !define BUILD_DIR "build\windows"
+!define PACKAGE_DIR "${BUILD_DIR}\lens-app"
 !endif
 
 ; Version information (can be overridden by command line)
