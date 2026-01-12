@@ -3,6 +3,8 @@ uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 python-dotenv==1.0.0
 httpx==0.25.2
+pystray>=0.19.5
+Pillow>=10.0.0
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 pytest-mock>=3.11.0

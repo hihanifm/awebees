@@ -82,6 +82,9 @@ cp "$SCRIPT_DIR/lens-start.bat" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/lens-stop.bat" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/lens-status.bat" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/lens-logs.bat" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/lens_tray.py" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/lens_icon.png" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/lens_icon_32.png" "$PACKAGE_DIR/"
 
 # Download ripgrep for Windows
 echo "  Downloading ripgrep for Windows..."

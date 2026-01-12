@@ -88,107 +88,44 @@ if errorlevel 1 goto error_install_deps
 echo [DEBUG] Dependencies installed
 goto start_backend
 
-:start_backend
-echo [DEBUG] Setting SERVE_FRONTEND=true
-set SERVE_FRONTEND=true
-REM Store installation root before changing directories
+:start_tray
+REM Store installation root
 set "INSTALL_ROOT=%CD%"
-echo [DEBUG] Installation root: %INSTALL_ROOT%
-echo [DEBUG] Changing to backend directory
-cd /d backend
-if errorlevel 1 goto error_backend_dir
-echo [DEBUG] Current directory: %CD%
-echo [DEBUG] Checking backend directory structure...
-if exist "app" (
-    echo [DEBUG] Found app directory
-    if exist "app\main.py" (
-        echo [DEBUG] Found app\main.py
-    ) else (
-        echo [DEBUG] ERROR: app\main.py not found!
-    )
-) else (
-    echo [DEBUG] ERROR: app directory not found!
-)
-echo [DEBUG] Python location: 
-where python
-echo [DEBUG] Testing Python import...
-python -c "import sys; print('Python executable:', sys.executable); print('Python path:', sys.path)"
-echo [DEBUG] Starting backend server
-REM Load backend PORT/HOST from backend\.env if present (defaults: 34001 / 0.0.0.0)
-set "BACKEND_PORT=34001"
-set "BACKEND_HOST=0.0.0.0"
-if exist ".env" (
-    for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do (
-        if "%%a"=="PORT" (
-            set "BACKEND_PORT=%%b"
-            set "BACKEND_PORT=!BACKEND_PORT:"=!"
-            set "BACKEND_PORT=!BACKEND_PORT: =!"
-            for /f "tokens=*" %%x in ("!BACKEND_PORT!") do set "BACKEND_PORT=%%x"
-        )
-        if "%%a"=="HOST" (
-            set "BACKEND_HOST=%%b"
-            set "BACKEND_HOST=!BACKEND_HOST:"=!"
-            set "BACKEND_HOST=!BACKEND_HOST: =!"
-            for /f "tokens=*" %%x in ("!BACKEND_HOST!") do set "BACKEND_HOST=%%x"
-        )
-    )
+
+REM Get the full path to pythonw.exe in the venv (no console window)
+set "VENV_PYTHONW=%INSTALL_ROOT%\venv\Scripts\pythonw.exe"
+REM Tray script should be in the same directory as this script (installation root)
+set "TRAY_SCRIPT=%~dp0lens_tray.py"
+
+REM Check if pythonw.exe exists
+if not exist "!VENV_PYTHONW!" (
+    echo ERROR: pythonw.exe not found in venv
+    echo Expected: !VENV_PYTHONW!
+    echo Please ensure the virtual environment is set up correctly.
+    pause
+    exit /b 1
 )
 
-echo Starting Lens backend on http://127.0.0.1:!BACKEND_PORT!...
-echo [DEBUG] Logs will be written to: %LOG_FILE%
-REM Ensure log file exists and is writable
-if not exist "%LOG_FILE%" echo. > "%LOG_FILE%"
-if errorlevel 1 goto error_create_logfile
-REM Use Python unbuffered mode (-u) and ensure proper redirection
-REM The -u flag makes Python output unbuffered, so logs appear immediately
-REM Create a temporary file to write the startup marker, avoiding path issues
-set "TEMP_MARKER=%TEMP%\lens-marker-%RANDOM%.txt"
-echo ======================================== > "%TEMP_MARKER%"
-echo Lens Backend Started: %DATE% %TIME% >> "%TEMP_MARKER%"
-echo ======================================== >> "%TEMP_MARKER%"
-type "%TEMP_MARKER%" >> "%LOG_FILE%"
-del "%TEMP_MARKER%" >nul 2>&1
-REM Get the full path to the Python executable in the venv
-set "VENV_PYTHON=%INSTALL_ROOT%\venv\Scripts\python.exe"
-echo [DEBUG] Using Python from venv: %VENV_PYTHON%
-REM Create a wrapper batch file to handle logging properly
-REM This avoids issues with redirection in nested cmd /c contexts
-set "WRAPPER_BAT=%TEMP%\lens-backend-wrapper-%RANDOM%.bat"
-(
-    echo @echo off
-    echo cd /d "%CD%"
-    echo echo [START] Backend starting at %%DATE%% %%TIME%% ^>^> "%LOG_FILE%"
-    echo "%VENV_PYTHON%" -u -m uvicorn app.main:app --host !BACKEND_HOST! --port !BACKEND_PORT! ^>^> "%LOG_FILE%" 2^>^&1
-) > "%WRAPPER_BAT%"
-echo [DEBUG] Wrapper script created at: %WRAPPER_BAT%
-echo [DEBUG] Wrapper script will log to: %LOG_FILE%
-REM Display wrapper contents for debugging
-echo [DEBUG] Wrapper script contents:
-type "%WRAPPER_BAT%"
-start "Lens Backend" /min cmd /c "%WRAPPER_BAT%"
-if errorlevel 1 goto error_start_backend
-echo [DEBUG] Backend started
-echo [DEBUG] Log file location: %LOG_FILE%
-echo [DEBUG] You can view logs with: lens-logs.bat
-goto backend_started
+REM Check if tray script exists
+if not exist "!TRAY_SCRIPT!" (
+    echo ERROR: Tray application script not found
+    echo Expected: !TRAY_SCRIPT!
+    pause
+    exit /b 1
+)
 
-:error_create_logfile
-echo [DEBUG] ERROR: Cannot create log file: %LOG_FILE%
-goto error_start_backend
+REM Launch tray application using pythonw.exe (no console window)
+REM This will show the system tray icon and exit this script immediately
+start "" "!VENV_PYTHONW!" "!TRAY_SCRIPT!"
+if errorlevel 1 goto error_start_tray
 
-:backend_started
-echo [DEBUG] Waiting 3 seconds for backend to start...
-timeout /t 3 /nobreak >nul
-echo [DEBUG] Wait complete
-echo [DEBUG] Opening browser to http://127.0.0.1:!BACKEND_PORT!
-start http://127.0.0.1:!BACKEND_PORT!
-echo.
-echo Lens is starting...
-echo Backend: http://127.0.0.1:!BACKEND_PORT!
-echo.
-echo Press any key to close this window (Lens will continue running in background)
-pause >nul
+REM Exit immediately - tray app is now running
 exit /b 0
+
+:error_start_tray
+echo ERROR: Failed to start tray application
+pause
+exit /b 1
 
 :error_no_directory
 echo [DEBUG] ERROR: Failed to change to script directory
@@ -233,14 +170,3 @@ echo ERROR: Failed to install dependencies
 pause
 exit /b 1
 
-:error_backend_dir
-echo [DEBUG] ERROR: Failed to change to backend directory
-echo ERROR: Failed to change to backend directory
-pause
-exit /b 1
-
-:error_start_backend
-echo [DEBUG] ERROR: Failed to start backend
-echo ERROR: Failed to start backend
-pause
-exit /b 1
