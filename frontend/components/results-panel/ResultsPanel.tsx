@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { AnalysisResponse } from "@/lib/api-types";
 import { analyzeWithAI, getAIConfig } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
@@ -670,25 +671,45 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                                     </div>
                                   )}
 
-                                  {/* Analyze Button */}
-                                  <Button
-                                    onClick={() => handleAIAnalyzeForPath(resultItem.insight_id, pathIndex, pathResult.content)}
-                                    disabled={aiStates[pathKey]?.status === "streaming"}
-                                    size="sm"
-                                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold justify-center"
-                                  >
-                                    {aiStates[pathKey]?.status === "streaming" ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
-                                        Analyzing...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Sparkles className="mr-2 h-4 w-4 text-white" />
-                                        Analyze
-                                      </>
-                                    )}
-                                  </Button>
+                                  {/* AI Analysis Type Dropdown and Analyze Button */}
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`ai-prompt-type-${pathKey}`}>
+                                      {t("promptManager.loadPreset")}
+                                    </Label>
+                                    <div className="flex items-center gap-2">
+                                      <select
+                                        id={`ai-prompt-type-${pathKey}`}
+                                        value={promptTypes[pathKey] || "explain"}
+                                        onChange={(e) =>
+                                          handlePromptTypeChange(resultItem.insight_id, pathIndex, e.target.value)
+                                        }
+                                        className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                      >
+                                        <option value="explain">{t("promptManager.explain")}</option>
+                                        <option value="summarize">{t("promptManager.summarize")}</option>
+                                        <option value="recommend">{t("promptManager.recommend")}</option>
+                                        <option value="custom">Custom</option>
+                                      </select>
+                                      <Button
+                                        onClick={() => handleAIAnalyzeForPath(resultItem.insight_id, pathIndex, pathResult.content)}
+                                        disabled={aiStates[pathKey]?.status === "streaming"}
+                                        size="sm"
+                                        className="h-10 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold whitespace-nowrap"
+                                      >
+                                        {aiStates[pathKey]?.status === "streaming" ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
+                                            Analyzing...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Sparkles className="mr-2 h-4 w-4 text-white" />
+                                            Analyze
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
 
                                   {/* Custom Prompt Textarea */}
                                   {showCustomPrompt[pathKey] && (

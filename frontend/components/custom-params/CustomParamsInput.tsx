@@ -81,12 +81,12 @@ export function CustomParamsInput({ value, onChange }: CustomParamsInputProps) {
   };
 
   return (
-    <Accordion type="single" collapsible className="w-full">
+    <Accordion type="single" collapsible className="w-full" suppressHydrationWarning>
       <AccordionItem value="custom-params">
-        <AccordionTrigger className="text-sm font-medium">
+        <AccordionTrigger className="text-sm font-medium" suppressHydrationWarning>
           Custom Parameters (Optional)
         </AccordionTrigger>
-        <AccordionContent>
+        <AccordionContent suppressHydrationWarning>
           <div className="space-y-4 p-4 border rounded-md bg-muted/50">
             <div className="text-sm text-muted-foreground">
               Add custom key-value parameters to pass to insights. Values can be strings, numbers,
