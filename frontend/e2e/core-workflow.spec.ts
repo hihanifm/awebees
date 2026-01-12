@@ -97,14 +97,71 @@ test.describe('Core Workflow', () => {
     expect(resultsText.length).toBeGreaterThan(10); // Should have some content
     console.log('✓ Results contain meaningful content');
 
-    // Step 5: Test AI Analysis (conditional)
-    console.log('Step 5: Testing AI analysis...');
+    // Step 5: Test AI Analysis with dropdown (conditional)
+    console.log('Step 5: Testing AI analysis with dropdown...');
     try {
-      const aiTestPassed = await testAIAnalysis(page);
-      if (aiTestPassed) {
-        console.log('✓ AI analysis test passed');
+      // First, try to expand "Analyze with AI" section
+      const analyzeWithAIButton = page.getByRole('button', { name: /analyze.*with.*ai|analyze.*ai/i }).first();
+      const isVisible = await analyzeWithAIButton.isVisible().catch(() => false);
+      
+      if (isVisible) {
+        await analyzeWithAIButton.click();
+        console.log('✓ AI analysis section expanded');
+        
+        // Wait for the dropdown to appear
+        await page.waitForTimeout(500);
+        
+        // Find the AI analytics dropdown and select second option (summarize)
+        const dropdown = page.locator('select[id*="ai-prompt-type"]').first();
+        const dropdownVisible = await dropdown.isVisible().catch(() => false);
+        
+        if (dropdownVisible) {
+          // Select the second option (index 1, which is "summarize")
+          await dropdown.selectOption({ index: 1 });
+          console.log('✓ Selected second option (summarize) from dropdown');
+          
+          // Verify the selection
+          const selectedValue = await dropdown.inputValue();
+          expect(selectedValue).toBe('summarize');
+          console.log(`✓ Verified selection: ${selectedValue}`);
+          
+          // Click the Analyze button
+          const analyzeBtn = page.getByRole('button', { name: /^analyze$/i })
+            .filter({ hasNot: page.locator('text=/analyzing/i') })
+            .filter({ hasNot: page.locator('[disabled]') })
+            .first();
+          
+          const analyzeBtnVisible = await analyzeBtn.isVisible().catch(() => false);
+          if (analyzeBtnVisible) {
+            await analyzeBtn.click();
+            console.log('✓ Analyze button clicked');
+            
+            // Wait for AI analysis to start/complete
+            try {
+              await Promise.race([
+                page.waitForSelector('text=/analyzing/i', { timeout: 5000 }),
+                page.waitForSelector('text=/ai.*analysis|analysis.*complete/i', { timeout: 30000 })
+              ]);
+              console.log('✓ AI analysis started or completed');
+            } catch (error) {
+              // If AI is not configured, we might see an error message instead
+              const errorVisible = await page.getByText(/not configured|api key|disabled|configuration/i).isVisible().catch(() => false);
+              if (errorVisible) {
+                console.log('⚠ AI not configured - error message shown (expected)');
+              }
+            }
+          }
+        }
+        
+        // Also run the existing AI analysis test
+        const aiTestPassed = await testAIAnalysis(page);
+        if (aiTestPassed) {
+          console.log('✓ AI analysis test passed');
+        } else {
+          console.log('⚠ AI analysis test skipped (AI not configured or button not available)');
+        }
       } else {
-        console.log('⚠ AI analysis test skipped (AI not configured or button not available)');
+        console.log('⚠ AI analysis button not visible (AI might be disabled)');
       }
     } catch (error) {
       console.log('⚠ AI analysis test skipped (error):', error);
