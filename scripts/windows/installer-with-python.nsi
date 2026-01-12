@@ -42,6 +42,7 @@ VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 ; Finish page settings - Add "Run Lens" option
 !define MUI_FINISHPAGE_RUN "$INSTDIR\lens-start.bat"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch Lens now"
+!define MUI_FINISHPAGE_TEXT "LensAI has been successfully installed on your computer.$\r$\n$\r$\nYou can start LensAI by:$\r$\n  • Clicking the checkbox above to launch it now$\r$\n  • Using the desktop shortcut$\r$\n  • Opening it from the Start Menu (LensAI folder)$\r$\n$\r$\nOnce started, LensAI will run in the system tray. Right-click the tray icon to start/stop the backend or view logs."
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
