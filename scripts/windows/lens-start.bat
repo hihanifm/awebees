@@ -88,6 +88,9 @@ if errorlevel 1 goto error_install_deps
 echo [DEBUG] Dependencies installed
 goto start_backend
 
+:start_backend
+goto start_tray
+
 :start_tray
 REM Store installation root
 set "INSTALL_ROOT=%CD%"
