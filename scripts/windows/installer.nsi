@@ -60,53 +60,58 @@ VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
 
-; Function to check and optionally install Python
+; Function to check and automatically install Python if needed
 Function CheckPython
-    ClearErrors
-    ExecWait 'python --version' $0
-    IfErrors 0 PythonFound
+    DetailPrint "Checking for Python installation..."
     
-    ; Python not found, ask user if they want to install it
-    MessageBox MB_YESNO|MB_ICONQUESTION "Python 3.x is not installed or not in PATH.$\n$\nLensAI requires Python 3.x.$\nWould you like to install Python automatically using winget?" IDNO PythonSkipped
+    ; Try to detect Python by checking if 'python' command works
+    ; Use cmd /c to properly handle command execution
+    ExecWait 'cmd /c python --version' $0
+    IntCmp $0 0 PythonFound
+    ; Python not found, try 'py' launcher
+    ExecWait 'cmd /c py --version' $0
+    IntCmp $0 0 PythonFound
+    
+    ; Python not found in PATH, attempt automatic installation
+    DetailPrint "Python not found in PATH, attempting automatic installation..."
     
     ; Check if winget is available
-    ClearErrors
-    ExecWait 'winget --version' $0
-    IfErrors WingetNotFound
+    ExecWait 'cmd /c winget --version' $0
+    IntCmp $0 0 WingetFound
+    ; winget not available
+    MessageBox MB_OK|MB_ICONSTOP "Python 3.x is required but not found on your system.$\n$\nwinget is not available to install Python automatically.$\n$\nPlease install Python 3.x manually:$\n1. Download from: https://www.python.org/downloads/$\n2. Run the installer$\n3. Make sure to check 'Add Python to PATH'$\n4. Run this installer again$\n$\nDownload page will open when you click OK."
+    ExecShell "open" "https://www.python.org/downloads/"
+    Abort
     
+    WingetFound:
     ; Install Python via winget
-    DetailPrint "Installing Python via winget..."
-    ExecWait 'winget install Python.Python.3.12 --silent --accept-source-agreements --accept-package-agreements' $0
-    IfErrors WingetInstallFailed
+    DetailPrint "Installing Python 3.12 via winget (this may take a few minutes)..."
+    ExecWait 'cmd /c winget install Python.Python.3.12 --silent --accept-source-agreements --accept-package-agreements' $0
+    IntCmp $0 0 WingetInstallSuccess
+    ; Installation failed
+    MessageBox MB_OK|MB_ICONSTOP "Failed to install Python automatically via winget.$\n$\nPlease install Python 3.x manually:$\n1. Download from: https://www.python.org/downloads/$\n2. Run the installer$\n3. Make sure to check 'Add Python to PATH'$\n4. Run this installer again$\n$\nDownload page will open when you click OK."
+    ExecShell "open" "https://www.python.org/downloads/"
+    Abort
     
-    ; Wait a bit for Python to be added to PATH
-    Sleep 2000
+    WingetInstallSuccess:
+    ; Wait for Python to be added to PATH (winget installation may take time)
+    DetailPrint "Waiting for Python installation to complete..."
+    Sleep 3000
     
-    ; Verify installation
-    ClearErrors
-    ExecWait 'python --version' $0
-    IfErrors PythonInstallFailed
+    ; Verify installation by checking for python command
+    ExecWait 'cmd /c python --version' $0
+    IntCmp $0 0 PythonInstalledSuccess
+    ; Try 'py' launcher
+    ExecWait 'cmd /c py --version' $0
+    IntCmp $0 0 PythonInstalledSuccess
+    ; Verification failed
+    MessageBox MB_OK|MB_ICONSTOP "Python installation completed but cannot be verified.$\n$\nYou may need to:$\n1. Restart your computer$\n2. Or manually add Python to PATH$\n$\nAlternatively, you can install Python manually:$\n1. Download from: https://www.python.org/downloads/$\n2. Run the installer$\n3. Make sure to check 'Add Python to PATH'$\n4. Run this installer again$\n$\nDownload page will open when you click OK."
+    ExecShell "open" "https://www.python.org/downloads/"
+    Abort
+    
+    PythonInstalledSuccess:
     DetailPrint "Python installed successfully"
     Goto PythonFound
-    
-    WingetNotFound:
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION "winget is not available on this system.$\n$\nPython installation via winget is not possible.$\nWould you like to open the Python download page?" IDNO PythonSkipped
-    ExecShell "open" "https://www.python.org/downloads/"
-    Abort
-    
-    WingetInstallFailed:
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Failed to install Python via winget.$\n$\nWould you like to open the Python download page?" IDNO PythonSkipped
-    ExecShell "open" "https://www.python.org/downloads/"
-    Abort
-    
-    PythonInstallFailed:
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Python installation completed but verification failed.$\n$\nYou may need to restart your system or add Python to PATH manually.$\nWould you like to open the Python download page?" IDNO PythonSkipped
-    ExecShell "open" "https://www.python.org/downloads/"
-    Abort
-    
-    PythonSkipped:
-    MessageBox MB_OK|MB_ICONSTOP "Python installation is required to continue.$\n$\nPlease install Python 3.x and run the installer again.$\nDownload: https://www.python.org/downloads/"
-    Abort
     
     PythonFound:
     DetailPrint "Python is already installed"
@@ -114,41 +119,46 @@ FunctionEnd
 
 ; Function to check and optionally install ripgrep
 Function CheckRipgrep
-    ClearErrors
-    ExecWait 'rg --version' $0
-    IfErrors 0 RipgrepFound
+    DetailPrint "Checking for ripgrep installation..."
+    
+    ; Try to detect ripgrep by checking if 'rg' command works
+    ; Use cmd /c to properly handle command execution
+    ExecWait 'cmd /c rg --version' $0
+    IntCmp $0 0 RipgrepFound
     
     ; Ripgrep not found, ask user if they want to install it
     MessageBox MB_YESNO|MB_ICONQUESTION "Ripgrep (rg) is not installed.$\n$\nRipgrep enables 10-100x faster pattern matching (optional but recommended).$\nWould you like to install it automatically using winget?" IDNO RipgrepSkipped
     
     ; Check if winget is available
-    ClearErrors
-    ExecWait 'winget --version' $0
-    IfErrors WingetNotFound
-    
-    ; Install ripgrep via winget
-    DetailPrint "Installing ripgrep via winget..."
-    ExecWait 'winget install BurntSushi.ripgrep.MSVC --silent --accept-source-agreements --accept-package-agreements' $0
-    IfErrors WingetInstallFailed
-    
-    ; Verify installation
-    ClearErrors
-    ExecWait 'rg --version' $0
-    IfErrors RipgrepInstallFailed
-    DetailPrint "Ripgrep installed successfully"
-    Goto RipgrepFound
-    
-    WingetNotFound:
+    ExecWait 'cmd /c winget --version' $0
+    IntCmp $0 0 WingetFound
+    ; winget not available
     MessageBox MB_OK|MB_ICONEXCLAMATION "winget is not available on this system.$\n$\nRipgrep installation skipped. You can install it manually later:$\nwinget install BurntSushi.ripgrep.MSVC"
     Goto RipgrepSkipped
     
-    WingetInstallFailed:
+    WingetFound:
+    ; Install ripgrep via winget
+    DetailPrint "Installing ripgrep via winget..."
+    ExecWait 'cmd /c winget install BurntSushi.ripgrep.MSVC --silent --accept-source-agreements --accept-package-agreements' $0
+    IntCmp $0 0 WingetInstallSuccess
+    ; Installation failed
     MessageBox MB_OK|MB_ICONEXCLAMATION "Failed to install ripgrep via winget.$\n$\nYou can install it manually later:$\nwinget install BurntSushi.ripgrep.MSVC"
     Goto RipgrepSkipped
     
-    RipgrepInstallFailed:
+    WingetInstallSuccess:
+    ; Wait a bit for ripgrep to be added to PATH
+    Sleep 2000
+    
+    ; Verify installation
+    ExecWait 'cmd /c rg --version' $0
+    IntCmp $0 0 RipgrepInstalledSuccess
+    ; Verification failed
     MessageBox MB_OK|MB_ICONEXCLAMATION "Ripgrep installation completed but verification failed.$\n$\nYou may need to restart your system or add ripgrep to PATH manually."
     Goto RipgrepSkipped
+    
+    RipgrepInstalledSuccess:
+    DetailPrint "Ripgrep installed successfully"
+    Goto RipgrepFound
     
     RipgrepSkipped:
     DetailPrint "Ripgrep installation skipped (optional component)"
