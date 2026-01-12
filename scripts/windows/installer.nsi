@@ -183,16 +183,65 @@ Function uninstallPrevious
     StrCmp $0 "" done
     
     found:
-    ; Found existing installation, uninstall it
+    ; Found existing installation
+    DetailPrint "Existing LensAI installation detected"
+    
+    ; Check if app is running (check for python.exe processes)
+    ; Use a simple check: try to find python.exe processes
+    DetailPrint "Checking for running LensAI processes..."
+    ExecWait 'cmd /c tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH | findstr /C:"python.exe"' $R0
+    ; If findstr finds python.exe, exit code is 0 (found)
+    ; If findstr doesn't find it, exit code is non-zero (not found)
+    IntCmp $R0 0 processRunning
+    ; No process found - continue
+    Goto continueUninstall
+    
+    processRunning:
+    ; Python process found - ask user to close
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "LensAI appears to be running.$\n$\nThe application must be closed before upgrading.$\n$\nWould you like to close it now and continue with the upgrade?" IDNO abortUpgrade
+    ; Try to stop python processes (necessary for upgrade)
+    DetailPrint "Stopping running LensAI processes..."
+    ExecWait 'cmd /c taskkill /F /IM python.exe /T' $R1
+    ; Give processes time to terminate
+    Sleep 2000
+    
+    continueUninstall:
+    ; Backup .env file if it exists
+    IfFileExists "$INSTDIR\backend\.env" 0 skipBackup
+        DetailPrint "Backing up .env file..."
+        CreateDirectory "$TEMP\LensAI-Upgrade\backend"
+        CopyFiles /SILENT "$INSTDIR\backend\.env" "$TEMP\LensAI-Upgrade\backend\.env"
+    skipBackup:
+    
+    ; Uninstall previous version
     DetailPrint "Uninstalling previous version of LensAI..."
-    ExecWait '"$0" /S _?=$INSTDIR'
+    IfFileExists "$0" 0 skipUninstall
+        ExecWait '"$0" /S _?=$INSTDIR' $R5
+        ; Check if uninstaller succeeded (exit code 0)
+        IntCmp $R5 0 uninstallSuccess
+        ; Uninstaller failed
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Failed to uninstall previous version (exit code: $R5).$\n$\nPlease uninstall manually from Control Panel and try again."
+        ; If .env was backed up, inform user
+        IfFileExists "$TEMP\LensAI-Upgrade\backend\.env" 0 abortUpgrade
+            MessageBox MB_OK|MB_ICONINFORMATION ".env file was backed up to:$\n$TEMP\LensAI-Upgrade\backend\.env"
+        Abort
+    uninstallSuccess:
+    skipUninstall:
     
     ; Wait a bit for uninstaller to complete
     Sleep 1000
     
     ; Remove the installation directory if it still exists
+    ; (The uninstaller should have removed it, but clean up just in case)
+    ; Note: .env backup is already in $TEMP, so it's safe to remove $INSTDIR
     IfFileExists "$INSTDIR" 0 done
     RMDir /r "$INSTDIR"
+    
+    ; Note: .env file will be restored after files are extracted in the main section
+    Goto done
+    
+    abortUpgrade:
+    Abort
     
     done:
 FunctionEnd
@@ -214,6 +263,14 @@ Section "Lens Application" SecApp
     
     ; Extract package contents
     File /r "${BUILD_DIR}\lens-app\*"
+    
+    ; Restore .env file if it was backed up (after files are extracted)
+    IfFileExists "$TEMP\LensAI-Upgrade\backend\.env" 0 skipRestoreAfterExtract
+        DetailPrint "Restoring .env file..."
+        CopyFiles /SILENT "$TEMP\LensAI-Upgrade\backend\.env" "$INSTDIR\backend\.env"
+        ; Clean up backup
+        RMDir /r "$TEMP\LensAI-Upgrade"
+    skipRestoreAfterExtract:
     
     ; Create virtual environment and install dependencies
     DetailPrint "Creating virtual environment..."
