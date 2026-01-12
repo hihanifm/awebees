@@ -1,0 +1,9 @@
+# Development dependencies for security scanning
+# Install with: pip install -r requirements-dev.txt
+
+# Security vulnerability scanner for Python packages
+pip-audit>=2.6.0
+
+# Optional: Static analysis for Python code security issues
+# Uncomment if you want to scan code (not just dependencies)
+# bandit>=1.7.5

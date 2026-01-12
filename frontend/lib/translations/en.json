@@ -198,6 +198,11 @@
     "insight": "Insight",
     "lineFound": "line found",
     "linesFound": "lines found"
+  },
+  "ripgrepBanner": {
+    "title": "⚡ Install Ripgrep for 10x-100x Faster Search",
+    "description": "Ripgrep makes pattern matching significantly faster. Install it now for better performance.",
+    "installationGuide": "Installation Guide"
   }
 }
 

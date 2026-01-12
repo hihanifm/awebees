@@ -198,6 +198,11 @@
     "insight": "인사이트",
     "lineFound": "줄 발견",
     "linesFound": "줄 발견"
+  },
+  "ripgrepBanner": {
+    "title": "⚡ 검색 속도 10배-100배 향상: Ripgrep 설치",
+    "description": "Ripgrep을 설치하면 패턴 매칭이 훨씬 빨라집니다. 성능 향상을 위해 지금 설치하세요.",
+    "installationGuide": "설치 가이드"
   }
 }
 

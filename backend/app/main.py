@@ -164,6 +164,13 @@ async def profiling_status():
     return {"enabled": profiling_enabled}
 
 
+@app.get("/api/ripgrep-status")
+async def ripgrep_status():
+    from app.utils.ripgrep import is_ripgrep_available
+    available = is_ripgrep_available()
+    return {"available": available}
+
+
 @app.get("/api/hello")
 async def hello():
     logger.info("Hello endpoint called")

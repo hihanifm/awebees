@@ -625,6 +625,13 @@ export const apiClient = {
   },
 
   /**
+   * Check if ripgrep is available on the backend.
+   */
+  async checkRipgrepStatus(): Promise<{ available: boolean }> {
+    return fetchJSON("/api/ripgrep-status");
+  },
+
+  /**
    * Get available models from AI server using hybrid approach.
    * Tries direct connection first, falls back to backend proxy if CORS fails.
    * @param baseUrl AI server base URL

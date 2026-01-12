@@ -6,9 +6,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TopNavigation } from "@/components/TopNavigation";
+import { RipgrepBanner } from "@/components/RipgrepBanner";
 import { loadTheme } from "@/lib/theme-storage";
 import { loadLanguage, type Language } from "@/lib/language-storage";
 import { initLanguage } from "@/lib/i18n";
+import { apiClient } from "@/lib/api-client";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +30,7 @@ export default function RootLayout({
   const [theme, setTheme] = useState<string>("warm");
   const [language, setLanguage] = useState<Language>("en");
   const [mounted, setMounted] = useState(false);
+  const [showRipgrepBanner, setShowRipgrepBanner] = useState(false);
 
   useEffect(() => {
     // Load theme and language from localStorage on mount
@@ -52,6 +55,43 @@ export default function RootLayout({
       window.removeEventListener("languagechange", handleLanguageChange);
     };
   }, []);
+
+  // Check ripgrep status on mount
+  useEffect(() => {
+    const checkRipgrep = async () => {
+      try {
+        // Check for demo mode (via URL param or localStorage)
+        const urlParams = new URLSearchParams(window.location.search);
+        const demoMode = urlParams.get("demo-ripgrep-banner") === "true" || 
+                        localStorage.getItem("ripgrep_banner_demo") === "true";
+        
+        // In demo mode, always show the banner
+        if (demoMode) {
+          setShowRipgrepBanner(true);
+          // Expose helper function for easy demo toggle
+          (window as any).__demoRipgrepBanner = () => {
+            localStorage.setItem("ripgrep_banner_demo", "true");
+            localStorage.removeItem("ripgrep_banner_dismissed");
+            window.location.reload();
+          };
+          return;
+        }
+
+        const status = await apiClient.checkRipgrepStatus();
+        // Check localStorage to see if user has dismissed the banner
+        const dismissed = localStorage.getItem("ripgrep_banner_dismissed") === "true";
+        // Show banner if ripgrep is not available and user hasn't dismissed it
+        setShowRipgrepBanner(!status.available && !dismissed);
+      } catch (err) {
+        // Silently fail - don't show banner if API check fails
+        console.error("Failed to check ripgrep status:", err);
+      }
+    };
+
+    if (mounted) {
+      checkRipgrep();
+    }
+  }, [mounted]);
 
   useEffect(() => {
     // Apply theme class and language to html element
@@ -275,7 +315,21 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-10 pt-16`}
       >
         <TopNavigation />
-        {children}
+        {showRipgrepBanner && (
+          <div className="fixed top-16 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
+            <div className="max-w-[90%] mx-auto px-4 py-3">
+              <RipgrepBanner
+                onDismiss={() => {
+                  localStorage.setItem("ripgrep_banner_dismissed", "true");
+                  setShowRipgrepBanner(false);
+                }}
+              />
+            </div>
+          </div>
+        )}
+        <div className={showRipgrepBanner ? "pt-28" : ""}>
+          {children}
+        </div>
         <Toaster />
       </body>
     </html>
