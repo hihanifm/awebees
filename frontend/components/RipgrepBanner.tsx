@@ -79,10 +79,10 @@ export function RipgrepBanner({ onDismiss }: RipgrepBannerProps) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm text-amber-700 dark:text-amber-300">
-          {t("ripgrepBanner.title", "⚡ Install Ripgrep for 10x-100x Faster Search")}
+          {t("ripgrepBanner.title")}
         </div>
         <div className="text-xs mt-1 text-amber-700 dark:text-amber-300">
-          {t("ripgrepBanner.description", "Ripgrep makes pattern matching significantly faster. Install it now for better performance.")}
+          {t("ripgrepBanner.description")}
         </div>
         <div className="mt-3 flex flex-wrap gap-2 items-center">
           <div className="font-mono text-xs bg-amber-100 dark:bg-amber-900 px-2 py-1 rounded border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200">
@@ -95,7 +95,7 @@ export function RipgrepBanner({ onDismiss }: RipgrepBannerProps) {
             onClick={() => window.open(getInstallLink(), "_blank")}
           >
             <ExternalLink className="h-3 w-3 mr-1" />
-            {t("ripgrepBanner.installationGuide", "Installation Guide")}
+            {t("ripgrepBanner.installationGuide")}
           </Button>
         </div>
       </div>
