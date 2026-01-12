@@ -108,8 +108,8 @@ echo ""
 
 # Prepare package (single variant - auto-installs Python via winget)
 echo "Preparing package..."
-"$SCRIPT_DIR/windows/prepare-package.sh" "requires-python" "$VERSION" "$BUILD_DIR" "$DIST_DIR"
-"$SCRIPT_DIR/windows/verify-package.sh" "$BUILD_DIR/lens-app-requires-python" "requires-python"
+"$SCRIPT_DIR/windows/prepare-package.sh" "$VERSION" "$BUILD_DIR" "$DIST_DIR"
+"$SCRIPT_DIR/windows/verify-package.sh" "$BUILD_DIR/lens-app" "requires-python"
 
 echo ""
 echo -e "${GREEN}✓ Windows package prepared and verified successfully!${NC}"
