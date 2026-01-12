@@ -69,32 +69,8 @@ SelectScrollDownButton.displayName =
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
-    onOpenAutoFocus?: (event: Event) => void;
-    onCloseAutoFocus?: (event: Event) => void;
-  }
->(({ className, children, position = "popper", side = "bottom", sideOffset = 4, avoidCollisions = false, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
-  // Preserve scroll position when dropdown opens
-  const handleOpenAutoFocus = React.useCallback((e: Event) => {
-    e.preventDefault();
-    // Store current scroll position
-    const scrollY = window.scrollY;
-    // Restore scroll position after a brief delay to prevent jump
-    requestAnimationFrame(() => {
-      window.scrollTo(0, scrollY);
-    });
-    onOpenAutoFocus?.(e as any);
-  }, [onOpenAutoFocus]);
-
-  const handleCloseAutoFocus = React.useCallback((e: Event) => {
-    e.preventDefault();
-    const scrollY = window.scrollY;
-    requestAnimationFrame(() => {
-      window.scrollTo(0, scrollY);
-    });
-    onCloseAutoFocus?.(e as any);
-  }, [onCloseAutoFocus]);
-
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
+>(({ className, children, position = "popper", side = "bottom", sideOffset = 4, avoidCollisions = false, ...props }, ref) => {
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -107,11 +83,7 @@ const SelectContent = React.forwardRef<
         side={side}
         sideOffset={sideOffset}
         avoidCollisions={avoidCollisions}
-        {...({
-          onOpenAutoFocus: handleOpenAutoFocus,
-          onCloseAutoFocus: handleCloseAutoFocus,
-          ...props
-        } as any)}
+        {...props}
       >
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
