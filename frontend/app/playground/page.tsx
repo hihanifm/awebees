@@ -5,56 +5,52 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { InputWithHistory } from "@/components/ui/input-with-history";
+import { TextareaWithHistory } from "@/components/ui/textarea-with-history";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBar } from "@/components/StatusBar";
-import { FilteredResults } from "@/components/playground/FilteredResults";
+import { ResultsPanel } from "@/components/results-panel/ResultsPanel";
+import { ProgressWidget } from "@/components/progress/ProgressWidget";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { AIResponsePanel } from "@/components/playground/AIResponsePanel";
 import { PromptManager } from "@/components/playground/PromptManager";
 import { apiClient, getAIConfig } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
-import { FilterResult, AISystemPrompts } from "@/lib/api-types";
-import { Play, Sparkles, AlertCircle, Search, FileText, X, ArrowLeft } from "lucide-react";
+import { AnalysisResponse, ProgressEvent, AISystemPrompts } from "@/lib/api-types";
+import { Play, Sparkles, Search, FileText, X, ArrowLeft, AlertCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
 
 const STORAGE_KEYS = {
   FILE_PATH: "lens_playground_file_path",
-  PATTERN: "lens_playground_pattern",
-  CUSTOM_FLAGS: "lens_playground_custom_flags",
-  CASE_SENSITIVE: "lens_playground_case_sensitive",
-  CONTEXT_BEFORE: "lens_playground_context_before",
-  CONTEXT_AFTER: "lens_playground_context_after",
+  RIPGREP_COMMAND: "lens_playground_ripgrep_command",
   TEXT_INPUT: "lens_playground_text_input",
   SYSTEM_PROMPT: "lens_playground_system_prompt",
   USER_PROMPT: "lens_playground_user_prompt",
   ACTIVE_TAB: "lens_playground_active_tab",
-  // History storage keys
   FILE_PATH_HISTORY: "lens_playground_file_path_history",
-  PATTERN_HISTORY: "lens_playground_pattern_history",
+  RIPGREP_COMMAND_HISTORY: "lens_playground_ripgrep_command_history",
 };
 
 export default function PlaygroundPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"filter" | "text">("filter");
 
-  // Filter mode state
-  const [filePath, setFilePath] = useState("");
-  const [pattern, setPattern] = useState("");
-  const [customFlags, setCustomFlags] = useState("");
-  const [caseInsensitive, setCaseInsensitive] = useState(true);
-  const [contextBefore, setContextBefore] = useState(0);
-  const [contextAfter, setContextAfter] = useState(0);
-  const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
-  const [filtering, setFiltering] = useState(false);
-  const [filterError, setFilterError] = useState<string | null>(null);
+  // Filter mode state - using same pattern as main page
+  const [filePaths, setFilePaths] = useState<string>("");
+  const [ripgrepCommand, setRipgrepCommand] = useState<string>("");
+  const [analysisResponse, setAnalysisResponse] = useState<AnalysisResponse | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
   // Text input mode state
   const [textInput, setTextInput] = useState("");
 
-  // Shared AI state
+  // Shared AI state for text mode
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [userPrompt, setUserPrompt] = useState("Please analyze the filtered results above.");
+  const [userPrompt, setUserPrompt] = useState("Please analyze the text above.");
   const [aiResponse, setAiResponse] = useState("");
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -87,12 +83,8 @@ export default function PlaygroundPage() {
     }
 
     // Filter mode state
-    setFilePath(localStorage.getItem(STORAGE_KEYS.FILE_PATH) || "");
-    setPattern(localStorage.getItem(STORAGE_KEYS.PATTERN) || "");
-    setCustomFlags(localStorage.getItem(STORAGE_KEYS.CUSTOM_FLAGS) || "");
-    setCaseInsensitive(localStorage.getItem(STORAGE_KEYS.CASE_SENSITIVE) !== "false");
-    setContextBefore(parseInt(localStorage.getItem(STORAGE_KEYS.CONTEXT_BEFORE) || "0"));
-    setContextAfter(parseInt(localStorage.getItem(STORAGE_KEYS.CONTEXT_AFTER) || "0"));
+    setFilePaths(localStorage.getItem(STORAGE_KEYS.FILE_PATH) || "");
+    setRipgrepCommand(localStorage.getItem(STORAGE_KEYS.RIPGREP_COMMAND) || "");
     
     // Text input mode state
     setTextInput(localStorage.getItem(STORAGE_KEYS.TEXT_INPUT) || "");
@@ -122,28 +114,12 @@ export default function PlaygroundPage() {
 
   // Save to localStorage on change
   useEffect(() => {
-    if (filePath) localStorage.setItem(STORAGE_KEYS.FILE_PATH, filePath);
-  }, [filePath]);
+    if (filePaths) localStorage.setItem(STORAGE_KEYS.FILE_PATH, filePaths);
+  }, [filePaths]);
 
   useEffect(() => {
-    if (pattern) localStorage.setItem(STORAGE_KEYS.PATTERN, pattern);
-  }, [pattern]);
-
-  useEffect(() => {
-    if (customFlags) localStorage.setItem(STORAGE_KEYS.CUSTOM_FLAGS, customFlags);
-  }, [customFlags]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CASE_SENSITIVE, String(caseInsensitive));
-  }, [caseInsensitive]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CONTEXT_BEFORE, String(contextBefore));
-  }, [contextBefore]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CONTEXT_AFTER, String(contextAfter));
-  }, [contextAfter]);
+    if (ripgrepCommand) localStorage.setItem(STORAGE_KEYS.RIPGREP_COMMAND, ripgrepCommand);
+  }, [ripgrepCommand]);
 
   useEffect(() => {
     if (textInput) {
@@ -164,58 +140,96 @@ export default function PlaygroundPage() {
     }
   }, [userPrompt]);
 
-  const handleFilter = async () => {
-    if (!filePath.trim() || !pattern.trim()) {
-      setFilterError(t("errors.filePathRequired"));
+  // Strip surrounding quotes from a string if they match at both ends
+  function stripQuotes(path: string): string {
+    if (!path || path.length < 2) {
+      return path;
+    }
+
+    const first = path[0];
+    const last = path[path.length - 1];
+
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return path.slice(1, -1);
+    }
+
+    return path;
+  }
+
+  const handleExecute = async () => {
+    if (!filePaths.trim() || !ripgrepCommand.trim()) {
+      setError(t("errors.filePathRequired"));
       return;
     }
 
-    setFiltering(true);
-    setFilterError(null);
-    setFilterResult(null);
+    // Parse file paths (support multiple paths separated by newlines)
+    const paths = filePaths
+      .split("\n")
+      .map((p) => stripQuotes(p.trim()))
+      .filter((p) => p.length > 0);
+
+    if (paths.length === 0) {
+      setError(t("errors.filePathRequired"));
+      return;
+    }
+
+    setAnalyzing(true);
+    setError(null);
+    setAnalysisResponse(null);
+    setProgressEvents([]);
+    setCurrentTaskId(null);
 
     try {
-      const result = await apiClient.filterFile({
-        file_path: filePath.trim(),
-        pattern: pattern.trim(),
-        custom_flags: customFlags.trim() || undefined,
-        case_insensitive: caseInsensitive,
-        context_before: contextBefore,
-        context_after: contextAfter,
-      });
-      setFilterResult(result);
+      // Extract task ID from first progress event
+      let taskIdExtracted = false;
+
+      // Execute playground with progress tracking
+      const response = await apiClient.executePlayground(
+        paths,
+        ripgrepCommand.trim(),
+        (event: ProgressEvent) => {
+          setProgressEvents((prev) => [...prev, event]);
+          if (!taskIdExtracted && event.task_id) {
+            setCurrentTaskId(event.task_id);
+            taskIdExtracted = true;
+          }
+        }
+      );
+
+      // Set final response
+      setAnalysisResponse(response);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t("errors.filterFailed");
-      // Check if this is a ripgrep not installed error
-      if (errorMessage.includes("ripgrep") || errorMessage.includes("rg") || errorMessage.includes("not installed")) {
-        setFilterError(
-          "Ripgrep (rg) is not installed on the server. " +
-          "Please install ripgrep for faster pattern matching. " +
-          "Windows: winget install BurntSushi.ripgrep.MSVC | " +
-          "macOS: brew install ripgrep | " +
-          "Linux: sudo apt-get install ripgrep (or equivalent)"
-        );
+      if (err instanceof Error && err.message === "Analysis cancelled") {
+        setError(t("errors.analysisCancelled"));
       } else {
-        setFilterError(errorMessage);
+        setError(err instanceof Error ? err.message : t("errors.analysisFailed"));
       }
     } finally {
-      setFiltering(false);
+      setAnalyzing(false);
+      setCurrentTaskId(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (currentTaskId) {
+      try {
+        await apiClient.cancelPlayground(currentTaskId);
+        setAnalyzing(false);
+        setCurrentTaskId(null);
+      } catch (err) {
+        logger.error("Failed to cancel playground:", err);
+      }
     }
   };
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Frontend localStorage is the source of truth once user saves valid settings
       const localSettings = loadAISettings();
       
-      // Check if localStorage has valid settings (user has explicitly configured)
       if (localSettings && localSettings.apiKey && localSettings.apiKey.trim() !== "") {
-        // User has saved settings - localStorage is source of truth
         const enabled = localSettings.enabled;
         const baseUrl = localSettings.baseUrl;
-        const apiKey = localSettings.apiKey;
         
-        // Check if AI is enabled
         if (!enabled) {
           return {
             isValid: false,
@@ -223,7 +237,6 @@ export default function PlaygroundPage() {
           };
         }
         
-        // Check if base URL is configured
         if (!baseUrl || baseUrl.trim() === "") {
           return {
             isValid: false,
@@ -234,15 +247,12 @@ export default function PlaygroundPage() {
         return { isValid: true };
       }
       
-      // No valid localStorage settings - check backend config (initial load or backend .env)
       const backendConfig = await getAIConfig();
       
-      // If backend says it's configured, trust it (backend uses .env file)
       if (backendConfig.is_configured) {
         return { isValid: true };
       }
       
-      // Backend is not configured either
       return {
         isValid: false,
         message: "AI is not configured. Please configure it in settings."
@@ -252,58 +262,6 @@ export default function PlaygroundPage() {
         isValid: false,
         message: "Failed to check AI configuration. Please verify your settings."
       };
-    }
-  };
-
-  const handleFilterAIAnalyze = async () => {
-    if (!filterResult || filterResult.lines.length === 0) {
-      setAiError(t("playground.noFilteredResults"));
-      return;
-    }
-
-    if (!systemPrompt.trim() || !userPrompt.trim()) {
-      setAiError(t("playground.enterPrompts"));
-      return;
-    }
-
-    // Check AI configuration before proceeding
-    const configCheck = await checkAIConfiguration();
-    if (!configCheck.isValid) {
-      setConfigError(configCheck.message || t("playground.aiNotConfigured"));
-      setAiError(null);
-      return;
-    }
-
-    setAiStreaming(true);
-    setAiError(null);
-    setConfigError(null);
-    setAiResponse("");
-    setAiExecutionTime(undefined);
-
-    const startTime = Date.now();
-
-    try {
-      const content = filterResult.lines.join("\n");
-      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
-
-      await apiClient.analyzeWithAI(
-        content,
-        "custom",
-        fullPrompt,
-        {},
-        (chunk) => {
-          setAiResponse((prev) => prev + chunk);
-        }
-      );
-
-      const executionTime = (Date.now() - startTime) / 1000;
-      setAiExecutionTime(executionTime);
-      setAiStreaming(false);
-    } catch (err) {
-      const executionTime = (Date.now() - startTime) / 1000;
-      setAiExecutionTime(executionTime);
-      setAiError(err instanceof Error ? err.message : t("aiResponse.failedToAnalyze"));
-      setAiStreaming(false);
     }
   };
 
@@ -401,187 +359,79 @@ export default function PlaygroundPage() {
 
           {/* Filter Mode Content */}
           <TabsContent value="filter" className="space-y-6 mt-6">
-            {/* Step 1: File Input */}
+            {/* File Paths Input */}
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-foreground">
-                1. {t("playground.selectFile")}
+                1. {t("app.enterFilePaths")}
               </h2>
               <div>
-                <Label htmlFor="file-path">{t("playground.filePath")}</Label>
-                <InputWithHistory
-                  id="file-path"
-                  value={filePath}
-                  onChange={setFilePath}
+                <Label htmlFor="file-paths">{t("app.enterFilePaths")}</Label>
+                <TextareaWithHistory
+                  value={filePaths}
+                  onChange={setFilePaths}
                   storageKey={STORAGE_KEYS.FILE_PATH_HISTORY}
-                  placeholder={t("playground.filePathPlaceholder")}
-                  className="font-mono"
+                  placeholder={t("app.filePathsPlaceholder")}
+                  className="w-full h-[3.5rem] rounded-md border border-input bg-muted px-4 py-2 font-mono text-sm resize-y"
+                  rows={2}
+                  disabled={analyzing}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t("playground.filePathHint")}
+                  {t("app.filePathsHint")}
                 </p>
               </div>
             </section>
 
-            {/* Step 2: Ripgrep Filter */}
+            {/* Ripgrep Command Input */}
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-foreground">
-                2. {t("playground.configureRipgrep")}
+                2. Ripgrep Command
               </h2>
               <div>
-                <Label htmlFor="pattern">{t("playground.pattern")}</Label>
+                <Label htmlFor="ripgrep-command">Ripgrep Command</Label>
                 <InputWithHistory
-                  id="pattern"
-                  value={pattern}
-                  onChange={setPattern}
-                  storageKey={STORAGE_KEYS.PATTERN_HISTORY}
-                  placeholder={t("playground.patternPlaceholder")}
+                  id="ripgrep-command"
+                  value={ripgrepCommand}
+                  onChange={setRipgrepCommand}
+                  storageKey={STORAGE_KEYS.RIPGREP_COMMAND_HISTORY}
+                  placeholder='e.g., ERROR or -i -A 2 ERROR'
                   className="font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t("playground.patternHint")}
+                  Enter the complete ripgrep command (everything after 'rg'). Examples: "ERROR", "-i ERROR", "-A 2 ERROR"
                 </p>
-              </div>
-
-              {/* Custom Flags */}
-              <div>
-                <Label htmlFor="custom-flags">{t("playground.customFlags")}</Label>
-                <Input
-                  id="custom-flags"
-                  value={customFlags}
-                  onChange={(e) => setCustomFlags(e.target.value)}
-                  placeholder={t("playground.customFlagsPlaceholder")}
-                  className="font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("playground.customFlagsHint")}
-                </p>
-              </div>
-
-              {/* Filter options */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="case-insensitive"
-                    checked={caseInsensitive}
-                    onChange={(e) => setCaseInsensitive(e.target.checked)}
-                    className="rounded"
-                  />
-                  <Label htmlFor="case-insensitive" className="text-sm cursor-pointer">
-                    {t("playground.caseInsensitive")}
-                  </Label>
-                </div>
-                <div>
-                  <Label htmlFor="context-before" className="text-sm">
-                    {t("playground.linesBefore")}
-                  </Label>
-                  <Input
-                    id="context-before"
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={contextBefore}
-                    onChange={(e) => setContextBefore(parseInt(e.target.value) || 0)}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="context-after" className="text-sm">
-                    {t("playground.linesAfter")}
-                  </Label>
-                  <Input
-                    id="context-after"
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={contextAfter}
-                    onChange={(e) => setContextAfter(parseInt(e.target.value) || 0)}
-                    className="mt-1"
-                  />
-                </div>
               </div>
 
               <Button
-                onClick={handleFilter}
-                disabled={filtering || !filePath.trim() || !pattern.trim()}
+                onClick={handleExecute}
+                disabled={analyzing || !filePaths.trim() || !ripgrepCommand.trim()}
                 className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 font-bold"
               >
                 <Play className="h-4 w-4 mr-2" />
-                {filtering ? t("playground.filtering") : t("playground.runFilter")}
+                {analyzing ? t("app.analyzing") : "Execute"}
               </Button>
 
-              {filterError && (
+              {error && (
                 <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950">
-                  <p className="text-sm text-red-600 dark:text-red-400">Error: {filterError}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
                 </div>
               )}
             </section>
 
-            {/* Step 3: Filtered Results */}
-            <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">
-                3. {t("playground.filteredResults")}
-              </h2>
-              <FilteredResults result={filterResult} loading={filtering} />
-            </section>
-
-            {/* Step 4: AI Prompts */}
-            <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">
-                4. {t("playground.configureAIPrompts")}
-              </h2>
-              <PromptManager
-                systemPrompt={systemPrompt}
-                userPrompt={userPrompt}
-                onSystemPromptChange={setSystemPrompt}
-                onUserPromptChange={setUserPrompt}
-                defaultPrompts={defaultPrompts}
-              />
-              <Button
-                onClick={handleFilterAIAnalyze}
-                disabled={aiStreaming || !filterResult || filterResult.lines.length === 0 || !systemPrompt.trim() || !userPrompt.trim()}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:shadow-md font-bold justify-center"
-              >
-                <Sparkles className="h-4 w-4 mr-2 text-white" />
-                {aiStreaming ? t("playground.analyzingWithAI") : t("playground.analyzeWithAI")}
-              </Button>
-              {configError && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                        AI Configuration Required
-                      </p>
-                      <p className="text-sm text-amber-800 dark:text-amber-200">
-                        {configError}
-                      </p>
-                      <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                        <p>To use AI analysis, please configure:</p>
-                        <ul className="list-disc list-inside space-y-0.5 ml-2">
-                          <li>Enable AI processing</li>
-                          <li>Set the AI Base URL (e.g., https://api.openai.com/v1)</li>
-                          <li>Provide your API Key</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            {/* Step 5: AI Response */}
-            {(aiResponse || aiStreaming || aiError) && (
-              <section className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">
-                  5. {t("playground.aiAnalysis")}
-                </h2>
-                <AIResponsePanel
-                  response={aiResponse}
-                  streaming={aiStreaming}
-                  error={aiError}
-                  executionTime={aiExecutionTime}
+            {/* Progress Widget */}
+            {progressEvents.length > 0 && (
+              <section>
+                <ProgressWidget
+                  events={progressEvents}
+                  currentTaskId={currentTaskId}
+                  onCancel={handleCancel}
                 />
+              </section>
+            )}
+
+            {/* Results Panel */}
+            {analysisResponse && (
+              <section>
+                <ResultsPanel analysisResponse={analysisResponse} loading={analyzing} />
               </section>
             )}
           </TabsContent>

@@ -496,14 +496,101 @@ export const apiClient = {
 
   // Playground API methods
   /**
-   * Execute ripgrep filter on a file for playground.
-   * @param request Filter request with file path and pattern
+   * Execute playground filter with real-time progress updates via Server-Sent Events.
+   * Creates a temporary insight from ripgrep_command and executes it using the same
+   * infrastructure as analyze. Returns AnalysisResponse format for reuse of ResultsPanel.
+   * @param filePaths List of file paths to analyze
+   * @param ripgrepCommand Complete ripgrep command (e.g., "ERROR" or "-i -A 2 ERROR")
+   * @param onProgress Callback for progress events
+   * @returns Promise that resolves with the analysis results, or rejects if cancelled/errored.
    */
-  async filterFile(request: import("./api-types").PlaygroundFilterRequest): Promise<import("./api-types").FilterResult> {
-    return fetchJSON("/api/playground/filter", {
-      method: "POST",
-      body: JSON.stringify(request),
+  async executePlayground(
+    filePaths: string[],
+    ripgrepCommand: string,
+    onProgress: (event: ProgressEvent) => void
+  ): Promise<AnalysisResponse> {
+    const requestBody = { file_paths: filePaths, ripgrep_command: ripgrepCommand };
+
+    return new Promise((resolve, reject) => {
+      const streamUrl = API_URL ? `${API_URL}/api/playground/execute/stream` : "/api/playground/execute/stream";
+      fetch(streamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+
+          if (!reader) {
+            throw new Error("Response body is not readable");
+          }
+
+          let buffer = "";
+
+          const readChunk = (): Promise<void> => {
+            return reader.read().then(({ done, value }) => {
+              if (done) {
+                reject(new Error("Playground stream ended unexpectedly"));
+                return Promise.resolve();
+              }
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n\n");
+              buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    const event: ProgressEvent = data;
+                    onProgress(event);
+
+                    // Handle terminal events
+                    if (event.type === "result" && event.data) {
+                      resolve(event.data as AnalysisResponse);
+                      return Promise.resolve();
+                    } else if (event.type === "cancelled") {
+                      reject(new Error("Analysis cancelled"));
+                      return Promise.resolve();
+                    } else if (event.type === "error" && event.message) {
+                      // Treat error events as terminal - reject with error message
+                      reject(new Error(event.message));
+                      return Promise.resolve();
+                    }
+                  } catch (e) {
+                    logger.error("Error parsing SSE event:", e);
+                  }
+                }
+              }
+
+              return readChunk();
+            });
+          };
+
+          return readChunk();
+        })
+        .catch(reject);
     });
+  },
+
+  /**
+   * Cancel an active playground task.
+   * @param taskId Task ID to cancel
+   */
+  async cancelPlayground(taskId: string): Promise<void> {
+    await fetchJSON<{ status: string; task_id: string }>(
+      `/api/playground/${taskId}/cancel`,
+      {
+        method: "POST",
+      }
+    );
   },
 
   /**
