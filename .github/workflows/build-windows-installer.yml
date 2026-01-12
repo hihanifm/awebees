@@ -173,7 +173,7 @@ jobs:
             $buildDir = "${{ github.workspace }}\build\windows"
             $outDir = "${{ github.workspace }}\dist\windows"
             New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-            makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer-requires-python.nsi"
+            makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer.nsi"
             if (Test-Path "$outDir\lens-setup-requires-python.exe") {
               Move-Item "$outDir\lens-setup-requires-python.exe" "$outDir\lens-setup-requires-python-$version.exe" -Force
             }
@@ -194,6 +194,6 @@ jobs:
         with:
           files: |
             dist/windows/lens-setup-*.exe
-          tag: v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
