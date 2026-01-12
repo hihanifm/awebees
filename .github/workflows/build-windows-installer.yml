@@ -174,7 +174,10 @@ jobs:
             $outDir = "${{ github.workspace }}\dist\windows"
             New-Item -ItemType Directory -Force -Path $outDir | Out-Null
             makensis /DVERSION="$version" /DBUILD_DIR="$buildDir" /DOUTDIR="$outDir" "${{ github.workspace }}\scripts\windows\installer.nsi"
-            if (Test-Path "$outDir\lens-setup-requires-python.exe") {
+            # NSIS script outputs lens-setup.exe, rename it to versioned name
+            if (Test-Path "$outDir\lens-setup.exe") {
+              Move-Item "$outDir\lens-setup.exe" "$outDir\lens-setup-requires-python-$version.exe" -Force
+            } elseif (Test-Path "$outDir\lens-setup-requires-python.exe") {
               Move-Item "$outDir\lens-setup-requires-python.exe" "$outDir\lens-setup-requires-python-$version.exe" -Force
             }
           } else {
