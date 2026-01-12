@@ -123,7 +123,7 @@ echo "  Dependencies will be installed on Windows during setup"
 # Create ZIP archive
 echo "  Creating ZIP archive..."
 cd "$BUILD_DIR"
-ZIP_NAME="lens-package-${VERSION}.zip"
+ZIP_NAME="lens-package-requires-python-${VERSION}.zip"
 zip -r "$DIST_DIR/$ZIP_NAME" "lens-app" > /dev/null
 
 echo "  ✓ Package created: $ZIP_NAME"
