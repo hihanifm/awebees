@@ -158,9 +158,9 @@ class AppConfig:
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:34000")
     SERVE_FRONTEND: bool = os.getenv("SERVE_FRONTEND", "false").lower() == "true"
     
-    # Logging - default to DEBUG in development, INFO in production
-    # Can be overridden with LOG_LEVEL env var (e.g., LOG_LEVEL=DEBUG for production debugging)
-    _default_log_level = "DEBUG" if os.getenv("ENVIRONMENT", "development").lower() in ("development", "dev") else "INFO"
+    # Logging - default to DEBUG for now (even in production)
+    # Can be overridden with LOG_LEVEL env var (e.g., LOG_LEVEL=INFO to reduce verbosity)
+    _default_log_level = "DEBUG"  # Always DEBUG for now
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", _default_log_level)
     
     # CORS

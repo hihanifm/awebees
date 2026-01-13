@@ -625,6 +625,16 @@ export const apiClient = {
   },
 
   /**
+   * Open a log file in the system default editor.
+   * @param logType Type of log file to open ("backend" or "frontend")
+   */
+  async openLogFile(logType: "backend" | "frontend"): Promise<{ success: boolean; message: string; file_path: string }> {
+    return fetchJSON(`/api/logs/open/${logType}`, {
+      method: "POST",
+    });
+  },
+
+  /**
    * Check if ripgrep is available on the backend.
    */
   async checkRipgrepStatus(): Promise<{ available: boolean }> {

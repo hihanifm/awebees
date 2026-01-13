@@ -24,8 +24,8 @@ export function loadLogLevel(): LogLevel {
     console.error("Failed to load log level from localStorage:", error);
   }
 
-  // Default: INFO in production, DEBUG in development
-  return process.env.NODE_ENV === "production" ? "INFO" : "DEBUG";
+  // Default: DEBUG for now (even in production)
+  return "DEBUG";
 }
 
 /**

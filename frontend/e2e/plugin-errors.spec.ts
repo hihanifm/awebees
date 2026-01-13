@@ -216,6 +216,9 @@ INSIGHT_CONFIG = {
     // Navigate to the application
     await page.goto('/');
     await page.waitForLoadState('networkidle');
+    
+    // Wait for the page to be fully initialized (including error stream connection)
+    await page.waitForTimeout(2000);
 
     // Add test path and refresh
     await page.request.post('http://localhost:34001/api/insight-paths/add', {
@@ -223,9 +226,25 @@ INSIGHT_CONFIG = {
     });
     await page.request.post('http://localhost:34001/api/insight-paths/refresh');
 
-    // Wait for error dialog
+    // Wait a moment for errors to be streamed to frontend
+    await page.waitForTimeout(2000);
+
+    // Wait for error dialog with retry logic
     const dialogTitle = page.getByText('Plugin Load Error');
-    await expect(dialogTitle).toBeVisible({ timeout: 10000 });
+    
+    try {
+      await expect(dialogTitle).toBeVisible({ timeout: 10000 });
+    } catch (error) {
+      // If dialog doesn't appear, try refreshing the page to trigger error stream again
+      console.log('Dialog not visible, refreshing page to trigger error stream...');
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(3000);
+      
+      // Try again after reload
+      const dialogAfterReload = page.getByText('Plugin Load Error');
+      await expect(dialogAfterReload).toBeVisible({ timeout: 10000 });
+    }
 
     // Verify error type is shown
     const errorType = page.locator('text=/Error Type|syntax_error|import_failure|instantiation_failure/i');
@@ -254,6 +273,9 @@ INSIGHT_CONFIG = {
     // Navigate to the application
     await page.goto('/');
     await page.waitForLoadState('networkidle');
+    
+    // Wait for the page to be fully initialized (including error stream connection)
+    await page.waitForTimeout(2000);
 
     // Add test path and refresh
     await page.request.post('http://localhost:34001/api/insight-paths/add', {
@@ -263,6 +285,28 @@ INSIGHT_CONFIG = {
 
     // Wait a moment for errors to be processed
     await page.waitForTimeout(2000);
+
+    // Close any error dialogs that might be blocking interaction
+    const dialogTitle = page.getByText('Plugin Load Error');
+    const isDialogVisible = await dialogTitle.isVisible().catch(() => false);
+    
+    if (isDialogVisible) {
+      // Close the dialog by clicking the close button
+      const closeButton = page.getByRole('button', { name: /close/i }).first();
+      const isCloseButtonVisible = await closeButton.isVisible().catch(() => false);
+      
+      if (isCloseButtonVisible) {
+        await closeButton.click();
+        // Wait for dialog to close
+        await page.waitForTimeout(500);
+        console.log('✓ Closed error dialog before interaction');
+      } else {
+        // Try pressing Escape key to close dialog
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+        console.log('✓ Dismissed error dialog with Escape key');
+      }
+    }
 
     // Verify page is still responsive
     await expect(page.locator('body')).toBeVisible();

@@ -5,6 +5,7 @@ import { Code, Server, Info, CheckCircle2, AlertCircle, Activity, FileText } fro
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { useTranslation } from "@/lib/i18n";
+import { useToast } from "@/components/ui/use-toast";
 
 interface VersionResponse {
   version: string;
@@ -22,14 +23,31 @@ interface StatusBarProps {
 
 export function StatusBar({}: StatusBarProps) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [version, setVersion] = useState<string>("...");
   const [versionLoading, setVersionLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
   const [profilingEnabled, setProfilingEnabled] = useState<boolean>(false);
+  const [openingLog, setOpeningLog] = useState<"backend" | "frontend" | null>(null);
 
-  const openLog = (logType: "backend" | "frontend") => {
-    const logUrl = API_URL ? `${API_URL}/api/logs/${logType}` : `/api/logs/${logType}`;
-    window.open(logUrl, "_blank");
+  const openLog = async (logType: "backend" | "frontend") => {
+    setOpeningLog(logType);
+    try {
+      const result = await apiClient.openLogFile(logType);
+      toast({
+        title: "Success",
+        description: result.message,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to open log file";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setOpeningLog(null);
+    }
   };
 
   // Fetch version and profiling status from API
@@ -144,7 +162,8 @@ export function StatusBar({}: StatusBarProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => openLog("backend")}
-              className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+              disabled={openingLog !== null}
+              className="flex items-center gap-1.5 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title={t("statusBar.backendLog")}
             >
               <FileText className="h-3.5 w-3.5" />
@@ -152,7 +171,8 @@ export function StatusBar({}: StatusBarProps) {
             </button>
             <button
               onClick={() => openLog("frontend")}
-              className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+              disabled={openingLog !== null}
+              className="flex items-center gap-1.5 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title={t("statusBar.frontendLog")}
             >
               <FileText className="h-3.5 w-3.5" />
