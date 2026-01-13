@@ -259,41 +259,46 @@ def discover_all_samples() -> List[SampleInfo]:
         all_samples.extend(built_in_samples)
         logger.info(f"Discovered {len(built_in_samples)} built-in sample(s)")
     
-    # Discover samples from default repository and external paths
-    try:
-        paths_config = InsightPathsConfig()
-        
-        # Include default repository in discovery if set (and not already in external_paths)
-        default_repo = paths_config.get_default_repository()
-        external_paths = paths_config.get_paths()
-        
-        if default_repo:
-            if default_repo not in external_paths:
-                logger.debug(f"Discovering samples from default repository: {default_repo}")
-                if os.path.exists(default_repo):
-                    default_samples = discover_samples_from_path(default_repo, f"default: {default_repo}")
-                    all_samples.extend(default_samples)
-                    if default_samples:
-                        logger.info(f"Discovered {len(default_samples)} sample(s) from default repository: {default_repo}")
+    # Check safe mode - skip external samples if enabled
+    from app.core.config import SafeModeConfig
+    if SafeModeConfig.is_enabled():
+        logger.info("Safe mode enabled - skipping external samples discovery")
+    else:
+        # Discover samples from default repository and external paths
+        try:
+            paths_config = InsightPathsConfig()
+            
+            # Include default repository in discovery if set (and not already in external_paths)
+            default_repo = paths_config.get_default_repository()
+            external_paths = paths_config.get_paths()
+            
+            if default_repo:
+                if default_repo not in external_paths:
+                    logger.debug(f"Discovering samples from default repository: {default_repo}")
+                    if os.path.exists(default_repo):
+                        default_samples = discover_samples_from_path(default_repo, f"default: {default_repo}")
+                        all_samples.extend(default_samples)
+                        if default_samples:
+                            logger.info(f"Discovered {len(default_samples)} sample(s) from default repository: {default_repo}")
+                    else:
+                        logger.warning(f"Default insight repository path does not exist: {default_repo}")
                 else:
-                    logger.warning(f"Default insight repository path does not exist: {default_repo}")
-            else:
-                logger.debug(f"Default repository {default_repo} already in external paths, will be discovered there")
-        
-        # Discover external samples
-        for external_path in external_paths:
-            if not os.path.exists(external_path):
-                logger.warning(f"External insight path does not exist: {external_path}")
-                continue
+                    logger.debug(f"Default repository {default_repo} already in external paths, will be discovered there")
             
-            logger.debug(f"Discovering samples from external path: {external_path}")
-            external_samples = discover_samples_from_path(external_path, f"external: {external_path}")
-            all_samples.extend(external_samples)
-            
-            if external_samples:
-                logger.info(f"Discovered {len(external_samples)} sample(s) from {external_path}")
-    except Exception as e:
-        logger.error(f"Error discovering external samples: {e}", exc_info=True)
+            # Discover external samples
+            for external_path in external_paths:
+                if not os.path.exists(external_path):
+                    logger.warning(f"External insight path does not exist: {external_path}")
+                    continue
+                
+                logger.debug(f"Discovering samples from external path: {external_path}")
+                external_samples = discover_samples_from_path(external_path, f"external: {external_path}")
+                all_samples.extend(external_samples)
+                
+                if external_samples:
+                    logger.info(f"Discovered {len(external_samples)} sample(s) from {external_path}")
+        except Exception as e:
+            logger.error(f"Error discovering external samples: {e}", exc_info=True)
     
     logger.info(f"Total samples discovered: {len(all_samples)}")
     return all_samples

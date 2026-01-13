@@ -76,26 +76,31 @@ class PluginManager:
         else:
             logger.warning(f"Built-in insights directory not found: {insights_dir}")
         
-        from app.core.insight_paths_config import InsightPathsConfig
-        paths_config = InsightPathsConfig()
-        self._external_paths = paths_config.get_paths()
-        
-        logger.debug(f"External insight paths configured: {len(self._external_paths)} path(s)")
-        if self._external_paths:
-            logger.debug(f"External paths: {self._external_paths}")
-        
-        # Include default repository in discovery if set (and not already in external_paths)
-        default_repo = paths_config.get_default_repository()
-        if default_repo:
-            if default_repo not in self._external_paths:
-                logger.info(f"Discovering insights from default repository: {default_repo}")
-                self._discover_from_external(default_repo)
-            else:
-                logger.debug(f"Default repository {default_repo} already in external paths, skipping duplicate discovery")
-        
-        for external_path in self._external_paths:
-            logger.info(f"Discovering external insights from: {external_path}")
-            self._discover_from_external(external_path)
+        # Check safe mode - skip external insights if enabled
+        from app.core.config import SafeModeConfig
+        if SafeModeConfig.is_enabled():
+            logger.info("Safe mode enabled - skipping external insights discovery")
+        else:
+            from app.core.insight_paths_config import InsightPathsConfig
+            paths_config = InsightPathsConfig()
+            self._external_paths = paths_config.get_paths()
+            
+            logger.debug(f"External insight paths configured: {len(self._external_paths)} path(s)")
+            if self._external_paths:
+                logger.debug(f"External paths: {self._external_paths}")
+            
+            # Include default repository in discovery if set (and not already in external_paths)
+            default_repo = paths_config.get_default_repository()
+            if default_repo:
+                if default_repo not in self._external_paths:
+                    logger.info(f"Discovering insights from default repository: {default_repo}")
+                    self._discover_from_external(default_repo)
+                else:
+                    logger.debug(f"Default repository {default_repo} already in external paths, skipping duplicate discovery")
+            
+            for external_path in self._external_paths:
+                logger.info(f"Discovering external insights from: {external_path}")
+                self._discover_from_external(external_path)
         
         built_in_count = len([s for s in self._insight_sources.values() if s == 'built-in'])
         external_count = len([s for s in self._insight_sources.values() if s != 'built-in'])

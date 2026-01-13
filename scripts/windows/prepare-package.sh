@@ -26,13 +26,22 @@ mkdir -p "$PACKAGE_DIR"
 
 # Copy VERSION file to package root
 echo "  Copying VERSION file..."
-cp "$PROJECT_ROOT/VERSION" "$PACKAGE_DIR/"
+cp "$PROJECT_ROOT/VERSION" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy VERSION file from $PROJECT_ROOT/VERSION"
+    exit 1
+}
 
 # Copy backend code
 echo "  Copying backend code..."
 mkdir -p "$PACKAGE_DIR/backend"
-cp -r "$PROJECT_ROOT/backend/app" "$PACKAGE_DIR/backend/"
-cp "$PROJECT_ROOT/backend/requirements.txt" "$PACKAGE_DIR/backend/"
+cp -r "$PROJECT_ROOT/backend/app" "$PACKAGE_DIR/backend/" || {
+    echo "  ✗ Error: Failed to copy backend/app from $PROJECT_ROOT/backend/app"
+    exit 1
+}
+cp "$PROJECT_ROOT/backend/requirements.txt" "$PACKAGE_DIR/backend/" || {
+    echo "  ✗ Error: Failed to copy requirements.txt from $PROJECT_ROOT/backend/requirements.txt"
+    exit 1
+}
 
 # Copy sample files
 echo "  Copying sample files..."
@@ -74,17 +83,42 @@ echo "  Copying frontend build..."
 mkdir -p "$PACKAGE_DIR/frontend"
 # Copy the entire 'out' directory to 'frontend/out'
 # Using trailing slash on source to copy contents, but we want the directory itself
-cp -r "$PROJECT_ROOT/frontend/out" "$PACKAGE_DIR/frontend/"
+cp -r "$PROJECT_ROOT/frontend/out" "$PACKAGE_DIR/frontend/" || {
+    echo "  ✗ Error: Failed to copy frontend/out from $PROJECT_ROOT/frontend/out"
+    echo "  Make sure the frontend has been built (run: cd frontend && npm run build)"
+    exit 1
+}
 
 # Copy Windows launcher scripts
 echo "  Copying Windows launcher scripts..."
-cp "$SCRIPT_DIR/lens-start.bat" "$PACKAGE_DIR/"
-cp "$SCRIPT_DIR/lens-stop.bat" "$PACKAGE_DIR/"
-cp "$SCRIPT_DIR/lens-status.bat" "$PACKAGE_DIR/"
-cp "$SCRIPT_DIR/lens-logs.bat" "$PACKAGE_DIR/"
-cp "$SCRIPT_DIR/lens_tray.py" "$PACKAGE_DIR/"
-cp "$SCRIPT_DIR/lens_icon.png" "$PACKAGE_DIR/"
-cp "$SCRIPT_DIR/lens_icon_32.png" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/lens-start.bat" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy lens-start.bat from $SCRIPT_DIR"
+    exit 1
+}
+cp "$SCRIPT_DIR/lens-stop.bat" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy lens-stop.bat from $SCRIPT_DIR"
+    exit 1
+}
+cp "$SCRIPT_DIR/lens-status.bat" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy lens-status.bat from $SCRIPT_DIR"
+    exit 1
+}
+cp "$SCRIPT_DIR/lens-logs.bat" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy lens-logs.bat from $SCRIPT_DIR"
+    exit 1
+}
+cp "$SCRIPT_DIR/lens_tray.py" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy lens_tray.py from $SCRIPT_DIR"
+    exit 1
+}
+cp "$SCRIPT_DIR/lens_icon.png" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy lens_icon.png from $SCRIPT_DIR"
+    exit 1
+}
+cp "$SCRIPT_DIR/lens_icon_32.png" "$PACKAGE_DIR/" || {
+    echo "  ✗ Error: Failed to copy lens_icon_32.png from $SCRIPT_DIR"
+    exit 1
+}
 
 # Download ripgrep for Windows
 echo "  Downloading ripgrep for Windows..."
@@ -102,11 +136,21 @@ if [ ! -f "$RIPGREP_ZIP" ]; then
 fi
 
 if [ "$RIPGREP_DOWNLOAD_FAILED" != "true" ] && [ -f "$RIPGREP_ZIP" ]; then
-    unzip -q "$RIPGREP_ZIP" -d "$BUILD_DIR"
-    cp "$BUILD_DIR/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc/rg.exe" "$PACKAGE_DIR/bin/"
-    rm -rf "$BUILD_DIR/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc"
-    echo "  ✓ ripgrep included for 10-100x faster pattern matching"
-else
+    unzip -q "$RIPGREP_ZIP" -d "$BUILD_DIR" || {
+        echo "  ⚠ Warning: Failed to unzip ripgrep (optional tool)"
+        RIPGREP_DOWNLOAD_FAILED=true
+    }
+    if [ "$RIPGREP_DOWNLOAD_FAILED" != "true" ]; then
+        cp "$BUILD_DIR/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc/rg.exe" "$PACKAGE_DIR/bin/" || {
+            echo "  ⚠ Warning: Failed to copy ripgrep binary (optional tool)"
+        }
+        rm -rf "$BUILD_DIR/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc"
+        if [ -f "$PACKAGE_DIR/bin/rg.exe" ]; then
+            echo "  ✓ ripgrep included for 10-100x faster pattern matching"
+        fi
+    fi
+fi
+if [ ! -f "$PACKAGE_DIR/bin/rg.exe" ]; then
     echo "  ⚠ ripgrep not included (optional, can be installed later)"
 fi
 

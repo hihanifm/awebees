@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Settings, HelpCircle } from "lucide-react";
+import { Settings, HelpCircle, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { apiClient } from "@/lib/api-client";
+import { useToast } from "@/components/ui/use-toast";
+import { logger } from "@/lib/logger";
 
 interface TopNavigationProps {
   className?: string;
@@ -16,8 +19,90 @@ export function TopNavigation({ className }: TopNavigationProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [safeMode, setSafeMode] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLAnchorElement>(null);
+  const { toast } = useToast();
 
   const isActive = (path: string) => pathname === path;
+
+  // Load safe mode state on mount
+  useEffect(() => {
+    const loadSafeMode = async () => {
+      try {
+        const state = await apiClient.getSafeMode();
+        setSafeMode(state.enabled);
+      } catch (error) {
+        logger.error("Failed to load safe mode:", error);
+      }
+    };
+    loadSafeMode();
+  }, []);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
+          logoRef.current && !logoRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [menuOpen]);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMenuPosition({ x: e.clientX, y: e.clientY });
+    setMenuOpen(true);
+  };
+
+  const handleStartSafe = async () => {
+    try {
+      const result = await apiClient.startSafeMode();
+      setSafeMode(result.enabled);
+      toast({
+        title: "Safe Mode Enabled",
+        description: result.message,
+      });
+      setMenuOpen(false);
+      // Dispatch event to update banner
+      window.dispatchEvent(new CustomEvent("safe-mode-changed"));
+    } catch (error) {
+      logger.error("Failed to start safe mode:", error);
+      toast({
+        title: "Error",
+        description: "Failed to enable safe mode",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStopSafe = async () => {
+    try {
+      const result = await apiClient.stopSafeMode();
+      setSafeMode(result.enabled);
+      toast({
+        title: "Safe Mode Disabled",
+        description: result.message,
+      });
+      setMenuOpen(false);
+      // Dispatch event to update banner
+      window.dispatchEvent(new CustomEvent("safe-mode-changed"));
+    } catch (error) {
+      logger.error("Failed to stop safe mode:", error);
+      toast({
+        title: "Error",
+        description: "Failed to disable safe mode",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <>
@@ -32,16 +117,53 @@ export function TopNavigation({ className }: TopNavigationProps) {
       >
         <div className="mx-auto flex h-full w-full items-center px-6 relative">
           {/* App Name */}
-          <Link href="/" className="flex items-center gap-3 no-underline hover:opacity-80 transition-opacity">
-            <div className="flex flex-col">
-              <span className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
-                Lens.AI
-              </span>
-              <span className="text-xs text-muted-foreground leading-tight italic">
-                {t("app.tagline")}
-              </span>
-            </div>
-          </Link>
+          <div className="relative">
+            <Link 
+              href="/" 
+              ref={logoRef}
+              className="flex items-center gap-3 no-underline hover:opacity-80 transition-opacity"
+              onContextMenu={handleContextMenu}
+            >
+              <div className="flex flex-col">
+                <span className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
+                  Lens.AI
+                </span>
+                <span className="text-xs text-muted-foreground leading-tight italic">
+                  {t("app.tagline")}
+                </span>
+              </div>
+            </Link>
+            
+            {/* Context Menu */}
+            {menuOpen && (
+              <div
+                ref={menuRef}
+                className="fixed z-50 min-w-[180px] rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                style={{
+                  left: `${menuPosition.x}px`,
+                  top: `${menuPosition.y}px`,
+                }}
+              >
+                {safeMode ? (
+                  <button
+                    onClick={handleStopSafe}
+                    className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStartSafe}
+                    className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Start Safe
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Navigation Tabs - Centered */}
           <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1">

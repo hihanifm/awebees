@@ -286,8 +286,25 @@ Function uninstallPrevious
     ; Try to stop python processes (necessary for upgrade)
     DetailPrint "Stopping running LensAI processes..."
     ExecWait 'cmd /c taskkill /F /IM python.exe /T' $R1
-    ; Give processes time to terminate
-    Sleep 2000
+    ; Give processes time to terminate (increased from 2000ms to 5000ms)
+    Sleep 5000
+    ; Verify processes are actually gone
+    DetailPrint "Verifying processes have terminated..."
+    ExecWait 'cmd /c tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH | findstr /C:"python.exe"' $R2
+    IntCmp $R2 0 processesStillRunning
+    ; Processes are gone, continue
+    Goto continueUninstall
+    processesStillRunning:
+    ; Processes still running, wait a bit more and try again
+    DetailPrint "Some processes still running, waiting additional 3 seconds..."
+    Sleep 3000
+    ExecWait 'cmd /c tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH | findstr /C:"python.exe"' $R2
+    IntCmp $R2 0 warnProcessesStillRunning
+    ; Processes are now gone
+    Goto continueUninstall
+    warnProcessesStillRunning:
+    ; Still running after retry - warn user but continue
+    DetailPrint "Warning: Some Python processes may still be running. Continuing anyway..."
     
     continueUninstall:
     ; Backup .env file if it exists
@@ -319,7 +336,24 @@ Function uninstallPrevious
     ; (The uninstaller should have removed it, but clean up just in case)
     ; Note: .env backup is already in $TEMP, so it's safe to remove $INSTDIR
     IfFileExists "$INSTDIR" 0 done
+    
+    ; Try to remove venv directory separately first (venv files are often locked)
+    IfFileExists "$INSTDIR\venv" 0 skipVenvCleanup
+        DetailPrint "Removing old virtual environment directory..."
+        RMDir /r "$INSTDIR\venv"
+        ; If venv removal failed, try with REBOOTOK flag
+        IfFileExists "$INSTDIR\venv" 0 skipVenvCleanup
+            DetailPrint "Virtual environment directory locked, will be removed on reboot..."
+            RMDir /REBOOTOK "$INSTDIR\venv"
+    skipVenvCleanup:
+    
+    ; Now try to remove the entire installation directory
+    DetailPrint "Removing old installation directory..."
     RMDir /r "$INSTDIR"
+    ; If removal failed, try with REBOOTOK flag for stubborn files
+    IfFileExists "$INSTDIR" 0 done
+        DetailPrint "Some files are locked, will be removed on reboot..."
+        RMDir /REBOOTOK "$INSTDIR"
     
     ; Note: .env file will be restored after files are extracted in the main section
     Goto done
@@ -358,20 +392,45 @@ Section "Lens Application" SecApp
     
     ; Create virtual environment and install dependencies
     DetailPrint "Creating virtual environment..."
-    ExecWait 'python -m venv "$INSTDIR\venv"'
+    ExecWait 'python -m venv "$INSTDIR\venv"' $0
+    IntCmp $0 0 venvCreated
+    ; venv creation failed
+    MessageBox MB_OK|MB_ICONSTOP "Failed to create virtual environment (exit code: $0).$\n$\nPossible causes:$\n- Insufficient disk space$\n- Permission issues$\n- Python installation is corrupted$\n$\nPlease check the error message above and try again."
+    Abort
     
-    DetailPrint "Installing dependencies..."
-    ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m pip install --upgrade pip'
-    ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m pip install -r "$INSTDIR\backend\requirements.txt"'
+    venvCreated:
+    DetailPrint "Virtual environment created successfully"
     
-    ; Create Start Menu shortcuts
-    CreateDirectory "$SMPROGRAMS\LensAI"
-    CreateShortcut "$SMPROGRAMS\LensAI\LensAI.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
-    CreateShortcut "$SMPROGRAMS\LensAI\Stop LensAI.lnk" "$INSTDIR\lens-stop.bat" "" "$INSTDIR\lens-stop.bat" 0
-    CreateShortcut "$SMPROGRAMS\LensAI\Uninstall LensAI.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
+    DetailPrint "Upgrading pip..."
+    ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m pip install --upgrade pip' $0
+    IntCmp $0 0 pipUpgraded
+    ; pip upgrade failed
+    MessageBox MB_OK|MB_ICONSTOP "Failed to upgrade pip (exit code: $0).$\n$\nPossible causes:$\n- Network connectivity issues$\n- Firewall blocking pip$\n- Proxy configuration problems$\n$\nPlease check your internet connection and try again."
+    Abort
     
-    ; Create desktop shortcut (optional)
-    CreateShortcut "$DESKTOP\LensAI.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
+    pipUpgraded:
+    DetailPrint "pip upgraded successfully"
+    
+    DetailPrint "Installing Python dependencies..."
+    ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m pip install -r "$INSTDIR\backend\requirements.txt"' $0
+    IntCmp $0 0 depsInstalled
+    ; pip install failed
+    MessageBox MB_OK|MB_ICONSTOP "Failed to install Python dependencies (exit code: $0).$\n$\nPossible causes:$\n- Network connectivity issues$\n- Firewall blocking pip$\n- Proxy configuration problems$\n- Corrupted requirements.txt file$\n$\nPlease check your internet connection and try again.$\n$\nYou can also try installing manually:$\n1. Open Command Prompt as Administrator$\n2. Navigate to: $INSTDIR$\n3. Run: venv\Scripts\activate$\n4. Run: pip install -r backend\requirements.txt"
+    Abort
+    
+    depsInstalled:
+    DetailPrint "Dependencies installed successfully"
+    
+    ; Verify uvicorn is installed
+    DetailPrint "Verifying uvicorn installation..."
+    ExecWait '"$INSTDIR\venv\Scripts\python.exe" -m uvicorn --version' $0
+    IntCmp $0 0 uvicornVerified
+    ; uvicorn verification failed
+    MessageBox MB_OK|MB_ICONSTOP "uvicorn was not installed correctly.$\n$\nThe installation appeared to succeed, but uvicorn cannot be found.$\n$\nThis may indicate:$\n- Corrupted pip installation$\n- Incomplete dependency installation$\n- Virtual environment issues$\n$\nPlease try:$\n1. Uninstall this application$\n2. Restart your computer$\n3. Run the installer again$\n$\nIf the problem persists, please report this issue."
+    Abort
+    
+    uvicornVerified:
+    DetailPrint "uvicorn verified successfully"
     
     ; Write registry keys for Add/Remove Programs
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "DisplayName" "${APP_NAME}"
@@ -383,8 +442,17 @@ Section "Lens Application" SecApp
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LensAI" "NoRepair" 1
     
-    ; Create uninstaller
+    ; Create uninstaller (must be done before creating shortcuts)
     WriteUninstaller "$INSTDIR\Uninstall.exe"
+    
+    ; Create Start Menu shortcuts
+    CreateDirectory "$SMPROGRAMS\LensAI"
+    CreateShortcut "$SMPROGRAMS\LensAI\LensAI.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
+    CreateShortcut "$SMPROGRAMS\LensAI\Stop LensAI.lnk" "$INSTDIR\lens-stop.bat" "" "$INSTDIR\lens-stop.bat" 0
+    CreateShortcut "$SMPROGRAMS\LensAI\Uninstall LensAI.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
+    
+    ; Create desktop shortcut (optional)
+    CreateShortcut "$DESKTOP\LensAI.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
 SectionEnd
 
 ; Uninstaller Section

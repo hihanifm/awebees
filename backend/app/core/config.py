@@ -240,6 +240,35 @@ class ZipSecurityConfig:
         logger.debug(f"Reloaded ZipSecurityConfig from .env - MAX_FILE_SIZE={cls.MAX_FILE_SIZE / (1024*1024):.0f}MB, MAX_TOTAL_SIZE={cls.MAX_TOTAL_SIZE / (1024*1024*1024):.0f}GB")
 
 
+class SafeModeConfig:
+    """Configuration for safe mode - prevents loading external insights and samples."""
+    
+    # Read from environment variable on startup
+    ENABLED: bool = os.getenv("SAFE_MODE", "false").lower() in ("true", "1", "yes")
+    FROM_ENV: bool = os.getenv("SAFE_MODE", "false").lower() in ("true", "1", "yes")
+    
+    @classmethod
+    def is_enabled(cls) -> bool:
+        """Check if safe mode is currently enabled."""
+        return cls.ENABLED
+    
+    @classmethod
+    def start(cls) -> None:
+        """Set safe mode enabled (in-memory only, requires restart to take effect)."""
+        import logging
+        logger = logging.getLogger(__name__)
+        cls.ENABLED = True
+        logger.info("Safe mode enabled (in-memory). Restart required for changes to take effect.")
+    
+    @classmethod
+    def stop(cls) -> None:
+        """Set safe mode disabled (in-memory only, requires restart to take effect)."""
+        import logging
+        logger = logging.getLogger(__name__)
+        cls.ENABLED = False
+        logger.info("Safe mode disabled (in-memory). Restart required for changes to take effect.")
+
+
 # Export config classes
-__all__ = ["AIConfig", "AppConfig", "ZipSecurityConfig"]
+__all__ = ["AIConfig", "AppConfig", "ZipSecurityConfig", "SafeModeConfig"]
 

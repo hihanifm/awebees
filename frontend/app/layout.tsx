@@ -7,6 +7,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TopNavigation } from "@/components/TopNavigation";
 import { RipgrepBanner } from "@/components/RipgrepBanner";
+import { SafeModeBanner } from "@/components/SafeModeBanner";
 import { PluginErrorDialog } from "@/components/PluginErrorDialog";
 import { loadTheme } from "@/lib/theme-storage";
 import { loadLanguage, type Language } from "@/lib/language-storage";
@@ -320,8 +321,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-10 pt-16`}
       >
         <TopNavigation />
+        <SafeModeBanner />
         {showRipgrepBanner && (
-          <div className="fixed top-16 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
+          <div className="fixed left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm" style={{ top: '64px' }}>
             <div className="max-w-[90%] mx-auto px-4 py-3">
               <RipgrepBanner
                 onDismiss={() => {
@@ -332,8 +334,10 @@ export default function RootLayout({
             </div>
           </div>
         )}
-        <div className={showRipgrepBanner ? "pt-28" : ""}>
-          {children}
+        <div className={showRipgrepBanner ? "pt-28" : "pt-16"}>
+          <div className="mt-0">
+            {children}
+          </div>
         </div>
         <Toaster />
         <PluginErrorDialog 

@@ -696,6 +696,31 @@ export const apiClient = {
     // Both failed, use defaults
     return { models: defaultModels, source: 'defaults' };
   },
+
+  /**
+   * Get current safe mode state.
+   */
+  async getSafeMode(): Promise<{ enabled: boolean; from_env: boolean }> {
+    return fetchJSON("/api/safe-mode");
+  },
+
+  /**
+   * Start safe mode (requires restart to take effect).
+   */
+  async startSafeMode(): Promise<{ enabled: boolean; from_env: boolean; message: string }> {
+    return fetchJSON("/api/safe-mode/start", {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Stop safe mode (requires restart to take effect).
+   */
+  async stopSafeMode(): Promise<{ enabled: boolean; from_env: boolean; message: string }> {
+    return fetchJSON("/api/safe-mode/stop", {
+      method: "POST",
+    });
+  },
 };
 
 // Export individual AI functions for easier imports
