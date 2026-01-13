@@ -156,6 +156,12 @@ Be specific and practical."""
                     # Log response status
                     logger.info(f"AI Service: Received response with status {response.status_code}")
                     
+                    # Check Content-Type header for error responses
+                    content_type = response.headers.get("content-type", "").lower()
+                    if "application/json" in content_type and response.status_code == 200:
+                        # For JSON responses with 200, we'll check the body for errors
+                        pass  # Will be checked in stream processing
+                    
                     # Check status before processing stream
                     if response.status_code >= 400:
                         # Read error response content
@@ -164,13 +170,33 @@ Be specific and practical."""
                         logger.error(f"AI Service: HTTP error {response.status_code}: {error_text}")
                         raise Exception(f"AI API error: {response.status_code} - {error_text}")
                     
+                    # For 200 responses, check if it's actually an error by peeking at first few bytes
+                    # Some proxies return 200 with error messages
+                    if response.status_code == 200:
+                        # We'll check the first line of the stream for error patterns
+                        pass  # Will be checked in stream processing
+                    
                     # Track streaming metrics
                     chunk_count = 0
                     total_chars = 0
+                    first_line = True
+                    error_detected = False
                     
                     async for line in response.aiter_lines():
                         if not line.strip():
                             continue
+                        
+                        # Check first non-empty line for error messages (some proxies return errors in plain text)
+                        if first_line:
+                            first_line = False
+                            line_lower = line.lower()
+                            # Check for common error patterns even if status is 200
+                            if any(keyword in line_lower for keyword in ["error", "unexpected", "not found", "invalid", "failed"]):
+                                # This might be an error message, try to parse it
+                                if not line.startswith("data: "):
+                                    # Plain text error (not SSE format)
+                                    logger.error(f"AI Service: Error message in response: {line}")
+                                    raise Exception(f"AI API error: {line}")
                         
                         if line.startswith("data: "):
                             data_str = line[6:]  # Remove "data: " prefix
@@ -184,6 +210,7 @@ Be specific and practical."""
                                 
                                 # Check for errors in the response
                                 if "error" in data:
+                                    error_detected = True
                                     error_msg = data["error"]
                                     if isinstance(error_msg, dict):
                                         error_msg = error_msg.get("message", str(error_msg))
@@ -201,6 +228,15 @@ Be specific and practical."""
                                     logger.error(f"AI Service: Full error data: {data}")
                                     raise Exception(f"AI API error: {error_msg}")
                                 
+                                # Check for error-like patterns in the data structure
+                                if isinstance(data, dict):
+                                    # Some APIs return errors in different formats
+                                    if "message" in data and any(keyword in str(data["message"]).lower() for keyword in ["error", "unexpected", "not found", "invalid"]):
+                                        error_detected = True
+                                        error_msg = data["message"]
+                                        logger.error(f"AI Service: Error message detected in response: {error_msg}")
+                                        raise Exception(f"AI API error: {error_msg}")
+                                
                                 # Extract content delta
                                 if "choices" in data and len(data["choices"]) > 0:
                                     delta = data["choices"][0].get("delta", {})
@@ -212,9 +248,19 @@ Be specific and practical."""
                                         yield content_chunk
                             
                             except json.JSONDecodeError as e:
+                                # If we can't parse JSON and it looks like an error, raise it
+                                if any(keyword in data_str.lower() for keyword in ["error", "unexpected", "not found", "invalid", "failed"]):
+                                    logger.error(f"AI Service: Error message in non-JSON response: {data_str}")
+                                    raise Exception(f"AI API error: {data_str}")
+                                
                                 logger.warning(f"AI Service: Failed to parse SSE chunk: {e}")
                                 logger.debug(f"AI Service: Problematic data: {data_str[:200]}")
                                 continue
+                    
+                    # If we got a 200 response but no content chunks and no error was detected, something might be wrong
+                    if chunk_count == 0 and not error_detected and response.status_code == 200:
+                        logger.warning(f"AI Service: Received 200 response but no content chunks were yielded")
+                        # Don't raise here as some APIs might legitimately return empty responses
             
             logger.info(f"AI Service: Streaming analysis complete - {chunk_count} chunks, {total_chars} characters")
         

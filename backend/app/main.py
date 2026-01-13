@@ -29,39 +29,54 @@ def extract_sample_files():
         backend_dir = Path(__file__).parent.parent
         samples_dir = backend_dir / "samples"
         
-        # Extract built-in samples
-        zip_path = samples_dir / "android-bugreport.zip"
-        txt_path = samples_dir / "android-bugreport.txt"
-        
-        # Check if sample directory and zip exist
+        # Check if sample directory exists
         if not samples_dir.exists():
             logger.warning(f"Samples directory not found: {samples_dir}")
-        elif zip_path.exists():
-            # Extract if not already extracted
-            if not txt_path.exists():
-                logger.info(f"Extracting sample file: {zip_path.name}")
-                logger.info(f"This may take a moment (extracting ~57MB)...")
+        else:
+            # Extract all zip files in the samples directory
+            zip_files = list(samples_dir.glob("*.zip"))
+            
+            for zip_path in zip_files:
+                # Determine target file name: if zip already ends in .txt.zip, use the stem as-is
+                # Otherwise, append .txt to the stem
+                if zip_path.stem.endswith('.txt'):
+                    # Already has .txt in name (e.g., bugreport.txt.zip -> bugreport.txt)
+                    txt_path = samples_dir / zip_path.stem
+                else:
+                    # Append .txt (e.g., android-bugreport.zip -> android-bugreport.txt)
+                    txt_path = samples_dir / f"{zip_path.stem}.txt"
                 
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    # Extract only the .txt file, skip __MACOSX folder
-                    for member in zip_ref.namelist():
-                        if member.endswith('.txt') and not member.startswith('__MACOSX'):
-                            # Extract with original name then rename
-                            extracted_path = samples_dir / member
-                            zip_ref.extract(member, samples_dir)
-                            
-                            # Rename to simplified name if different
-                            if extracted_path.name != txt_path.name:
-                                extracted_path.rename(txt_path)
-                            
-                            file_size_mb = txt_path.stat().st_size / (1024 * 1024)
-                            logger.info(f"✓ Sample file extracted: {txt_path.name} ({file_size_mb:.1f}MB)")
-                            logger.info(f"✓ Sample file location: {txt_path}")
-                            break
-            else:
-                file_size_mb = txt_path.stat().st_size / (1024 * 1024)
-                logger.info(f"✓ Sample file ready: {txt_path.name} ({file_size_mb:.1f}MB)")
-                logger.debug(f"  Location: {txt_path}")
+                # Extract if not already extracted
+                if not txt_path.exists():
+                    logger.info(f"Extracting sample file: {zip_path.name}")
+                    if zip_path.stat().st_size > 50 * 1024 * 1024:  # > 50MB
+                        logger.info(f"This may take a moment (extracting ~{zip_path.stat().st_size / (1024 * 1024):.0f}MB)...")
+                    
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        # Extract only the .txt or .log file, skip __MACOSX folder
+                        extracted = False
+                        for member in zip_ref.namelist():
+                            if (member.endswith('.txt') or member.endswith('.log')) and not member.startswith('__MACOSX'):
+                                # Extract with original name then rename
+                                extracted_path = samples_dir / member
+                                zip_ref.extract(member, samples_dir)
+                                
+                                # Rename to target name if different
+                                if extracted_path.name != txt_path.name:
+                                    if extracted_path.exists():
+                                        extracted_path.rename(txt_path)
+                                
+                                file_size_mb = txt_path.stat().st_size / (1024 * 1024)
+                                logger.info(f"✓ Sample file extracted: {txt_path.name} ({file_size_mb:.1f}MB)")
+                                logger.info(f"✓ Sample file location: {txt_path}")
+                                extracted = True
+                                break
+                        
+                        if not extracted:
+                            logger.warning(f"No .txt or .log file found in {zip_path.name}")
+                else:
+                    file_size_mb = txt_path.stat().st_size / (1024 * 1024)
+                    logger.debug(f"✓ Sample file ready: {txt_path.name} ({file_size_mb:.1f}MB)")
         
         # Extract samples from external insight paths
         # This will trigger extraction during discovery

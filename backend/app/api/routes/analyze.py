@@ -456,9 +456,43 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
         
         except Exception as e:
             logger.error(f"AI Analyze API: Error during analysis: {e}", exc_info=True)
+            
+            # Format error message to be more user-friendly
+            error_message = str(e)
+            
+            # Remove technical prefixes if present
+            if error_message.startswith("AI API error: "):
+                error_message = error_message.replace("AI API error: ", "", 1)
+            elif error_message.startswith("AI API connection error: "):
+                error_message = error_message.replace("AI API connection error: ", "", 1)
+            
+            # Provide helpful hints for common errors
+            if "endpoint" in error_message.lower() or "unexpected" in error_message.lower():
+                if "/v1" not in error_message:
+                    error_message = (
+                        f"{error_message}\n\n"
+                        f"💡 Tip: Make sure your AI Base URL includes '/v1' at the end "
+                        f"(e.g., https://api.openai.com/v1 or http://localhost:1234/v1)"
+                    )
+            elif "401" in error_message or "unauthorized" in error_message.lower():
+                error_message = (
+                    f"{error_message}\n\n"
+                    f"💡 Tip: Check that your API key is correct and has the necessary permissions."
+                )
+            elif "404" in error_message or "not found" in error_message.lower():
+                error_message = (
+                    f"{error_message}\n\n"
+                    f"💡 Tip: Verify that your AI Base URL is correct and the endpoint exists."
+                )
+            elif "connection" in error_message.lower() or "timeout" in error_message.lower():
+                error_message = (
+                    f"{error_message}\n\n"
+                    f"💡 Tip: Check your network connection and ensure the AI service is accessible."
+                )
+            
             yield _format_sse_event({
                 "type": "ai_error",
-                "message": str(e),
+                "message": error_message,
                 "error": True
             })
     

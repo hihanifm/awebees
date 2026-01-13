@@ -246,6 +246,38 @@ Path: {user_path}"""
                     # Log error but don't fail the entire analysis
                     # Store error message so frontend can display it
                     error_msg = str(e)
+                    
+                    # Format error message to be more user-friendly
+                    # Remove technical prefixes if present
+                    if error_msg.startswith("AI API error: "):
+                        error_msg = error_msg.replace("AI API error: ", "", 1)
+                    elif error_msg.startswith("AI API connection error: "):
+                        error_msg = error_msg.replace("AI API connection error: ", "", 1)
+                    
+                    # Provide helpful hints for common errors
+                    if "endpoint" in error_msg.lower() or "unexpected" in error_msg.lower():
+                        if "/v1" not in error_msg:
+                            error_msg = (
+                                f"{error_msg}\n\n"
+                                f"💡 Tip: Make sure your AI Base URL includes '/v1' at the end "
+                                f"(e.g., https://api.openai.com/v1 or http://localhost:1234/v1)"
+                            )
+                    elif "401" in error_msg or "unauthorized" in error_msg.lower():
+                        error_msg = (
+                            f"{error_msg}\n\n"
+                            f"💡 Tip: Check that your API key is correct and has the necessary permissions."
+                        )
+                    elif "404" in error_msg or "not found" in error_msg.lower():
+                        error_msg = (
+                            f"{error_msg}\n\n"
+                            f"💡 Tip: Verify that your AI Base URL is correct and the endpoint exists."
+                        )
+                    elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+                        error_msg = (
+                            f"{error_msg}\n\n"
+                            f"💡 Tip: Check your network connection and ensure the AI service is accessible."
+                        )
+                    
                     result.ai_analysis_error = error_msg
                     logger.warning(f"AI auto-analysis failed: {error_msg}", exc_info=True)
             else:

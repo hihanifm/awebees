@@ -56,9 +56,12 @@ def extract_zip_file(zip_path: Path, samples_dir: Path) -> Optional[Path]:
                     extracted_path = samples_dir / member
                     zip_ref.extract(member, samples_dir)
                     
-                    # Use the base name of the zip file (without extension) for the extracted file
-                    base_name = zip_path.stem
-                    target_path = samples_dir / f"{base_name}.txt"
+                    # Determine target name: if zip already ends in .txt.zip, use the stem as-is
+                    # Otherwise, append .txt to the stem
+                    if zip_path.stem.endswith('.txt'):
+                        target_path = samples_dir / zip_path.stem
+                    else:
+                        target_path = samples_dir / f"{zip_path.stem}.txt"
                     
                     # Rename if different
                     if extracted_path.name != target_path.name:
@@ -118,9 +121,9 @@ def infer_sample_metadata(sample_path: Path) -> Dict[str, Any]:
     }
 
 
-def discover_samples_from_path(insight_path: str, source_label: str) -> List[SampleInfo]:
+def discover_samples_from_directory(samples_dir: Path, source_label: str) -> List[SampleInfo]:
+    """Discover samples from a samples directory directly."""
     samples = []
-    samples_dir = Path(insight_path) / "samples"
     
     # Skip if samples directory doesn't exist
     if not samples_dir.exists():
@@ -152,8 +155,13 @@ def discover_samples_from_path(insight_path: str, source_label: str) -> List[Sam
             
             # Handle compressed files
             if file_path.suffix == '.zip':
+                # Determine expected extracted path
+                if file_path.stem.endswith('.txt'):
+                    extracted_path = samples_dir / file_path.stem
+                else:
+                    extracted_path = samples_dir / f"{file_path.stem}.txt"
+                
                 # Extract if not already extracted
-                extracted_path = samples_dir / f"{file_path.stem}.txt"
                 if not extracted_path.exists():
                     extracted_path = extract_zip_file(file_path, samples_dir)
                     if extracted_path is None:
@@ -230,26 +238,49 @@ def discover_samples_from_path(insight_path: str, source_label: str) -> List[Sam
     except PermissionError as e:
         logger.error(f"Permission denied accessing samples directory {samples_dir}: {e}")
     except Exception as e:
-        logger.error(f"Error discovering samples from {insight_path}: {e}", exc_info=True)
+        logger.error(f"Error discovering samples from {samples_dir}: {e}", exc_info=True)
     
     return samples
+
+
+def discover_samples_from_path(insight_path: str, source_label: str) -> List[SampleInfo]:
+    """Discover samples from an insight path (looks for samples subdirectory)."""
+    samples_dir = Path(insight_path) / "samples"
+    return discover_samples_from_directory(samples_dir, source_label)
 
 
 def discover_all_samples() -> List[SampleInfo]:
     all_samples = []
     
-    # Discover built-in samples
+    # Discover built-in samples (SAMPLES_DIR is already the samples directory, not an insight path)
     if SAMPLES_DIR.exists():
         logger.debug(f"Discovering built-in samples from: {SAMPLES_DIR}")
-        built_in_samples = discover_samples_from_path(str(SAMPLES_DIR), "built-in")
+        built_in_samples = discover_samples_from_directory(SAMPLES_DIR, "built-in")
         all_samples.extend(built_in_samples)
         logger.info(f"Discovered {len(built_in_samples)} built-in sample(s)")
     
-    # Discover external samples
+    # Discover samples from default repository and external paths
     try:
         paths_config = InsightPathsConfig()
+        
+        # Include default repository in discovery if set (and not already in external_paths)
+        default_repo = paths_config.get_default_repository()
         external_paths = paths_config.get_paths()
         
+        if default_repo:
+            if default_repo not in external_paths:
+                logger.debug(f"Discovering samples from default repository: {default_repo}")
+                if os.path.exists(default_repo):
+                    default_samples = discover_samples_from_path(default_repo, f"default: {default_repo}")
+                    all_samples.extend(default_samples)
+                    if default_samples:
+                        logger.info(f"Discovered {len(default_samples)} sample(s) from default repository: {default_repo}")
+                else:
+                    logger.warning(f"Default insight repository path does not exist: {default_repo}")
+            else:
+                logger.debug(f"Default repository {default_repo} already in external paths, will be discovered there")
+        
+        # Discover external samples
         for external_path in external_paths:
             if not os.path.exists(external_path):
                 logger.warning(f"External insight path does not exist: {external_path}")
