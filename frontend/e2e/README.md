@@ -57,11 +57,20 @@ npm run test:e2e:debug
 - ✅ App doesn't crash on errors
 - ✅ Graceful error messages
 
+### Plugin Error Handling Test
+- ✅ Error dialog appears when plugins fail to load
+- ✅ Detailed error information displayed (stack traces, file paths)
+- ✅ Multiple errors handled gracefully
+- ✅ App remains functional despite plugin errors
+
 ## Test Structure
 
 ```
 e2e/
-├── core-workflow.spec.ts     # Main test file
+├── core-workflow.spec.ts      # Main workflow test
+├── plugin-errors.spec.ts      # Plugin error handling test
+├── navigation.spec.ts         # Navigation tests
+├── demo-ripgrep-banner.spec.ts # Ripgrep banner tests
 ├── fixtures/
 │   └── test-helpers.ts        # Reusable helper functions
 └── README.md                  # This file

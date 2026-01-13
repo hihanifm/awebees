@@ -43,7 +43,6 @@ VIAddVersionKey "LegalCopyright" "Copyright (C) 2024"
 ; Finish page settings - Add "Run Lens" option
 !define MUI_FINISHPAGE_RUN "$INSTDIR\lens-start.bat"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch Lens now"
-!define MUI_FINISHPAGE_TEXT "LensAI has been successfully installed on your computer.$\r$\n$\r$\nYou can start LensAI by:$\r$\n  • Clicking the checkbox above to launch it now$\r$\n  • Using the desktop shortcut$\r$\n  • Opening it from the Start Menu (LensAI folder)$\r$\n$\r$\nOnce started, LensAI will run in the system tray. Right-click the tray icon to start/stop the backend or view logs."
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
@@ -122,11 +121,10 @@ FunctionEnd
 Function CheckRipgrep
     DetailPrint "Checking for ripgrep installation..."
     
-    ; #region agent log - Debug: Verify function is called
+    ; #region agent log - Debug: Log PATH environment
     ; Write debug info to log file
     FileOpen $R1 "$TEMP\lens-installer-debug.log" w
     FileWrite $R1 "=== Ripgrep Detection Debug ===$\r$\n"
-    FileWrite $R1 "Function CheckRipgrep CALLED$\r$\n"
     ; Get system PATH
     ReadEnvStr $R2 "PATH"
     FileWrite $R1 "System PATH: $R2$\r$\n"
@@ -136,17 +134,11 @@ Function CheckRipgrep
     ; #endregion agent log
     
     ; Method 1: Try direct command execution (current method)
-    ; #region agent log - Debug: Before executing rg --version
-    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
-    FileWrite $R1 "About to execute: cmd /c rg --version$\r$\n"
-    FileClose $R1
-    ; #endregion agent log
     ExecWait 'cmd /c rg --version' $0
     
     ; #region agent log - Debug: Log Method 1 result
     FileOpen $R1 "$TEMP\lens-installer-debug.log" a
     FileWrite $R1 "Method 1 (rg --version): exit code=$0$\r$\n"
-    FileWrite $R1 "About to check: IntCmp $0 0 RipgrepFound$\r$\n"
     ; Read where.exe output if available
     IfFileExists "$TEMP\rg-where-output.txt" 0 skipWhereRead
         ClearErrors
@@ -159,14 +151,7 @@ Function CheckRipgrep
     FileClose $R1
     ; #endregion agent log
     
-    ; Check if exit code is 0 (success)
     IntCmp $0 0 RipgrepFound
-    
-    ; #region agent log - Debug: Method 1 check failed
-    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
-    FileWrite $R1 "IntCmp result: exit code $0 != 0, continuing to next check$\r$\n"
-    FileClose $R1
-    ; #endregion agent log
     
     ; #region agent log - Debug: Method 1 failed, try alternative methods
     FileOpen $R1 "$TEMP\lens-installer-debug.log" a
@@ -208,12 +193,6 @@ Function CheckRipgrep
     ; #region agent log - Debug: Log Method 3 results
     FileOpen $R1 "$TEMP\lens-installer-debug.log" a
     FileWrite $R1 "Method 3 (file system check): not found in common locations$\r$\n"
-    FileClose $R1
-    ; #endregion agent log
-    
-    ; #region agent log - Debug: All detection methods failed
-    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
-    FileWrite $R1 "All detection methods failed - showing 'not installed' message$\r$\n"
     FileClose $R1
     ; #endregion agent log
     
@@ -260,7 +239,6 @@ Function CheckRipgrep
     
     ; #region agent log - Debug: Log successful detection
     FileOpen $R1 "$TEMP\lens-installer-debug.log" a
-    FileWrite $R1 "JUMPED TO RipgrepFound LABEL$\r$\n"
     FileWrite $R1 "Result: Ripgrep FOUND$\r$\n"
     FileClose $R1
     ; #endregion agent log
@@ -362,20 +340,8 @@ Section "Lens Application" SecApp
     ; Check for Python before installation
     Call CheckPython
     
-    ; #region agent log - Debug: About to call CheckRipgrep
-    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
-    FileWrite $R1 "=== About to call CheckRipgrep ===$\r$\n"
-    FileClose $R1
-    ; #endregion agent log
-    
     ; Check and optionally install ripgrep (optional component)
     Call CheckRipgrep
-    
-    ; #region agent log - Debug: CheckRipgrep returned
-    FileOpen $R1 "$TEMP\lens-installer-debug.log" a
-    FileWrite $R1 "=== CheckRipgrep returned ===$\r$\n"
-    FileClose $R1
-    ; #endregion agent log
     
     SetOutPath "$INSTDIR"
     

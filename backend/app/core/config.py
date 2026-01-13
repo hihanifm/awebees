@@ -159,6 +159,7 @@ class AppConfig:
     SERVE_FRONTEND: bool = os.getenv("SERVE_FRONTEND", "false").lower() == "true"
     
     # Logging - default to DEBUG in development, INFO in production
+    # Can be overridden with LOG_LEVEL env var (e.g., LOG_LEVEL=DEBUG for production debugging)
     _default_log_level = "DEBUG" if os.getenv("ENVIRONMENT", "development").lower() in ("development", "dev") else "INFO"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", _default_log_level)
     

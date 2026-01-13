@@ -7,10 +7,12 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TopNavigation } from "@/components/TopNavigation";
 import { RipgrepBanner } from "@/components/RipgrepBanner";
+import { PluginErrorDialog } from "@/components/PluginErrorDialog";
 import { loadTheme } from "@/lib/theme-storage";
 import { loadLanguage, type Language } from "@/lib/language-storage";
 import { initLanguage } from "@/lib/i18n";
 import { apiClient } from "@/lib/api-client";
+import { usePluginErrors } from "@/hooks/use-plugin-errors";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +33,9 @@ export default function RootLayout({
   const [language, setLanguage] = useState<Language>("en");
   const [mounted, setMounted] = useState(false);
   const [showRipgrepBanner, setShowRipgrepBanner] = useState(false);
+  
+  // Listen for plugin load errors and show dialogs
+  const { currentError, isDialogOpen, closeDialog } = usePluginErrors();
 
   useEffect(() => {
     // Load theme and language from localStorage on mount
@@ -331,6 +336,11 @@ export default function RootLayout({
           {children}
         </div>
         <Toaster />
+        <PluginErrorDialog 
+          error={currentError} 
+          open={isDialogOpen} 
+          onClose={closeDialog} 
+        />
       </body>
     </html>
   );

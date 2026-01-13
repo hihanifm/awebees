@@ -3,6 +3,7 @@ import importlib.util
 import inspect
 import os
 import sys
+import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
 import logging
@@ -49,18 +50,39 @@ class PluginManager:
         self._insight_sources.clear()
         self._errors.clear()
         
+        logger.info("=" * 80)
+        logger.info("Starting plugin discovery...")
+        logger.debug(f"Plugin manager initialized: {id(self)}")
+        
         logger.info("Discovering built-in insights...")
         current_dir = Path(__file__).parent.parent
         insights_dir = current_dir / "insights"
         
         if insights_dir.exists():
-            self._discover_insights_recursive(insights_dir, insights_dir, source="built-in")
+            logger.debug(f"Built-in insights directory: {insights_dir.absolute()}")
+            try:
+                self._discover_insights_recursive(insights_dir, insights_dir, source="built-in")
+            except Exception as e:
+                error_msg = f"Unexpected error during discovery of built-in insights: {e}"
+                logger.error(error_msg, exc_info=True)
+                error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+                self._errors.append(ErrorEvent(
+                    type="discovery_error",
+                    message=f"Unexpected error discovering built-in insights",
+                    severity="error",
+                    details=error_details,
+                    folder=None
+                ))
         else:
             logger.warning(f"Built-in insights directory not found: {insights_dir}")
         
         from app.core.insight_paths_config import InsightPathsConfig
         paths_config = InsightPathsConfig()
         self._external_paths = paths_config.get_paths()
+        
+        logger.debug(f"External insight paths configured: {len(self._external_paths)} path(s)")
+        if self._external_paths:
+            logger.debug(f"External paths: {self._external_paths}")
         
         # Include default repository in discovery if set (and not already in external_paths)
         default_repo = paths_config.get_default_repository()
@@ -75,7 +97,23 @@ class PluginManager:
             logger.info(f"Discovering external insights from: {external_path}")
             self._discover_from_external(external_path)
         
-        logger.info(f"Total insights discovered: {len(self._insights)} ({len([s for s in self._insight_sources.values() if s == 'built-in'])} built-in, {len([s for s in self._insight_sources.values() if s != 'built-in'])} external)")
+        built_in_count = len([s for s in self._insight_sources.values() if s == 'built-in'])
+        external_count = len([s for s in self._insight_sources.values() if s != 'built-in'])
+        error_count = len(self._errors)
+        
+        logger.info("=" * 80)
+        logger.info(f"Plugin discovery complete:")
+        logger.info(f"  Total insights discovered: {len(self._insights)}")
+        logger.info(f"  Built-in insights: {built_in_count}")
+        logger.info(f"  External insights: {external_count}")
+        logger.info(f"  Errors encountered: {error_count}")
+        
+        if error_count > 0:
+            logger.warning(f"Plugin discovery completed with {error_count} error(s). Check error details above.")
+            for error in self._errors:
+                logger.warning(f"  - {error.severity.upper()}: {error.message} (type: {error.type}, file: {error.file or 'N/A'})")
+        
+        logger.info("=" * 80)
     
     def _discover_from_external(self, external_path: str) -> None:
         """
@@ -86,7 +124,7 @@ class PluginManager:
         """
         path = Path(external_path)
         if not path.exists():
-            logger.warning(f"External path does not exist: {external_path}")
+            logger.warning(f"External path does not exist: {external_path}", exc_info=False)
             self._errors.append(ErrorEvent(
                 type="import_failure",
                 message=f"External path not found: {external_path}",
@@ -96,7 +134,7 @@ class PluginManager:
             return
         
         if not path.is_dir():
-            logger.warning(f"External path is not a directory: {external_path}")
+            logger.warning(f"External path is not a directory: {external_path}", exc_info=False)
             self._errors.append(ErrorEvent(
                 type="import_failure",
                 message=f"External path is not a directory: {external_path}",
@@ -109,6 +147,17 @@ class PluginManager:
         
         try:
             self._discover_external_recursive(path, path, str(path.absolute()))
+        except Exception as e:
+            error_msg = f"Unexpected error during discovery of external path {external_path}: {e}"
+            logger.error(error_msg, exc_info=True)
+            error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            self._errors.append(ErrorEvent(
+                type="discovery_error",
+                message=f"Unexpected error discovering insights from: {external_path}",
+                severity="error",
+                details=error_details,
+                folder=None
+            ))
         finally:
             if str(path) in sys.path:
                 sys.path.remove(str(path))
@@ -122,10 +171,35 @@ class PluginManager:
             current_path: Current directory being scanned
             source: Source identifier (absolute path)
         """
-        python_files = [
-            f for f in current_path.iterdir()
-            if f.is_file() and f.suffix == ".py" and f.stem != "__init__"
-        ]
+        try:
+            python_files = [
+                f for f in current_path.iterdir()
+                if f.is_file() and f.suffix == ".py" and f.stem != "__init__"
+            ]
+        except PermissionError as e:
+            error_msg = f"Permission denied accessing directory: {current_path}"
+            logger.error(error_msg, exc_info=True)
+            error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            self._errors.append(ErrorEvent(
+                type="permission_error",
+                message=f"Permission denied accessing directory: {current_path.name}",
+                severity="error",
+                details=error_details,
+                folder=str(current_path.relative_to(root_path)) if current_path != root_path else None
+            ))
+            return
+        except Exception as e:
+            error_msg = f"Error listing files in directory: {current_path}"
+            logger.error(error_msg, exc_info=True)
+            error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            self._errors.append(ErrorEvent(
+                type="directory_error",
+                message=f"Error accessing directory: {current_path.name}",
+                severity="error",
+                details=error_details,
+                folder=str(current_path.relative_to(root_path)) if current_path != root_path else None
+            ))
+            return
         
         # Determine folder name (relative to root_path)
         if current_path == root_path:
@@ -144,7 +218,26 @@ class PluginManager:
                 
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[module_name] = module
-                spec.loader.exec_module(module)
+                
+                # Execute module - this can fail with syntax errors, import errors, etc.
+                try:
+                    spec.loader.exec_module(module)
+                except SyntaxError as e:
+                    error_msg = f"Syntax error in {file_path.name} at line {e.lineno}: {e.msg}"
+                    logger.error(error_msg, exc_info=True)
+                    error_details = f"Syntax Error: {e.msg}\nFile: {e.filename}\nLine: {e.lineno}\nText: {e.text}\n\nTraceback:\n{traceback.format_exc()}"
+                    self._errors.append(ErrorEvent(
+                        type="syntax_error",
+                        message=f"Syntax error in: {file_path.name}",
+                        severity="error",
+                        details=error_details,
+                        folder=folder_name,
+                        file=file_path.name
+                    ))
+                    continue  # Skip this file and continue with others
+                except Exception as e:
+                    # Re-raise to be caught by outer exception handler
+                    raise
                 
                 config_found = False
                 if hasattr(module, 'INSIGHT_CONFIG'):
@@ -171,23 +264,26 @@ class PluginManager:
                         logger.info(f"Registered external config-based insight: {instance.id} ({instance.name}) from {source}")
                     except Exception as e:
                         error_msg = f"Failed to create config-based insight from {file_path.stem}: {e}"
-                        logger.error(error_msg)
+                        logger.error(error_msg, exc_info=True)
+                        error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                         self._errors.append(ErrorEvent(
                             type="instantiation_failure",
                             message=f"Failed to instantiate config-based insight: {file_path.stem}",
                             severity="error",
-                            details=str(e),
+                            details=error_details,
                             folder=folder_name,
                             file=file_path.name
                         ))
                 
                 # Find all Insight subclasses in the module (skip if config-based insight found)
                 if not config_found:
+                    insight_classes_found = False
                     for name, obj in inspect.getmembers(module, inspect.isclass):
                         if (issubclass(obj, Insight) and 
                             obj is not Insight and 
                             obj.__module__ == module_name and
                             not inspect.isabstract(obj)):  # Skip abstract base classes
+                            insight_classes_found = True
                             try:
                                 instance = obj()
                                 # Generate ID from file path for consistency with config-based insights
@@ -200,31 +296,70 @@ class PluginManager:
                                 logger.info(f"Registered external class-based insight: {wrapped_instance.id} ({wrapped_instance.name}) from {source}")
                             except Exception as e:
                                 error_msg = f"Failed to instantiate insight {name}: {e}"
-                                logger.error(error_msg)
+                                logger.error(error_msg, exc_info=True)
+                                error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                                 self._errors.append(ErrorEvent(
                                     type="instantiation_failure",
                                     message=f"Failed to instantiate insight: {name}",
                                     severity="error",
-                                    details=str(e),
+                                    details=error_details,
                                     folder=folder_name,
                                     file=file_path.name,
                                     insight_id=getattr(wrapped_instance, 'id', None) if 'wrapped_instance' in locals() else None
                                 ))
+                    
+                    # If no INSIGHT_CONFIG and no Insight classes found, log a warning
+                    if not insight_classes_found:
+                        warning_msg = f"No INSIGHT_CONFIG or Insight class found in {file_path.name}"
+                        logger.warning(warning_msg)
+                        self._errors.append(ErrorEvent(
+                            type="no_insight_found",
+                            message=f"No insight definition found in: {file_path.name}",
+                            severity="warning",
+                            details="File does not contain INSIGHT_CONFIG or any Insight class. It will be skipped.",
+                            folder=folder_name,
+                            file=file_path.name
+                        ))
             except Exception as e:
-                error_msg = f"Failed to import external module {file_path.stem}: {e}"
-                logger.error(error_msg)
+                error_msg = f"Failed to import external module {file_path.name} from {file_path.parent}: {e}"
+                logger.error(error_msg, exc_info=True)
+                error_details = f"File: {file_path}\nError: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                 self._errors.append(ErrorEvent(
                     type="import_failure",
-                    message=f"Failed to import external module: {file_path.stem}",
+                    message=f"Failed to import external module: {file_path.name}",
                     severity="error",
-                    details=str(e),
+                    details=error_details,
                     folder=folder_name,
                     file=file_path.name
                 ))
         
-        subdirs = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('__')]
-        for subdir in subdirs:
-            self._discover_external_recursive(root_path, subdir, source)
+        try:
+            subdirs = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('__')]
+            for subdir in subdirs:
+                try:
+                    self._discover_external_recursive(root_path, subdir, source)
+                except Exception as e:
+                    error_msg = f"Error discovering insights in subdirectory: {subdir}"
+                    logger.error(error_msg, exc_info=True)
+                    error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+                    self._errors.append(ErrorEvent(
+                        type="discovery_error",
+                        message=f"Error discovering insights in subdirectory: {subdir.name}",
+                        severity="error",
+                        details=error_details,
+                        folder=str(subdir.relative_to(root_path))
+                    ))
+        except Exception as e:
+            error_msg = f"Error listing subdirectories in: {current_path}"
+            logger.error(error_msg, exc_info=True)
+            error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            self._errors.append(ErrorEvent(
+                type="directory_error",
+                message=f"Error accessing subdirectories in: {current_path.name}",
+                severity="error",
+                details=error_details,
+                folder=str(current_path.relative_to(root_path)) if current_path != root_path else None
+            ))
     
     def _discover_insights_recursive(self, root_path: Path, current_path: Path, source: str = "built-in") -> None:
         """
@@ -235,11 +370,36 @@ class PluginManager:
             current_path: Current directory being scanned
             source: Source identifier for the insight
         """
-        python_files = [
-            f for f in current_path.iterdir()
-            if f.is_file() and f.suffix == ".py" 
-            and f.stem != "__init__" and f.stem != "base"
-        ]
+        try:
+            python_files = [
+                f for f in current_path.iterdir()
+                if f.is_file() and f.suffix == ".py" 
+                and f.stem != "__init__" and f.stem != "base"
+            ]
+        except PermissionError as e:
+            error_msg = f"Permission denied accessing directory: {current_path}"
+            logger.error(error_msg, exc_info=True)
+            error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            self._errors.append(ErrorEvent(
+                type="permission_error",
+                message=f"Permission denied accessing directory: {current_path.name}",
+                severity="error",
+                details=error_details,
+                folder=str(current_path.relative_to(root_path)) if current_path != root_path else None
+            ))
+            return
+        except Exception as e:
+            error_msg = f"Error listing files in directory: {current_path}"
+            logger.error(error_msg, exc_info=True)
+            error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            self._errors.append(ErrorEvent(
+                type="directory_error",
+                message=f"Error accessing directory: {current_path.name}",
+                severity="error",
+                details=error_details,
+                folder=str(current_path.relative_to(root_path)) if current_path != root_path else None
+            ))
+            return
         
         if current_path == root_path:
             folder_name = None
@@ -254,7 +414,25 @@ class PluginManager:
                 else:
                     module_name = f"app.insights.{folder_name}.{file_path.stem}"
                 
-                module = importlib.import_module(module_name)
+                # Import module - this can fail with syntax errors, import errors, etc.
+                try:
+                    module = importlib.import_module(module_name)
+                except SyntaxError as e:
+                    error_msg = f"Syntax error in {file_path.name} at line {e.lineno}: {e.msg}"
+                    logger.error(error_msg, exc_info=True)
+                    error_details = f"Syntax Error: {e.msg}\nFile: {e.filename}\nLine: {e.lineno}\nText: {e.text}\n\nTraceback:\n{traceback.format_exc()}"
+                    self._errors.append(ErrorEvent(
+                        type="syntax_error",
+                        message=f"Syntax error in: {file_path.name}",
+                        severity="error",
+                        details=error_details,
+                        folder=folder_name,
+                        file=file_path.name
+                    ))
+                    continue  # Skip this file and continue with others
+                except Exception as e:
+                    # Re-raise to be caught by outer exception handler
+                    raise
                 
                 config_found = False
                 if hasattr(module, 'INSIGHT_CONFIG'):
@@ -280,22 +458,25 @@ class PluginManager:
                         logger.info(f"Registered config-based insight: {instance.id} ({instance.name}) in folder: {folder_name or 'root'}")
                     except Exception as e:
                         error_msg = f"Failed to create config-based insight from {file_path.stem}: {e}"
-                        logger.error(error_msg)
+                        logger.error(error_msg, exc_info=True)
+                        error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                         self._errors.append(ErrorEvent(
                             type="instantiation_failure",
                             message=f"Failed to instantiate config-based insight: {file_path.stem}",
                             severity="error",
-                            details=str(e),
+                            details=error_details,
                             folder=folder_name,
                             file=file_path.name
                         ))
                 
                 if not config_found:
+                    insight_classes_found = False
                     for name, obj in inspect.getmembers(module, inspect.isclass):
                         if (issubclass(obj, Insight) and 
                             obj is not Insight and 
                             obj.__module__ == module_name and
                             not inspect.isabstract(obj)):
+                            insight_classes_found = True
                             try:
                                 instance = obj()
                                 generated_id = Insight._generate_id_from_path(
@@ -306,31 +487,70 @@ class PluginManager:
                                 logger.info(f"Registered class-based insight: {wrapped_instance.id} ({wrapped_instance.name}) in folder: {folder_name or 'root'}")
                             except Exception as e:
                                 error_msg = f"Failed to instantiate insight {name}: {e}"
-                                logger.error(error_msg)
+                                logger.error(error_msg, exc_info=True)
+                                error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                                 self._errors.append(ErrorEvent(
                                     type="instantiation_failure",
                                     message=f"Failed to instantiate insight: {name}",
                                     severity="error",
-                                    details=str(e),
+                                    details=error_details,
                                     folder=folder_name,
                                     file=file_path.name,
                                     insight_id=getattr(wrapped_instance, 'id', None) if 'wrapped_instance' in locals() else None
                                 ))
+                    
+                    # If no INSIGHT_CONFIG and no Insight classes found, log a warning
+                    if not insight_classes_found:
+                        warning_msg = f"No INSIGHT_CONFIG or Insight class found in {file_path.name}"
+                        logger.warning(warning_msg)
+                        self._errors.append(ErrorEvent(
+                            type="no_insight_found",
+                            message=f"No insight definition found in: {file_path.name}",
+                            severity="warning",
+                            details="File does not contain INSIGHT_CONFIG or any Insight class. It will be skipped.",
+                            folder=folder_name,
+                            file=file_path.name
+                        ))
             except Exception as e:
-                error_msg = f"Failed to import module {file_path.stem}: {e}"
-                logger.error(error_msg)
+                error_msg = f"Failed to import module {file_path.name} from {file_path.parent}: {e}"
+                logger.error(error_msg, exc_info=True)
+                error_details = f"File: {file_path}\nError: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                 self._errors.append(ErrorEvent(
                     type="import_failure",
-                    message=f"Failed to import module: {file_path.stem}",
+                    message=f"Failed to import module: {file_path.name}",
                     severity="error",
-                    details=str(e),
+                    details=error_details,
                     folder=folder_name,
                     file=file_path.name
                 ))
         
-        subdirs = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('__')]
-        for subdir in subdirs:
-            self._discover_insights_recursive(root_path, subdir, source)
+        try:
+            subdirs = [d for d in current_path.iterdir() if d.is_dir() and not d.name.startswith('__')]
+            for subdir in subdirs:
+                try:
+                    self._discover_insights_recursive(root_path, subdir, source)
+                except Exception as e:
+                    error_msg = f"Error discovering insights in subdirectory: {subdir}"
+                    logger.error(error_msg, exc_info=True)
+                    error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+                    self._errors.append(ErrorEvent(
+                        type="discovery_error",
+                        message=f"Error discovering insights in subdirectory: {subdir.name}",
+                        severity="error",
+                        details=error_details,
+                        folder=str(subdir.relative_to(root_path))
+                    ))
+        except Exception as e:
+            error_msg = f"Error listing subdirectories in: {current_path}"
+            logger.error(error_msg, exc_info=True)
+            error_details = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            self._errors.append(ErrorEvent(
+                type="directory_error",
+                message=f"Error accessing subdirectories in: {current_path.name}",
+                severity="error",
+                details=error_details,
+                folder=str(current_path.relative_to(root_path)) if current_path != root_path else None
+            ))
     
     def register_insight(self, insight: Insight, folder: str = None, source: str = "built-in") -> None:
         """
@@ -349,7 +569,7 @@ class PluginManager:
                 f"Existing: {existing_source}, New: {source}. "
                 f"Skipping registration of duplicate."
             )
-            logger.error(error_msg)
+            logger.error(error_msg, exc_info=False)
             self._errors.append(ErrorEvent(
                 type="duplicate_id",
                 message=f"Duplicate insight ID: {insight.id}",
