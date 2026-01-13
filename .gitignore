@@ -65,8 +65,9 @@ dist/windows/*
 *.swp
 *~.nib
 
-# Sample files (keep .zip, ignore extracted .txt)
-backend/samples/*.txt
+# Sample files (keep .zip, ignore all other files)
+backend/samples/*
+!backend/samples/*.zip
 
 # External insight paths configuration
 backend/insight_paths.json
