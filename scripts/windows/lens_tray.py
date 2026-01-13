@@ -235,6 +235,18 @@ class LensTrayApp:
             # Update icon menu
             self.icon.update_menu()
             
+            # Wait for server to be ready, then show notification and open browser
+            def wait_and_open():
+                time.sleep(4)  # Give server time to start
+                if self._check_backend_running():
+                    url = f"http://127.0.0.1:{self.port}"
+                    self.icon.notify("Lens Started", f"Server running on {url}")
+                    self.open_browser()
+            
+            # Run in background thread to avoid blocking
+            import threading
+            threading.Thread(target=wait_and_open, daemon=True).start()
+            
         except Exception as e:
             self._log_error(f"Error starting backend: {e}")
             self.icon.notify("Error", f"Failed to start backend: {str(e)}")
@@ -288,6 +300,9 @@ class LensTrayApp:
             
             # Update icon menu
             self.icon.update_menu()
+            
+            # Show notification
+            self.icon.notify("Lens Stopped", "Backend server has been stopped")
             
         except Exception as e:
             self._log_error(f"Error stopping backend: {e}")
