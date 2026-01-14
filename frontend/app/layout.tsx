@@ -318,7 +318,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-10 pt-16`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-10`}
       >
         <TopNavigation />
         <SafeModeBanner />

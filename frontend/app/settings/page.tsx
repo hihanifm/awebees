@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { ArrowLeft, Settings, Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette, Languages, FileText } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette, Languages, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputWithHistory } from "@/components/ui/input-with-history";
@@ -516,26 +515,6 @@ export default function SettingsPage() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 font-sans">
       <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-6 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
-          <Link 
-            href="/"
-            className="inline-flex items-center text-sm text-primary hover:text-primary/80 mb-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            {t("app.backToAnalysis")}
-          </Link>
-          <div className="flex items-center gap-3">
-            <Settings className="h-8 w-8 text-primary" />
-            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              {t("settings.title")}
-            </h1>
-          </div>
-          <p className="text-foreground/80 mt-2 font-medium">
-            {t("settings.description")}
-          </p>
-        </div>
-
         {/* Content */}
         <div className="space-y-6">
           <Tabs defaultValue="ai" className="w-full">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -17,7 +16,7 @@ import { PromptManager } from "@/components/playground/PromptManager";
 import { apiClient, getAIConfig } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
 import { AnalysisResponse, ProgressEvent, AISystemPrompts } from "@/lib/api-types";
-import { Play, Sparkles, Search, FileText, X, ArrowLeft, AlertCircle } from "lucide-react";
+import { Play, Sparkles, Search, FileText, X, AlertCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { logger } from "@/lib/logger";
 
@@ -329,13 +328,6 @@ export default function PlaygroundPage() {
       <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-6 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 -mx-4 px-6 py-4">
-          <Link 
-            href="/"
-            className="inline-flex items-center text-sm text-primary hover:text-primary/80 mb-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            {t("app.backToAnalysis")}
-          </Link>
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             {t("playground.title")}
           </h1>

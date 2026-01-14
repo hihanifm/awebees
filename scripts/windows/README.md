@@ -15,7 +15,7 @@ The build system creates a single Windows installer that automatically installs 
 Run the build script to prepare packages:
 
 ```bash
-./scripts/build-windows.sh
+./scripts/build/build-windows.sh
 ```
 
 This will:
@@ -54,13 +54,14 @@ The GitHub Actions workflow will:
 
 ## Files
 
-- `build-windows.sh` - Main build script (runs on Linux/Mac)
-- `prepare-package.sh` - Package preparation script
-- `lens-start.bat` - Application launcher (Windows)
-- `lens-stop.bat` - Stop application script (Windows)
-- `lens-status.bat` - Status check script (Windows)
-- `lens-logs.bat` - View backend logs (Windows)
-- `installer-requires-python.nsi` - NSIS script for installer (auto-installs Python and ripgrep via winget)
+- `build/build-windows.sh` - Main build script (cross-platform shell script, works on Linux/Mac/Windows via Git Bash/WSL)
+- `build/common/prepare-package.sh` - Package preparation script
+- `build/common/verify-package.sh` - Package verification script
+- `package/lens-start.bat` - Application launcher (included in Windows package)
+- `package/lens-stop.bat` - Stop application script (included in Windows package)
+- `package/lens-status.bat` - Status check script (included in Windows package)
+- `package/lens-logs.bat` - View backend logs (included in Windows package)
+- `installer.nsi` - NSIS script for installer (auto-installs Python and ripgrep via winget)
 - `build-config.json` - Build configuration
 
 ## Configuration

@@ -170,9 +170,10 @@ export function TopNavigation({ className }: TopNavigationProps) {
               href="/"
               className={cn(
                 "px-4 py-2 rounded-md text-sm font-medium transition-all no-underline",
-                "hover:bg-primary/10",
+                "border border-l-[1px] border-t-[1px] border-l-primary/30 border-t-primary/30 border-r-primary/60 border-b-primary/60",
+                "bg-primary/10 hover:bg-primary/15",
                 isActive("/")
-                  ? "bg-primary/15 text-primary font-semibold border-b-2 border-primary"
+                  ? "bg-primary/15 text-primary font-semibold border-b-2 border-b-primary"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -184,9 +185,10 @@ export function TopNavigation({ className }: TopNavigationProps) {
               href="/playground"
               className={cn(
                 "px-4 py-2 rounded-md text-sm font-medium transition-all no-underline",
-                "hover:bg-primary/10",
+                "border border-l-[1px] border-t-[1px] border-l-primary/30 border-t-primary/30 border-r-primary/60 border-b-primary/60",
+                "bg-primary/10 hover:bg-primary/15",
                 isActive("/playground")
-                  ? "bg-primary/15 text-primary font-semibold border-b-2 border-primary"
+                  ? "bg-primary/15 text-primary font-semibold border-b-2 border-b-primary"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >

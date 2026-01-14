@@ -231,7 +231,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 font-sans">
-      <main className="flex min-h-screen w-full max-w-[99%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x-[0.5px] border-border/30 pt-8">
+      <main className="flex min-h-screen w-full max-w-[99%] flex-col gap-4 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x-[0.5px] border-border/30 pt-4">
         {/* Backend Errors Banner */}
         {backendErrors.length > 0 && (
           <section>
@@ -239,7 +239,7 @@ export default function Home() {
           </section>
         )}
 
-        <div className="space-y-8">
+        <div className="space-y-4">
               {/* File Selection */}
               <section>
                 <h2 className="text-base font-semibold mb-4">{t("app.enterFilePaths")}</h2>
