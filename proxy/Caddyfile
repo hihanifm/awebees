@@ -1,0 +1,21 @@
+{
+    # Enable access logging
+    log {
+        output file logs/access.log
+        format console
+    }
+}
+
+:8080 {
+    # Reverse proxy to target server
+    reverse_proxy https://api.openai.com:443 {
+        # Enable streaming for AI responses (flush immediately)
+        flush_interval -1
+        
+        # Transport settings for better streaming
+        transport http {
+            dial_timeout 30s
+            response_header_timeout 30s
+        }
+    }
+}

@@ -55,6 +55,14 @@ fi
 
 # Generate Caddyfile
 echo "Generating Caddyfile..."
+
+# Determine listen address format for Caddy
+if [ "$LISTEN_HOST" = "0.0.0.0" ] || [ -z "$LISTEN_HOST" ]; then
+    LISTEN_ADDR=":${LISTEN_PORT}"
+else
+    LISTEN_ADDR="${LISTEN_HOST}:${LISTEN_PORT}"
+fi
+
 cat > Caddyfile <<EOF
 {
     # Enable access logging
@@ -64,17 +72,11 @@ cat > Caddyfile <<EOF
     }
 }
 
-:${LISTEN_PORT} {
+${LISTEN_ADDR} {
     # Reverse proxy to target server
     reverse_proxy ${TARGET_PROTOCOL}://${TARGET_HOST}:${TARGET_PORT} {
-        # Enable streaming for AI responses
+        # Enable streaming for AI responses (flush immediately)
         flush_interval -1
-        
-        # Preserve all headers
-        header_up Host {host}
-        header_up X-Forwarded-Host {host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Real-IP {remote_host}
         
         # Transport settings for better streaming
         transport http {

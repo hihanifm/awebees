@@ -19,18 +19,15 @@ export function SafeModeBanner() {
     };
 
     loadSafeMode();
-
-    // Poll for safe mode changes every 2 seconds
-    const interval = setInterval(loadSafeMode, 2000);
     
-    // Also listen for custom events when safe mode changes
+    // Listen for custom events when safe mode changes
+    // Note: Safe mode changes require restart to take effect, so no polling needed
     const handleSafeModeChange = () => {
       loadSafeMode();
     };
     window.addEventListener("safe-mode-changed", handleSafeModeChange);
     
     return () => {
-      clearInterval(interval);
       window.removeEventListener("safe-mode-changed", handleSafeModeChange);
     };
   }, []);

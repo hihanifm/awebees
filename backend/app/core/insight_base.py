@@ -224,7 +224,6 @@ Path: {user_path}"""
                 logger.info(f"AI Auto-trigger: Skipping AI analysis - result content is empty or whitespace-only")
                 return result
             
-            from app.services.ai_service import AIService
             from app.core.config import AIConfig
             
             logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, ENABLED={AIConfig.ENABLED}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}")
@@ -232,7 +231,8 @@ Path: {user_path}"""
             if AIConfig.is_configured():
                 try:
                     logger.info(f"AI Auto-trigger: Starting auto-analysis with prompt_type={self.ai_prompt_type}")
-                    ai_service = AIService()
+                    from app.services.ai_service import get_ai_service
+                    ai_service = get_ai_service()
                     
                     ai_result = await ai_service.analyze(
                         content=result.content,

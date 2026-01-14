@@ -18,6 +18,9 @@ class AIConfig:
     TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
     TIMEOUT: int = int(os.getenv("OPENAI_TIMEOUT", "60"))
     
+    # Detailed logging for AI interactions (logs full HTTP requests/responses)
+    DETAILED_LOGGING: bool = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
+    
     # Predefined system prompts
     SYSTEM_PROMPTS: Dict[str, str] = {
         "summarize": """You are a log analysis assistant. Summarize the following log analysis results concisely.
@@ -60,6 +63,7 @@ Be specific and practical. Prioritize recommendations by severity."""
             "max_tokens": cls.MAX_TOKENS,
             "temperature": cls.TEMPERATURE,
             "timeout": cls.TIMEOUT,
+            "detailed_logging": cls.DETAILED_LOGGING,
             "is_configured": cls.is_configured()
         }
         
@@ -106,6 +110,7 @@ Be specific and practical. Prioritize recommendations by severity."""
         cls.MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
         cls.TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
         cls.TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "60"))
+        cls.DETAILED_LOGGING = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
         
         logger.info(f"Reloaded AIConfig from .env - enabled={cls.ENABLED}, is_configured={cls.is_configured()}")
         if old_enabled != cls.ENABLED or old_api_key_set != bool(cls.API_KEY):
@@ -143,6 +148,10 @@ Be specific and practical. Prioritize recommendations by severity."""
         if "timeout" in config:
             cls.TIMEOUT = int(config["timeout"])
             logger.debug(f"Updated TIMEOUT={cls.TIMEOUT}")
+        
+        if "detailed_logging" in config:
+            cls.DETAILED_LOGGING = bool(config["detailed_logging"])
+            logger.debug(f"Updated DETAILED_LOGGING={cls.DETAILED_LOGGING}")
         
         if persist:
             cls._persist_to_env(config)

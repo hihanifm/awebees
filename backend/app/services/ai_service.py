@@ -32,6 +32,81 @@ class AIService:
     def is_configured(self) -> bool:
         return bool(self.api_key)
     
+    def _is_detailed_logging_enabled(self) -> bool:
+        """Check if detailed logging is enabled via config."""
+        try:
+            from app.core.config import AIConfig
+            return AIConfig.DETAILED_LOGGING
+        except Exception:
+            return False
+    
+    def _mask_sensitive_headers(self, headers: Dict[str, str]) -> Dict[str, str]:
+        """Mask sensitive data in headers for logging."""
+        masked = headers.copy()
+        if "Authorization" in masked:
+            # Mask API key but keep Bearer prefix visible
+            auth = masked["Authorization"]
+            if auth.startswith("Bearer "):
+                key = auth[7:]
+                if len(key) > 8:
+                    masked["Authorization"] = f"Bearer {key[:8]}...{key[-4:]}"
+                else:
+                    masked["Authorization"] = "Bearer ***"
+        return masked
+    
+    def _log_detailed_request(self, method: str, url: str, headers: Dict[str, str], payload: Optional[Dict[str, Any]] = None) -> None:
+        """Log detailed HTTP request information."""
+        if not self._is_detailed_logging_enabled():
+            return
+        
+        masked_headers = self._mask_sensitive_headers(headers)
+        
+        logger.info("=" * 80)
+        logger.info("AI Service: Detailed Request Log")
+        logger.info("=" * 80)
+        logger.info(f"Method: {method}")
+        logger.info(f"URL: {url}")
+        logger.info(f"Headers: {json.dumps(masked_headers, indent=2)}")
+        
+        if payload:
+            # Create a copy for logging to avoid modifying original
+            log_payload = payload.copy()
+            
+            # Truncate very long content in messages for readability
+            if "messages" in log_payload:
+                truncated_messages = []
+                for msg in log_payload["messages"]:
+                    msg_copy = msg.copy()
+                    if "content" in msg_copy and len(msg_copy["content"]) > 500:
+                        msg_copy["content"] = msg_copy["content"][:500] + f"... [truncated, total length: {len(msg['content'])} chars]"
+                    truncated_messages.append(msg_copy)
+                log_payload["messages"] = truncated_messages
+            
+            logger.info(f"Payload: {json.dumps(log_payload, indent=2, ensure_ascii=False)}")
+        logger.info("=" * 80)
+    
+    def _log_detailed_response(self, status_code: int, headers: Dict[str, str], body: Optional[str] = None, is_stream: bool = False) -> None:
+        """Log detailed HTTP response information."""
+        if not self._is_detailed_logging_enabled():
+            return
+        
+        logger.info("=" * 80)
+        logger.info("AI Service: Detailed Response Log")
+        logger.info("=" * 80)
+        logger.info(f"Status Code: {status_code}")
+        logger.info(f"Headers: {json.dumps(dict(headers), indent=2)}")
+        
+        if body:
+            # Truncate very long response bodies
+            if len(body) > 1000:
+                logger.info(f"Body: {body[:1000]}... [truncated, total length: {len(body)} chars]")
+            else:
+                logger.info(f"Body: {body}")
+        elif is_stream:
+            logger.info("Body: [Streaming response - body logged as chunks arrive]")
+        
+        logger.info("=" * 80)
+    
     def get_system_prompt(self, prompt_type: str) -> str:
         prompts = {
             "summarize": """You are a log analysis assistant. Summarize the following log analysis results concisely.
@@ -97,6 +172,24 @@ Be specific and practical."""
         
         return prompt
     
+    def _build_headers(self) -> Dict[str, str]:
+        """Build HTTP headers for AI API requests."""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "X-Internal-Request": "true"  # Dummy header - customize as needed
+        }
+        
+        # Optional: Add custom headers from config if needed
+        # custom_headers = os.getenv("OPENAI_CUSTOM_HEADERS", "{}")
+        # if custom_headers:
+        #     try:
+        #         headers.update(json.loads(custom_headers))
+        #     except:
+        #         pass
+        
+        return headers
+    
     async def analyze_stream(
         self,
         content: str,
@@ -128,10 +221,7 @@ Be specific and practical."""
         logger.info(f"AI Service: Starting streaming analysis (model: {self.model}, prompt_type: {prompt_type})")
         
         url = f"{self.base_url.rstrip('/')}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = self._build_headers()
         
         payload = {
             "model": self.model,
@@ -144,6 +234,9 @@ Be specific and practical."""
             "stream": True
         }
         
+        # Log detailed request if enabled
+        self._log_detailed_request("POST", url, headers, payload)
+        
         # Log request details (truncate content for readability)
         logger.info(f"AI Service: Sending request to {url}")
         logger.debug(f"AI Service: Model={self.model}, max_tokens={self.max_tokens}, temperature={self.temperature}")
@@ -153,6 +246,13 @@ Be specific and practical."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    # Log detailed response if enabled
+                    self._log_detailed_response(
+                        response.status_code,
+                        dict(response.headers),
+                        is_stream=True
+                    )
+                    
                     # Log response status
                     logger.info(f"AI Service: Received response with status {response.status_code}")
                     
@@ -338,10 +438,7 @@ Be specific and practical."""
             logger.debug(f"AI Service: Test using model={self.model}")
             
             async with httpx.AsyncClient(timeout=10) as client:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
+                headers = self._build_headers()
                 
                 payload = {
                     "model": self.model,
@@ -349,15 +446,28 @@ Be specific and practical."""
                     "max_tokens": 10
                 }
                 
+                # Log detailed request if enabled
+                self._log_detailed_request("POST", url, headers, payload)
+                
                 response = await client.post(url, headers=headers, json=payload)
                 
                 logger.info(f"AI Service: Test connection received status {response.status_code}")
                 
+                # Read response body once for logging and parsing
+                response_body = await response.aread()
+                response_text = response_body.decode('utf-8', errors='ignore') if response_body else ""
+                
+                # Log detailed response if enabled
+                if self._is_detailed_logging_enabled():
+                    self._log_detailed_response(
+                        response.status_code,
+                        dict(response.headers),
+                        response_text
+                    )
+                
                 # Check for common configuration errors
                 if response.status_code == 404:
-                    error_text = await response.aread()
-                    error_str = error_text.decode('utf-8', errors='ignore')
-                    
+                    error_str = response_text
                     logger.error(f"AI Service: Test connection failed (404) - {error_str[:200]}")
                     
                     # Check if it's a missing /v1 issue
@@ -375,15 +485,18 @@ Be specific and practical."""
                 
                 # Check for other errors
                 if response.status_code >= 400:
-                    error_text = await response.aread()
-                    error_str = error_text.decode('utf-8', errors='ignore')
+                    error_str = response_text
                     logger.error(f"AI Service: Test connection failed ({response.status_code}) - {error_str[:200]}")
                     return False, f"Connection failed ({response.status_code}): {error_str[:200]}"
                 
                 response.raise_for_status()
                 
-                # Parse response to verify it's valid
-                data = response.json()
+                # Parse response to verify it's valid (use the text we already read)
+                try:
+                    data = json.loads(response_text)
+                except json.JSONDecodeError as e:
+                    logger.error(f"AI Service: Could not parse response JSON: {e}")
+                    return False, f"Invalid response format: {str(e)}"
                 if "error" in data:
                     error_msg = data["error"]
                     if isinstance(error_msg, dict):
@@ -430,12 +543,37 @@ Be specific and practical."""
             logger.info(f"AI Service: Fetching available models from {url}")
             
             async with httpx.AsyncClient(timeout=10) as client:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
+                headers = self._build_headers()
+                
+                # Log detailed request if enabled
+                self._log_detailed_request("GET", url, headers)
                 
                 response = await client.get(url, headers=headers)
+                
+                # Read response body once for logging and parsing
+                response_body = await response.aread()
+                response_text = response_body.decode('utf-8', errors='ignore') if response_body else ""
+                
+                # Log detailed response if enabled
+                if self._is_detailed_logging_enabled():
+                    self._log_detailed_response(
+                        response.status_code,
+                        dict(response.headers),
+                        response_text
+                    )
+                
+                if response.status_code == 404:
+                    logger.warning("AI Service: Server does not support /models endpoint (404)")
+                    return []
+                
+                response.raise_for_status()
+                
+                # Parse JSON from the text we already read
+                try:
+                    data = json.loads(response_text)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"AI Service: Could not parse response JSON: {e}")
+                    return []
                 
                 if response.status_code == 404:
                     logger.warning("AI Service: Server does not support /models endpoint (404)")
