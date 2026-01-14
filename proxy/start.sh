@@ -65,18 +65,34 @@ fi
 
 cat > Caddyfile <<EOF
 {
-    # Enable access logging
+    # Global options
+    # Log errors and info to caddy.log
     log {
-        output file logs/access.log
-        format console
+        output file logs/caddy.log
+        level INFO
     }
 }
 
 ${LISTEN_ADDR} {
+    # HTTP access logging - JSON format (can be parsed easily)
+    log {
+        output file logs/access.log
+        format json
+        level INFO
+    }
+    
     # Reverse proxy to target server
+    # Forward all paths as-is - no modification
+    # The API service/client is responsible for including /v1 in the path
     reverse_proxy ${TARGET_PROTOCOL}://${TARGET_HOST}:${TARGET_PORT} {
         # Enable streaming for AI responses (flush immediately)
         flush_interval -1
+        
+        # Set Host header to target server (required for Cloudflare/API servers)
+        header_up Host ${TARGET_HOST}
+        
+        # Preserve original scheme for proper forwarding
+        header_up X-Forwarded-Proto {scheme}
         
         # Transport settings for better streaming
         transport http {

@@ -94,25 +94,30 @@ This will show:
 
 Once the proxy is running, configure your AI client to use it:
 
+**Important: The proxy forwards paths as-is. Your API service/client must include `/v1` in the path.**
+- Base URL: `http://localhost:8080` or `http://192.168.1.214:8080`
+- Endpoint: `/v1/chat/completions` (include `/v1` - the proxy does NOT add it)
+
+The proxy is completely transparent - it forwards whatever path you send. Your API service is responsible for constructing the correct path including `/v1`.
+
 **For connections from the same machine:**
-- Use: `http://localhost:8080` or `http://127.0.0.1:8080`
+- Base URL: `http://localhost:8080` or `http://127.0.0.1:8080`
+- Full path: `/v1/chat/completions`
 
 **For connections from other devices on your network:**
-- Use: `http://YOUR_MACHINE_IP:8080` (run `./show-ip.sh` to find your IP)
+- Base URL: `http://YOUR_MACHINE_IP:8080` (run `./show-ip.sh` to find your IP)
+- Full path: `/v1/chat/completions`
 
 #### OpenAI Python Client
 
 ```python
 import openai
 
+# Base URL points to proxy - API service handles /v1 in paths
 client = openai.OpenAI(
     api_key="your-api-key",
-    http_client=openai.HTTPClient(
-        proxies={
-            "http": "http://localhost:8080",
-            "https": "http://localhost:8080"
-        }
-    )
+    base_url="http://localhost:8080",  # Proxy address
+    # The OpenAI client will automatically use /v1/chat/completions
 )
 ```
 
@@ -205,6 +210,15 @@ To remove auto-start on reboot:
 - No sudo required for service installation (runs as user agent)
 
 ## Troubleshooting
+
+### Getting 404 errors
+
+If you're getting 404 errors, check that your API service/client is including `/v1` in the request path:
+
+- ✅ **Correct**: Request path = `/v1/chat/completions`
+- ❌ **Wrong**: Request path = `/chat/completions` (missing `/v1`)
+
+**Solution**: Ensure your API service constructs paths with `/v1` prefix. The proxy forwards paths exactly as received - it does NOT add `/v1` automatically.
 
 ### Proxy won't start
 
