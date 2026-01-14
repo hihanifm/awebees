@@ -353,7 +353,7 @@ export default function PlaygroundPage() {
           <TabsContent value="filter" className="space-y-6 mt-6">
             {/* File Paths Input */}
             <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-lg font-semibold text-foreground">
                 1. {t("app.enterFilePaths")}
               </h2>
               <div>
@@ -375,7 +375,7 @@ export default function PlaygroundPage() {
 
             {/* Ripgrep Command Input */}
             <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-lg font-semibold text-foreground">
                 2. Ripgrep Command
               </h2>
               <div>
@@ -433,7 +433,7 @@ export default function PlaygroundPage() {
             {/* Step 1: Text Input */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-foreground">
+                <h2 className="text-lg font-semibold text-foreground">
                   1. {t("playground.pasteText")}
                 </h2>
                 {textInput && (
@@ -472,7 +472,7 @@ export default function PlaygroundPage() {
 
             {/* Step 2: AI Prompts */}
             <section className="space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-lg font-semibold text-foreground">
                 2. {t("playground.configureAIPrompts")}
               </h2>
               <PromptManager
@@ -518,7 +518,7 @@ export default function PlaygroundPage() {
             {/* Step 3: AI Response */}
             {(aiResponse || aiStreaming || aiError) && (
               <section className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">
+                <h2 className="text-lg font-semibold text-foreground">
                   3. {t("playground.aiAnalysis")}
                 </h2>
                 <AIResponsePanel
