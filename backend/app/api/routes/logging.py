@@ -23,6 +23,22 @@ class LoggingConfigResponse(BaseModel):
     available_levels: list[str]
 
 
+class ResultMaxLinesConfigResponse(BaseModel):
+    result_max_lines: int
+
+
+class ResultMaxLinesConfigUpdate(BaseModel):
+    result_max_lines: int
+    
+    @validator("result_max_lines")
+    def validate_result_max_lines(cls, v):
+        if v < 1:
+            raise ValueError("Result max lines must be at least 1")
+        if v > 100000:
+            raise ValueError("Result max lines cannot exceed 100000")
+        return v
+
+
 @router.get("/config", response_model=LoggingConfigResponse)
 async def get_logging_config():
     logger.debug("Getting logging configuration")
@@ -49,4 +65,32 @@ async def update_logging_config(config: LoggingConfigUpdate):
     except Exception as e:
         logger.error(f"Unexpected error updating log level: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update log level: {str(e)}")
+
+
+@router.get("/result-max-lines", response_model=ResultMaxLinesConfigResponse)
+async def get_result_max_lines_config():
+    """Get the current result max lines configuration."""
+    logger.debug("Getting result max lines configuration")
+    return ResultMaxLinesConfigResponse(
+        result_max_lines=AppConfig.get_result_max_lines()
+    )
+
+
+@router.put("/result-max-lines", response_model=ResultMaxLinesConfigResponse)
+async def update_result_max_lines_config(config: ResultMaxLinesConfigUpdate):
+    """Update the result max lines configuration (in-memory only)."""
+    try:
+        logger.info(f"Updating result max lines to: {config.result_max_lines}")
+        AppConfig.set_result_max_lines(config.result_max_lines)
+        logger.info(f"Result max lines updated successfully to: {config.result_max_lines}")
+        
+        return ResultMaxLinesConfigResponse(
+            result_max_lines=AppConfig.get_result_max_lines()
+        )
+    except ValueError as e:
+        logger.error(f"Failed to update result max lines: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error updating result max lines: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update result max lines: {str(e)}")
 

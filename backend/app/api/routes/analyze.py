@@ -13,7 +13,7 @@ from app.core.models import InsightResult, ProgressEvent
 from app.core.task_manager import get_task_manager
 from app.services.file_handler import CancelledError
 from app.services.ai_service import get_ai_service
-from app.core.config import AIConfig
+from app.core.config import AIConfig, AppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -414,8 +414,8 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
             detail="AI service is not configured. Please set OPENAI_API_KEY and enable AI_ENABLED=true"
         )
     
-    # Limit to 150 lines to control API costs and token usage
-    MAX_LINES = 150
+    # Limit to configured max lines to control API costs and token usage
+    MAX_LINES = AppConfig.get_result_max_lines()
     lines = request.content.split('\n')
     if len(lines) > MAX_LINES:
         logger.info(f"AI Analyze API: Limiting content from {len(lines)} to {MAX_LINES} lines")

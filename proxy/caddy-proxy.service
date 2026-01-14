@@ -1,0 +1,19 @@
+[Unit]
+Description=Caddy Forward Proxy
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/proxy
+ExecStart=%h/proxy/start.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables
+Environment="HOME=%h"
+
+[Install]
+WantedBy=multi-user.target

@@ -59,7 +59,7 @@ export function FilteredResults({ result, loading }: FilteredResultsProps) {
           </span>
           {result.truncated && (
             <span className="text-accent font-medium">
-              (Truncated to first 1000 lines)
+              (Truncated to first {result.lines.length} of {result.total_count} lines)
             </span>
           )}
         </div>

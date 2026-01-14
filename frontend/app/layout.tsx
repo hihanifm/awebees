@@ -34,6 +34,7 @@ export default function RootLayout({
   const [language, setLanguage] = useState<Language>("en");
   const [mounted, setMounted] = useState(false);
   const [showRipgrepBanner, setShowRipgrepBanner] = useState(false);
+  const [ripgrepAvailable, setRipgrepAvailable] = useState(false);
   
   // Listen for plugin load errors and show dialogs
   const { currentError, isDialogOpen, closeDialog } = usePluginErrors();
@@ -66,31 +67,28 @@ export default function RootLayout({
   useEffect(() => {
     const checkRipgrep = async () => {
       try {
-        // Check for demo mode (via URL param or localStorage)
-        const urlParams = new URLSearchParams(window.location.search);
-        const demoMode = urlParams.get("demo-ripgrep-banner") === "true" || 
-                        localStorage.getItem("ripgrep_banner_demo") === "true";
-        
-        // In demo mode, always show the banner
-        if (demoMode) {
-          setShowRipgrepBanner(true);
-          // Expose helper function for easy demo toggle
-          (window as any).__demoRipgrepBanner = () => {
-            localStorage.setItem("ripgrep_banner_demo", "true");
-            localStorage.removeItem("ripgrep_banner_dismissed");
-            window.location.reload();
-          };
-          return;
-        }
-
+        // Check ripgrep installation status
         const status = await apiClient.checkRipgrepStatus();
-        // Check localStorage to see if user has dismissed the banner
-        const dismissed = localStorage.getItem("ripgrep_banner_dismissed") === "true";
-        // Show banner if ripgrep is not available and user hasn't dismissed it
-        setShowRipgrepBanner(!status.available && !dismissed);
+        setRipgrepAvailable(status.available);
+        
+        if (status.available) {
+          // Don't show banner if ripgrep is installed
+          setShowRipgrepBanner(false);
+        } else {
+          // Show banner once per day when not installed (reminder to install)
+          const lastShownDate = localStorage.getItem("ripgrep_banner_last_shown");
+          const today = new Date().toDateString();
+          
+          if (lastShownDate !== today) {
+            setShowRipgrepBanner(true);
+          } else {
+            setShowRipgrepBanner(false);
+          }
+        }
       } catch (err) {
         // Silently fail - don't show banner if API check fails
         console.error("Failed to check ripgrep status:", err);
+        setShowRipgrepBanner(false);
       }
     };
 
@@ -326,8 +324,11 @@ export default function RootLayout({
           <div className="fixed left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm" style={{ top: '64px' }}>
             <div className="max-w-[90%] mx-auto px-4 py-3">
               <RipgrepBanner
+                available={ripgrepAvailable}
                 onDismiss={() => {
-                  localStorage.setItem("ripgrep_banner_dismissed", "true");
+                  // Store today's date so banner won't show again until tomorrow
+                  const today = new Date().toDateString();
+                  localStorage.setItem("ripgrep_banner_last_shown", today);
                   setShowRipgrepBanner(false);
                 }}
               />

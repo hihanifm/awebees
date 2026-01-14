@@ -1,15 +1,16 @@
 "use client";
 
-import { X, Zap, ExternalLink } from "lucide-react";
+import { X, Zap, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
 
 interface RipgrepBannerProps {
   onDismiss: () => void;
+  available: boolean;
 }
 
-export function RipgrepBanner({ onDismiss }: RipgrepBannerProps) {
+export function RipgrepBanner({ onDismiss, available }: RipgrepBannerProps) {
   const { t } = useTranslation();
 
   const getInstallCommand = () => {
@@ -68,6 +69,38 @@ export function RipgrepBanner({ onDismiss }: RipgrepBannerProps) {
     return "https://github.com/BurntSushi/ripgrep#installation";
   };
 
+  if (available) {
+    // Positive/celebratory styling when ripgrep is installed
+    return (
+      <div
+        className={cn(
+          "rounded-lg border border-green-400 bg-green-50 dark:bg-green-950 dark:border-green-800 px-4 py-3 flex items-start gap-3 shadow-sm"
+        )}
+      >
+        <div className="mt-0.5">
+          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-sm text-green-700 dark:text-green-300">
+            {t("ripgrepBanner.installedTitle")}
+          </div>
+          <div className="text-xs mt-1 text-green-700 dark:text-green-300">
+            {t("ripgrepBanner.installedDescription")}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 hover:bg-green-200/50 dark:hover:bg-green-800/50"
+          onClick={onDismiss}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  // Warning/installation nudge when ripgrep is not installed
   return (
     <div
       className={cn(

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AISettings, loadAISettings, saveAISettings } from "@/lib/settings-storage";
+import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/use-toast";
 import { themes } from "@/lib/themes";
@@ -61,6 +61,10 @@ export default function SettingsPage() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsSource, setModelsSource] = useState<'direct' | 'proxy' | 'defaults'>('defaults');
   const [isLoadingModels, setIsLoadingModels] = useState(false);
+
+  // Result max lines state
+  const [resultMaxLines, setResultMaxLines] = useState<number>(500);
+  const [isLoadingResultMaxLines, setIsLoadingResultMaxLines] = useState(false);
 
   // Load settings on mount
   useEffect(() => {
@@ -226,7 +230,44 @@ export default function SettingsPage() {
     loadLanguageSettings();
     loadLoggingSettings();
     loadAvailableModels();
+    loadResultMaxLinesSettings();
   }, []);
+
+  const loadResultMaxLinesSettings = async () => {
+    setIsLoadingResultMaxLines(true);
+    try {
+      // Load from localStorage first
+      const localValue = loadResultMaxLines();
+      
+      // Try to sync with backend
+      try {
+        const backendConfig = await apiClient.getResultMaxLines();
+        const backendValue = backendConfig.result_max_lines;
+        
+        // If localStorage has a value, use it and sync to backend
+        if (localValue !== null) {
+          setResultMaxLines(localValue);
+          // Sync to backend if different
+          if (localValue !== backendValue) {
+            await apiClient.updateResultMaxLines(localValue);
+          }
+        } else {
+          // No localStorage value, use backend value
+          setResultMaxLines(backendValue);
+          saveResultMaxLines(backendValue);
+        }
+      } catch (error) {
+        logger.error("Failed to load result max lines from backend:", error);
+        // Fall back to localStorage or default
+        setResultMaxLines(localValue ?? 500);
+      }
+    } catch (error) {
+      logger.error("Failed to load result max lines settings:", error);
+      setResultMaxLines(500);
+    } finally {
+      setIsLoadingResultMaxLines(false);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -968,6 +1009,60 @@ export default function SettingsPage() {
                       Accent
                     </div>
                   </div>
+                </div>
+
+                {/* Result Max Lines */}
+                <div className="space-y-2 mt-6 pt-6 border-t">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <Label htmlFor="result-max-lines">Result Max Lines</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Maximum number of lines to display in result windows. Limits both result display and AI analysis input.
+                  </p>
+                  {isLoadingResultMaxLines ? (
+                    <div className="flex items-center justify-center py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        id="result-max-lines"
+                        type="number"
+                        min="1"
+                        max="100000"
+                        value={resultMaxLines}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value, 10);
+                          if (!isNaN(value) && value >= 1 && value <= 100000) {
+                            setResultMaxLines(value);
+                          }
+                        }}
+                        onBlur={async () => {
+                          // Save on blur
+                          try {
+                            saveResultMaxLines(resultMaxLines);
+                            await apiClient.updateResultMaxLines(resultMaxLines);
+                            toast({
+                              title: "Success",
+                              description: `Result max lines updated to ${resultMaxLines}`,
+                            });
+                          } catch (error) {
+                            logger.error("Failed to save result max lines:", error);
+                            toast({
+                              title: "Error",
+                              description: "Failed to save result max lines",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        className="font-mono"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Current value: {resultMaxLines} lines. Changes take effect immediately for new analyses.
+                  </p>
                 </div>
               </div>
             </TabsContent>

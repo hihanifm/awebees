@@ -121,7 +121,9 @@
     "checking": "확인 중...",
     "profiling": "프로파일링",
     "backendLog": "백엔드 로그",
-    "frontendLog": "프론트엔드 로그"
+    "frontendLog": "프론트엔드 로그",
+    "ripgrepInstalled": "Ripgrep",
+    "ripgrepNotInstalled": "Ripgrep 없음"
   },
   "progress": {
     "analysisProgress": "분석 진행 상황",
@@ -202,7 +204,9 @@
   "ripgrepBanner": {
     "title": "⚡ 검색 속도 10배-100배 향상: Ripgrep 설치",
     "description": "Ripgrep을 설치하면 패턴 매칭이 훨씬 빨라집니다. 성능 향상을 위해 지금 설치하세요.",
-    "installationGuide": "설치 가이드"
+    "installationGuide": "설치 가이드",
+    "installedTitle": "🚀 Ripgrep이 설치되어 있습니다 - 정말 훌륭합니다!",
+    "installedDescription": "Ripgrep이 설치되어 있어 검색 속도가 최고로 빠릅니다. 계속 잘하고 계십니다!"
   }
 }
 

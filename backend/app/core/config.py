@@ -176,6 +176,9 @@ class AppConfig:
     # Insight file limit - maximum number of files allowed per insight analysis
     MAX_FILES: int = int(os.getenv("INSIGHT_MAX_FILES", "20"))
     
+    # Result display limit - maximum number of lines to display in result windows (in-memory only)
+    RESULT_MAX_LINES: int = 500
+    
     # Valid log levels
     VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     
@@ -201,6 +204,26 @@ class AppConfig:
         # Persist to .env file if requested
         if persist:
             cls._persist_to_env({"log_level": log_level})
+    
+    @classmethod
+    def get_result_max_lines(cls) -> int:
+        """Get the current result max lines limit."""
+        return cls.RESULT_MAX_LINES
+    
+    @classmethod
+    def set_result_max_lines(cls, value: int) -> None:
+        """Set the result max lines limit (in-memory only, no persistence)."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        if value < 1:
+            raise ValueError("Result max lines must be at least 1")
+        if value > 100000:
+            raise ValueError("Result max lines cannot exceed 100000")
+        
+        old_value = cls.RESULT_MAX_LINES
+        cls.RESULT_MAX_LINES = value
+        logger.info(f"Updated RESULT_MAX_LINES: {old_value} -> {value}")
     
     @classmethod
     def _persist_to_env(cls, updates: Dict[str, Any]) -> None:

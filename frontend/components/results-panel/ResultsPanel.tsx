@@ -451,6 +451,16 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
                                       {pathResult.metadata.line_count} {pathResult.metadata.line_count === 1 ? t("results.lineFound") : t("results.linesFound")}
                                     </span>
                                   )}
+                                  {pathResult.metadata.truncated && (
+                                    <span className="text-accent font-medium">
+                                      (Truncated to {pathResult.metadata.truncated_to ?? pathResult.content.split('\n').length} lines)
+                                    </span>
+                                  )}
+                                  {pathResult.metadata.total_lines !== undefined && pathResult.metadata.total_lines > (pathResult.metadata.truncated_to ?? pathResult.content.split('\n').length) && (
+                                    <span className="text-muted-foreground text-xs">
+                                      of {pathResult.metadata.total_lines} total
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Button

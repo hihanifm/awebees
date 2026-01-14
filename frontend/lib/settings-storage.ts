@@ -13,6 +13,7 @@ export interface AISettings {
 }
 
 const STORAGE_KEY = "lens_ai_settings";
+const RESULT_MAX_LINES_STORAGE_KEY = "lens_result_max_lines";
 
 /**
  * Save AI settings to localStorage.
@@ -79,5 +80,43 @@ export function mergeWithDefaults(
     maxTokens: local?.maxTokens ?? backend.maxTokens ?? 2000,
     temperature: local?.temperature ?? backend.temperature ?? 0.7,
   };
+}
+
+/**
+ * Save result max lines setting to localStorage.
+ */
+export function saveResultMaxLines(value: number): void {
+  try {
+    localStorage.setItem(RESULT_MAX_LINES_STORAGE_KEY, value.toString());
+    console.log("[settings-storage] Saved result max lines:", value);
+  } catch (error) {
+    console.error("Failed to save result max lines to localStorage:", error);
+    throw error;
+  }
+}
+
+/**
+ * Load result max lines setting from localStorage.
+ * Returns null if not set, otherwise returns the number.
+ */
+export function loadResultMaxLines(): number | null {
+  try {
+    const stored = localStorage.getItem(RESULT_MAX_LINES_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+    
+    const value = parseInt(stored, 10);
+    if (isNaN(value) || value < 1) {
+      console.warn("[settings-storage] Invalid result max lines value, removing");
+      localStorage.removeItem(RESULT_MAX_LINES_STORAGE_KEY);
+      return null;
+    }
+    
+    return value;
+  } catch (error) {
+    console.error("Failed to load result max lines from localStorage:", error);
+    return null;
+  }
 }
 

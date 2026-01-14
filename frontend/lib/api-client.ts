@@ -625,6 +625,24 @@ export const apiClient = {
   },
 
   /**
+   * Get result max lines configuration from backend.
+   */
+  async getResultMaxLines(): Promise<{ result_max_lines: number }> {
+    return fetchJSON("/api/logging/result-max-lines");
+  },
+
+  /**
+   * Update result max lines configuration in backend (in-memory only).
+   * @param value New result max lines value (1-100000)
+   */
+  async updateResultMaxLines(value: number): Promise<{ result_max_lines: number }> {
+    return fetchJSON("/api/logging/result-max-lines", {
+      method: "PUT",
+      body: JSON.stringify({ result_max_lines: value }),
+    });
+  },
+
+  /**
    * Open a log file in the system default editor.
    * @param logType Type of log file to open ("backend" or "frontend")
    */

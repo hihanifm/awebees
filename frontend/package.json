@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "mkdir -p public/docs && cp ../docs/RIPGREP_GUIDE.md public/docs/RIPGREP_GUIDE.md",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

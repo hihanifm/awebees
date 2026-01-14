@@ -121,7 +121,9 @@
     "checking": "Checking...",
     "profiling": "Profiling",
     "backendLog": "Backend Log",
-    "frontendLog": "Frontend Log"
+    "frontendLog": "Frontend Log",
+    "ripgrepInstalled": "Ripgrep",
+    "ripgrepNotInstalled": "No Ripgrep"
   },
   "progress": {
     "analysisProgress": "Analysis Progress",
@@ -202,7 +204,9 @@
   "ripgrepBanner": {
     "title": "⚡ Install Ripgrep for 10x-100x Faster Search",
     "description": "Ripgrep makes pattern matching significantly faster. Install it now for better performance.",
-    "installationGuide": "Installation Guide"
+    "installationGuide": "Installation Guide",
+    "installedTitle": "🚀 Ripgrep is Installed - You're Doing Awesome!",
+    "installedDescription": "You have ripgrep installed. This means your searches are running at maximum speed. Keep up the great work!"
   }
 }
 

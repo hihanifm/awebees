@@ -641,8 +641,38 @@ class FilterBasedInsight(Insight):
         self,
         filter_result: FilterResult
     ) -> InsightResult:
-        # Subclasses must implement this to format filtered lines into InsightResult
-        raise NotImplementedError("Subclasses must implement _process_filtered_lines")
+        """
+        Default implementation: format filtered lines into InsightResult with line limit applied.
+        Subclasses can override this for custom processing.
+        """
+        from app.core.config import AppConfig
+        
+        all_lines = filter_result.get_lines()
+        total_count = len(all_lines)
+        max_lines = AppConfig.get_result_max_lines()
+        
+        if total_count > max_lines:
+            limited_lines = all_lines[:max_lines]
+            content = "\n".join(limited_lines)
+            metadata = {
+                "line_count": total_count,
+                "truncated": True,
+                "truncated_to": max_lines,
+                "total_lines": total_count
+            }
+        else:
+            content = "\n".join(all_lines)
+            metadata = {
+                "line_count": total_count,
+                "truncated": False,
+                "total_lines": total_count
+            }
+        
+        return InsightResult(
+            result_type="text",
+            content=content,
+            metadata=metadata
+        )
     
     def _get_path_files(self, user_path: str) -> List[str]:
         """Get files for a single user path (if folder, list recursively; if file, use directly; if zip file, list contents)."""
@@ -813,11 +843,32 @@ class FilterBasedInsight(Insight):
                     processed = line_filter_config.processing(filter_result)
                     line_filter_results.append(processed)
                 else:
-                    # Default: just return the filtered lines
-                    line_filter_results.append({
-                        "content": "\n".join(filter_result.get_lines()),
-                        "metadata": {"line_count": filter_result.get_total_line_count()}
-                    })
+                    # Default: just return the filtered lines (with limit applied)
+                    from app.core.config import AppConfig
+                    all_lines = filter_result.get_lines()
+                    total_count = len(all_lines)
+                    max_lines = AppConfig.get_result_max_lines()
+                    
+                    if total_count > max_lines:
+                        limited_lines = all_lines[:max_lines]
+                        line_filter_results.append({
+                            "content": "\n".join(limited_lines),
+                            "metadata": {
+                                "line_count": total_count,
+                                "truncated": True,
+                                "truncated_to": max_lines,
+                                "total_lines": total_count
+                            }
+                        })
+                    else:
+                        line_filter_results.append({
+                            "content": "\n".join(all_lines),
+                            "metadata": {
+                                "line_count": total_count,
+                                "truncated": False,
+                                "total_lines": total_count
+                            }
+                        })
             
             # Apply file-filter level processing if provided
             if file_filter_config.processing:

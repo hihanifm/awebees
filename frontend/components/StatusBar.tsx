@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Code, Server, Info, CheckCircle2, AlertCircle, Activity, FileText } from "lucide-react";
+import { Code, Server, Info, CheckCircle2, AlertCircle, Activity, FileText, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { useTranslation } from "@/lib/i18n";
@@ -28,6 +28,7 @@ export function StatusBar({}: StatusBarProps) {
   const [versionLoading, setVersionLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<"online" | "offline" | "checking">("checking");
   const [profilingEnabled, setProfilingEnabled] = useState<boolean>(false);
+  const [ripgrepAvailable, setRipgrepAvailable] = useState<boolean | null>(null);
   const [openingLog, setOpeningLog] = useState<"backend" | "frontend" | null>(null);
 
   const openLog = async (logType: "backend" | "frontend") => {
@@ -82,17 +83,29 @@ export function StatusBar({}: StatusBarProps) {
       }
     };
 
+    const fetchRipgrepStatus = async () => {
+      try {
+        const status = await apiClient.checkRipgrepStatus();
+        setRipgrepAvailable(status.available);
+      } catch (error) {
+        // Silently fail - ripgrep status is not critical
+        setRipgrepAvailable(null);
+      }
+    };
+
     fetchVersion();
     fetchProfilingStatus();
+    fetchRipgrepStatus();
     
     // Check API status periodically (every 2 minutes)
     const interval = setInterval(() => {
       fetch(`${API_URL}/api/health`)
         .then((res) => {
           setApiStatus(res.ok ? "online" : "offline");
-          // Also refresh profiling status periodically
+          // Also refresh profiling status and ripgrep status periodically
           if (res.ok) {
             fetchProfilingStatus();
+            fetchRipgrepStatus();
           }
         })
         .catch(() => {
@@ -154,6 +167,29 @@ export function StatusBar({}: StatusBarProps) {
               <Activity className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
               <span className="text-purple-600 dark:text-purple-400 font-medium">{t("statusBar.profiling")}</span>
             </div>
+          )}
+
+          {/* Ripgrep Status */}
+          {ripgrepAvailable !== null && (
+            <a
+              href="/docs/RIPGREP_GUIDE.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
+              title="Ripgrep Guide"
+            >
+              {ripgrepAvailable ? (
+                <>
+                  <Zap className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                  <span className="text-green-600 dark:text-green-400">{t("statusBar.ripgrepInstalled")}</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                  <span className="text-amber-600 dark:text-amber-400">{t("statusBar.ripgrepNotInstalled")}</span>
+                </>
+              )}
+            </a>
           )}
         </div>
 
