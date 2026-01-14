@@ -2,7 +2,7 @@
 
 # Build script for Windows production packages
 # Prepares packages on Linux/Mac before pushing to GitHub
-# Usage: ./scripts/build-windows.sh
+# Usage: ./scripts/build/build-windows.sh
 
 set -e  # Exit on error
 
