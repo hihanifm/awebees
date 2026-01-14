@@ -669,7 +669,8 @@ def get_ai_service() -> AIService:
             model_to_use = "gpt-4o-mini"
             logger.warning(f"AI Service: AIConfig.MODEL was empty, using default: {model_to_use}")
         
-        logger.debug(f"AI Service: Creating new service instance with AIConfig.BASE_URL='{AIConfig.BASE_URL}', AIConfig.MODEL='{AIConfig.MODEL}' -> using '{model_to_use}'")
+        logger.info(f"AI Service: Creating new service instance")
+        logger.info(f"AI Service: AIConfig values - BASE_URL='{AIConfig.BASE_URL}', MODEL='{AIConfig.MODEL}' -> using '{model_to_use}', MAX_TOKENS={AIConfig.MAX_TOKENS}, TEMPERATURE={AIConfig.TEMPERATURE}")
         _ai_service = AIService(
             base_url=AIConfig.BASE_URL,
             api_key=AIConfig.API_KEY,
@@ -678,9 +679,25 @@ def get_ai_service() -> AIService:
             temperature=AIConfig.TEMPERATURE,
             timeout=AIConfig.TIMEOUT
         )
-        logger.info(f"AI Service: Service instance created with base_url={_ai_service.base_url}, model={_ai_service.model}")
+        logger.info(f"AI Service: Service instance created with base_url={_ai_service.base_url}, model={_ai_service.model}, max_tokens={_ai_service.max_tokens}, temperature={_ai_service.temperature}")
     else:
-        logger.debug(f"AI Service: Returning existing service instance with base_url={_ai_service.base_url}, model={_ai_service.model}")
+        logger.debug(f"AI Service: Returning existing service instance with base_url={_ai_service.base_url}, model={_ai_service.model}, max_tokens={_ai_service.max_tokens}, temperature={_ai_service.temperature}")
+        # Double-check config hasn't changed (defensive check)
+        if (_ai_service.model != AIConfig.MODEL or 
+            _ai_service.base_url != AIConfig.BASE_URL or
+            _ai_service.max_tokens != AIConfig.MAX_TOKENS or
+            _ai_service.temperature != AIConfig.TEMPERATURE):
+            logger.warning(
+                f"AI Service: Config mismatch detected! "
+                f"Service model={_ai_service.model} vs AIConfig.MODEL={AIConfig.MODEL}, "
+                f"Service base_url={_ai_service.base_url} vs AIConfig.BASE_URL={AIConfig.BASE_URL}, "
+                f"Service max_tokens={_ai_service.max_tokens} vs AIConfig.MAX_TOKENS={AIConfig.MAX_TOKENS}, "
+                f"Service temperature={_ai_service.temperature} vs AIConfig.TEMPERATURE={AIConfig.TEMPERATURE}. "
+                f"Resetting service."
+            )
+            _ai_service = None
+            # Recursively call to create new service
+            return get_ai_service()
     return _ai_service
 
 

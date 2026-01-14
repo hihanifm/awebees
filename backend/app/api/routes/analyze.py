@@ -10,20 +10,6 @@ from datetime import datetime
 
 from app.core.plugin_manager import get_plugin_manager
 from app.core.models import InsightResult, ProgressEvent
-
-
-def _result_for_progress(result: InsightResult) -> Dict[str, Any]:
-    """
-    Convert InsightResult to dict for progress events, excluding large AI fields.
-    
-    Excludes ai_analysis and ai_summary from progress events to reduce payload size
-    in the progress windows. These fields are still included in the final result event.
-    """
-    result_dict = result.model_dump()
-    # Remove large AI fields from progress events to reduce payload size
-    result_dict.pop("ai_analysis", None)
-    result_dict.pop("ai_summary", None)
-    return result_dict
 from app.core.task_manager import get_task_manager
 from app.services.file_handler import CancelledError
 from app.services.ai_service import get_ai_service
@@ -50,6 +36,36 @@ class AnalysisResponse(BaseModel):
     results: List[AnalysisResultItem]
     total_time: float = 0.0
     insights_count: int = 0
+
+
+def _result_for_progress(result: InsightResult) -> Dict[str, Any]:
+    """
+    Convert InsightResult to dict for progress events, excluding large AI fields.
+    
+    Excludes ai_analysis and ai_summary from progress events to reduce payload size
+    in the progress windows.
+    """
+    result_dict = result.model_dump()
+    # Remove large AI fields from progress events to reduce payload size
+    result_dict.pop("ai_analysis", None)
+    result_dict.pop("ai_summary", None)
+    return result_dict
+
+
+def _response_for_progress(response: AnalysisResponse) -> Dict[str, Any]:
+    """
+    Convert AnalysisResponse to dict for progress events, excluding large AI fields.
+    
+    Excludes ai_analysis and ai_summary from all InsightResult objects in progress events
+    to reduce payload size in the progress windows.
+    """
+    response_dict = response.model_dump()
+    # Filter ai_analysis and ai_summary from all results in all insight items
+    for result_item in response_dict.get("results", []):
+        for result in result_item.get("results", []):
+            result.pop("ai_analysis", None)
+            result.pop("ai_summary", None)
+    return response_dict
 
 
 def _format_sse_event(data: dict) -> str:
@@ -273,10 +289,12 @@ async def _stream_analysis_events(
                 continue
         
         if final_result:
+            # Send full result (including ai_analysis) in final event
+            # Progress events exclude ai_analysis to reduce payload, but final result should include it
             yield _format_sse_event({
                 "type": "result",
                 "task_id": task_id,
-                "data": final_result.model_dump()
+                "data": final_result.model_dump()  # Full result with ai_analysis included
             })
             await asyncio.sleep(0)
         
@@ -542,16 +560,45 @@ async def update_ai_config(config: AIConfigUpdate):
     logger.debug(f"AI Config API: Received config: {config.dict()}")
     
     try:
+        # Include all config values, even if None (to allow clearing)
+        # But filter out None values for the update
         config_dict = {k: v for k, v in config.dict().items() if v is not None}
-        logger.info(f"AI Config API: Config dict to update: {config_dict}")
+        logger.info(f"AI Config API: Received config update request: {config.dict()}")
+        logger.info(f"AI Config API: Config dict to update (non-None only): {config_dict}")
+        logger.info(f"AI Config API: Current AIConfig before update - MODEL={AIConfig.MODEL}, BASE_URL={AIConfig.BASE_URL}, MAX_TOKENS={AIConfig.MAX_TOKENS}, TEMPERATURE={AIConfig.TEMPERATURE}, ENABLED={AIConfig.ENABLED}")
         
-        AIConfig.update_from_dict(config_dict)
+        # Update config
+        AIConfig.update_from_dict(config_dict, persist=True)
         
-        logger.info(f"AI Config API: Updated - enabled={AIConfig.ENABLED}, base_url={AIConfig.BASE_URL}, model={AIConfig.MODEL}, is_configured={AIConfig.is_configured()}")
+        # Immediately verify the update took effect
+        logger.info(f"AI Config API: After update_from_dict - MODEL={AIConfig.MODEL}, BASE_URL={AIConfig.BASE_URL}, MAX_TOKENS={AIConfig.MAX_TOKENS}, TEMPERATURE={AIConfig.TEMPERATURE}, ENABLED={AIConfig.ENABLED}, is_configured={AIConfig.is_configured()}")
         
+        # Reset service to force recreation with new config
         from app.services.ai_service import reset_ai_service
         reset_ai_service()
         logger.info("AI Config API: AI service singleton reset")
+        
+        # Verify the service will use the new config by getting it
+        from app.services.ai_service import get_ai_service
+        test_service = get_ai_service()
+        logger.info(f"AI Config API: Verified service after reset - model={test_service.model}, base_url={test_service.base_url}, max_tokens={test_service.max_tokens}, temperature={test_service.temperature}")
+        
+        # Double-check: ensure service matches config
+        if (test_service.model != AIConfig.MODEL or 
+            test_service.base_url != AIConfig.BASE_URL or
+            test_service.max_tokens != AIConfig.MAX_TOKENS or
+            test_service.temperature != AIConfig.TEMPERATURE):
+            logger.error(
+                f"AI Config API: MISMATCH DETECTED! "
+                f"Service model={test_service.model} != AIConfig.MODEL={AIConfig.MODEL}, "
+                f"Service base_url={test_service.base_url} != AIConfig.BASE_URL={AIConfig.BASE_URL}, "
+                f"Service max_tokens={test_service.max_tokens} != AIConfig.MAX_TOKENS={AIConfig.MAX_TOKENS}, "
+                f"Service temperature={test_service.temperature} != AIConfig.TEMPERATURE={AIConfig.TEMPERATURE}"
+            )
+            # Force reset again
+            reset_ai_service()
+            test_service = get_ai_service()
+            logger.info(f"AI Config API: After forced reset - model={test_service.model}, base_url={test_service.base_url}")
         
         logger.info("AI Config API: Configuration updated successfully")
         return {"status": "success", "message": "AI configuration updated"}
