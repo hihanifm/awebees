@@ -59,7 +59,7 @@ jobs:
             Write-Host "================================================" -ForegroundColor Yellow
             Write-Host ""
             Write-Host "To fix this, run the following locally:" -ForegroundColor Cyan
-            Write-Host "  1. ./scripts/build-windows.sh" -ForegroundColor White
+            Write-Host "  1. ./scripts/build/build-windows.sh" -ForegroundColor White
             Write-Host "  2. git add dist/windows/*.zip" -ForegroundColor White
             Write-Host "  3. git commit -m 'Add Windows packages for v$version'" -ForegroundColor White
             Write-Host "  4. git push" -ForegroundColor White
