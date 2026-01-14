@@ -15,7 +15,7 @@ if [ -z "$VERSION" ] || [ -z "$BUILD_DIR" ] || [ -z "$DIST_DIR" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 PACKAGE_DIR="$BUILD_DIR/lens-app"
 
 echo "Preparing Windows package..."

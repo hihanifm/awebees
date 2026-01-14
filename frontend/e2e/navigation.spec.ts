@@ -26,20 +26,24 @@ test.describe("Navigation", () => {
     await expect(page.getByText(/playground/i).first()).toBeVisible();
   });
 
-  test("should open Settings dialog via top navigation", async ({ page }) => {
-    // Find and click the Settings button in the top navigation
-    const settingsButton = page.getByRole("button", { name: /settings/i });
-    await expect(settingsButton).toBeVisible();
+  test("should navigate to Settings page via top navigation", async ({ page }) => {
+    // Find and click the Settings link in the top navigation
+    const settingsLink = page.getByRole("link", { name: /settings/i });
+    await expect(settingsLink).toBeVisible();
     
-    // Click the button
-    await settingsButton.click();
+    // Click the link
+    await settingsLink.click();
     
-    // Wait for settings dialog to appear
-    const settingsDialog = page.getByRole("dialog", { name: /settings/i });
-    await expect(settingsDialog).toBeVisible({ timeout: 2000 });
+    // Wait for navigation to settings page
+    await page.waitForURL("**/settings", { timeout: 5000 });
     
-    // Verify settings dialog content (use heading to avoid multiple matches)
-    await expect(settingsDialog.getByRole("heading", { name: /settings/i })).toBeVisible();
+    // Verify we're on the settings page
+    expect(page.url()).toContain("/settings");
+    
+    // Verify settings page content is visible (check for settings heading or tabs)
+    const settingsHeading = page.getByRole("heading", { name: /settings/i });
+    const settingsTabs = page.getByRole("tab", { name: /ai|insights|general|logging/i });
+    await expect(settingsHeading.or(settingsTabs).first()).toBeVisible();
   });
 
   test("should navigate to Home via top navigation", async ({ page }) => {
