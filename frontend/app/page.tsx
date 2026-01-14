@@ -242,7 +242,7 @@ export default function Home() {
         <div className="space-y-4">
               {/* File Selection */}
               <section>
-                <h2 className="text-base font-semibold mb-4">{t("app.enterFilePaths")}</h2>
+                <h2 className="text-sm font-semibold mb-4">{t("app.enterFilePaths")}</h2>
             <div className="space-y-2">
               <TextareaWithHistory
                 value={filePaths}
@@ -275,7 +275,7 @@ export default function Home() {
 
           {/* Insight Selection */}
           <section>
-            <h2 className="text-base font-semibold mb-4">{t("app.selectInsights")}</h2>
+            <h2 className="text-sm font-semibold mb-4">{t("app.selectInsights")}</h2>
             <InsightList
               selectedInsightIds={selectedInsightIds}
               onSelectionChange={setSelectedInsightIds}

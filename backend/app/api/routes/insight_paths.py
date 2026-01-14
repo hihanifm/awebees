@@ -169,12 +169,18 @@ async def set_default_repository(request: InsightPathRequest):
         config = InsightPathsConfig()
         config.set_default_repository(str(path.absolute()))
         
-        logger.info(f"Set default insights repository: {request.path}")
+        # Refresh insights to pick up any new insights in the default repository
+        plugin_manager = get_plugin_manager()
+        plugin_manager.discover_all_insights()
+        
+        insights_count = len(plugin_manager.get_all_insights())
+        logger.info(f"Set default insights repository: {request.path} (total insights: {insights_count})")
         
         return {
             "status": "success",
             "message": f"Set default repository: {request.path}",
-            "default_repository": str(path.absolute())
+            "default_repository": str(path.absolute()),
+            "insights_count": insights_count
         }
     except HTTPException:
         raise
@@ -190,11 +196,17 @@ async def clear_default_repository():
         config = InsightPathsConfig()
         config.clear_default_repository()
         
-        logger.info("Cleared default insights repository from JSON config")
+        # Refresh insights after clearing default repository
+        plugin_manager = get_plugin_manager()
+        plugin_manager.discover_all_insights()
+        
+        insights_count = len(plugin_manager.get_all_insights())
+        logger.info(f"Cleared default insights repository from JSON config (total insights: {insights_count})")
         
         return {
             "status": "success",
-            "message": "Cleared default repository from JSON config"
+            "message": "Cleared default repository from JSON config",
+            "insights_count": insights_count
         }
     except Exception as e:
         logger.error(f"Failed to clear default repository: {e}")

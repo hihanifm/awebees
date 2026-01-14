@@ -306,9 +306,13 @@ export default function SettingsPage() {
       const result = await apiClient.addInsightPath(newPath.trim());
       setInsightPaths([...insightPaths, newPath.trim()]);
       setNewPath("");
+      
+      // Refresh insights to ensure all new insights and samples are loaded
+      const refreshResult = await apiClient.refreshInsights();
+      
       toast({
         title: "Success",
-        description: `Added path: ${newPath.trim()}. Found ${result.insights_count} total insights.`,
+        description: `Added path: ${newPath.trim()}. Found ${refreshResult.insights_count} total insights.`,
       });
       // Dispatch event to refresh insights in InsightList
       window.dispatchEvent(new CustomEvent('insights-refreshed'));
@@ -326,9 +330,13 @@ export default function SettingsPage() {
     try {
       const result = await apiClient.removeInsightPath(path);
       setInsightPaths(insightPaths.filter((p) => p !== path));
+      
+      // Refresh insights to ensure all insights and samples are updated
+      const refreshResult = await apiClient.refreshInsights();
+      
       toast({
         title: "Success",
-        description: `Removed path: ${path}. ${result.insights_count} insights remaining.`,
+        description: `Removed path: ${path}. ${refreshResult.insights_count} insights remaining.`,
       });
       // Dispatch event to refresh insights in InsightList
       window.dispatchEvent(new CustomEvent('insights-refreshed'));
@@ -372,10 +380,16 @@ export default function SettingsPage() {
       try {
         await apiClient.clearDefaultRepository();
         setDefaultRepository(null);
+        
+        // Refresh insights to ensure all new insights and samples are loaded
+        const refreshResult = await apiClient.refreshInsights();
+        
         toast({
           title: "Success",
-          description: "Cleared default repository",
+          description: `Cleared default repository. Found ${refreshResult.insights_count} total insights.`,
         });
+        // Dispatch event to refresh insights in InsightList
+        window.dispatchEvent(new CustomEvent('insights-refreshed'));
       } catch (error) {
         logger.error("Failed to clear default repository:", error);
         toast({
@@ -390,10 +404,16 @@ export default function SettingsPage() {
     try {
       await apiClient.setDefaultRepository(pathToSave);
       setDefaultRepository(pathToSave);
+      
+      // Refresh insights to ensure all new insights and samples are loaded
+      const refreshResult = await apiClient.refreshInsights();
+      
       toast({
         title: "Success",
-        description: `Saved default repository: ${pathToSave}`,
+        description: `Saved default repository: ${pathToSave}. Found ${refreshResult.insights_count} total insights.`,
       });
+      // Dispatch event to refresh insights in InsightList
+      window.dispatchEvent(new CustomEvent('insights-refreshed'));
     } catch (error) {
       logger.error("Failed to save default repository:", error);
       toast({
@@ -703,7 +723,41 @@ export default function SettingsPage() {
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-4 mt-4">
+              {/* Default Insights Repository */}
               <div className="space-y-2">
+                <Label>Default Insights Repository</Label>
+                <p className="text-sm text-muted-foreground">
+                  Where new insights will be created when needed. Can be set via .env file (DEFAULT_INSIGHTS_REPOSITORY) as a default, or configured here (this setting takes precedence).
+                </p>
+                
+                {isLoadingDefaultRepo ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter path to default repository"
+                      value={defaultRepository || ""}
+                      onChange={(e) => setDefaultRepository(e.target.value || null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSaveDefaultRepository();
+                        }
+                      }}
+                      className="font-mono"
+                    />
+                    <Button
+                      onClick={handleSaveDefaultRepository}
+                      className="font-bold"
+                    >
+                      Save
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 mt-6 pt-6 border-t">
                 <Label>{t("settings.insightPaths")}</Label>
                 <p className="text-sm text-muted-foreground">
                   {t("settings.insightPathsHint")}
@@ -772,40 +826,6 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">
                   {t("settings.refreshInsightsHint")}
                 </p>
-              </div>
-
-              {/* Default Insights Repository */}
-              <div className="space-y-2 mt-6 pt-6 border-t">
-                <Label>Default Insights Repository</Label>
-                <p className="text-sm text-muted-foreground">
-                  Where new insights will be created when needed. Can be set via .env file (DEFAULT_INSIGHTS_REPOSITORY) as a default, or configured here (this setting takes precedence).
-                </p>
-                
-                {isLoadingDefaultRepo ? (
-                  <div className="flex items-center justify-center py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter path to default repository"
-                      value={defaultRepository || ""}
-                      onChange={(e) => setDefaultRepository(e.target.value || null)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleSaveDefaultRepository();
-                        }
-                      }}
-                      className="font-mono"
-                    />
-                    <Button
-                      onClick={handleSaveDefaultRepository}
-                      className="font-bold"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                )}
               </div>
             </TabsContent>
 

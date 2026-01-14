@@ -120,23 +120,54 @@ async def get_sample_files() -> Dict[str, Any]:
     all_samples = discover_all_samples()
     samples = [sample.to_dict() for sample in all_samples]
     
+    # Deduplicate samples based on resolved file path
+    # Same file path = same sample, regardless of source
+    seen_paths = {}
+    unique_samples = []
+    
+    for sample in samples:
+        # Resolve the path to handle symlinks and relative paths
+        resolved_path = str(Path(sample["path"]).resolve())
+        
+        # If we've seen this path before, prefer the one with exists=True or keep the first one
+        if resolved_path in seen_paths:
+            existing_sample = seen_paths[resolved_path]
+            # Prefer sample that exists, or keep existing if both exist or both don't exist
+            if sample.get("exists") and not existing_sample.get("exists"):
+                # Replace with the one that exists
+                unique_samples.remove(existing_sample)
+                seen_paths[resolved_path] = sample
+                unique_samples.append(sample)
+            # Otherwise keep the existing one
+        else:
+            seen_paths[resolved_path] = sample
+            unique_samples.append(sample)
+    
+    samples = unique_samples
     discovered_ids = {sample["id"] for sample in samples}
+    
+    # Add samples from SAMPLE_FILES that weren't discovered
     for sample_id, sample_info in SAMPLE_FILES.items():
         if sample_id not in discovered_ids:
             file_path = sample_info["path"]
-            exists = os.path.exists(file_path)
+            resolved_path = str(Path(file_path).resolve())
             
-            samples.append({
-                "id": sample_id,
-                "name": sample_info["name"],
-                "description": sample_info["description"],
-                "path": file_path,
-                "size_mb": sample_info["size_mb"],
-                "exists": exists,
-                "source": "built-in",
-                "recommended_insights": sample_info.get("recommended_insights", [])
-            })
+            # Check if this path is already in our unique samples
+            if resolved_path not in seen_paths:
+                exists = os.path.exists(file_path)
+                
+                samples.append({
+                    "id": sample_id,
+                    "name": sample_info["name"],
+                    "description": sample_info["description"],
+                    "path": file_path,
+                    "size_mb": sample_info["size_mb"],
+                    "exists": exists,
+                    "source": "built-in",
+                    "recommended_insights": sample_info.get("recommended_insights", [])
+                })
+                seen_paths[resolved_path] = samples[-1]
     
-    logger.info(f"Files API: Returning {len(samples)} sample file(s)")
+    logger.info(f"Files API: Returning {len(samples)} unique sample file(s)")
     return {"samples": samples}
 
