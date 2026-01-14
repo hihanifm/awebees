@@ -50,8 +50,8 @@ ehthumbs.db
 logs/
 scripts/.pids
 
-# Build artifacts
-build/
+# Build artifacts (root level only)
+/build/
 # Allow dist/windows/*.zip for Windows packages
 dist/
 !dist/windows/
