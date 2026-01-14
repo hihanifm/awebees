@@ -56,6 +56,8 @@ export default function SettingsPage() {
   const [backendLogLevel, setBackendLogLevel] = useState<string>("INFO");
   const [frontendLogLevel, setFrontendLogLevel] = useState<LogLevel>("INFO");
   const [isLoadingLogging, setIsLoadingLogging] = useState(false);
+  const [httpLogging, setHttpLogging] = useState<boolean>(true);
+  const [aiDetailedLogging, setAiDetailedLogging] = useState<boolean>(true);
 
   // Model selection state
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -154,6 +156,14 @@ export default function SettingsPage() {
         // Load frontend log level
         const frontendLevel = loadLogLevel();
         setFrontendLogLevel(frontendLevel);
+
+        // Load HTTP logging config
+        const httpLoggingConfig = await apiClient.getHTTPLoggingConfig();
+        setHttpLogging(httpLoggingConfig.http_logging);
+
+        // Load AI detailed logging config
+        const aiDetailedLoggingConfig = await apiClient.getAIDetailedLoggingConfig();
+        setAiDetailedLogging(aiDetailedLoggingConfig.detailed_logging);
       } catch (error) {
         logger.error("Failed to load logging settings:", error);
       } finally {
@@ -524,6 +534,42 @@ export default function SettingsPage() {
       title: "Success",
       description: `Frontend log level updated to ${newLevel}`,
     });
+  };
+
+  const handleHTTPLoggingChange = async (enabled: boolean) => {
+    try {
+      await apiClient.updateHTTPLoggingConfig(enabled);
+      setHttpLogging(enabled);
+      toast({
+        title: "Success",
+        description: `HTTP logging ${enabled ? "enabled" : "disabled"}`,
+      });
+    } catch (error) {
+      logger.error("Failed to update HTTP logging:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update HTTP logging",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAIDetailedLoggingChange = async (enabled: boolean) => {
+    try {
+      await apiClient.updateAIDetailedLoggingConfig(enabled);
+      setAiDetailedLogging(enabled);
+      toast({
+        title: "Success",
+        description: `AI detailed logging ${enabled ? "enabled" : "disabled"}`,
+      });
+    } catch (error) {
+      logger.error("Failed to update AI detailed logging:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update AI detailed logging",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRefreshModels = async () => {
@@ -925,6 +971,38 @@ export default function SettingsPage() {
                       <p className="text-xs text-muted-foreground">
                         Controls browser console logging. Saved to localStorage.
                       </p>
+                    </div>
+
+                    {/* HTTP Logging Toggle */}
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="http-logging">HTTP Request/Response Logging</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Log all HTTP requests and responses processed by the backend. Useful for debugging API interactions.
+                        </p>
+                      </div>
+                      <Switch
+                        id="http-logging"
+                        checked={httpLogging}
+                        onCheckedChange={handleHTTPLoggingChange}
+                        disabled={isLoadingLogging}
+                      />
+                    </div>
+
+                    {/* AI Detailed Logging Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="ai-detailed-logging">AI Detailed Logging</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Log detailed AI interaction information including full HTTP requests/responses to AI services.
+                        </p>
+                      </div>
+                      <Switch
+                        id="ai-detailed-logging"
+                        checked={aiDetailedLogging}
+                        onCheckedChange={handleAIDetailedLoggingChange}
+                        disabled={isLoadingLogging}
+                      />
                     </div>
 
                     {/* Log Level Info */}

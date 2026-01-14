@@ -11,7 +11,9 @@ class AIConfig:
     # OpenAI API configuration
     BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
-    MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    # Ensure MODEL is never empty - strip whitespace and default to gpt-4o-mini
+    _env_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    MODEL: str = _env_model.strip() if _env_model else "gpt-4o-mini"
     
     # Request parameters
     MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
@@ -106,7 +108,8 @@ Be specific and practical. Prioritize recommendations by severity."""
         cls.ENABLED = os.getenv("AI_ENABLED", "false").lower() == "true"
         cls.BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         cls.API_KEY = os.getenv("OPENAI_API_KEY")
-        cls.MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        env_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        cls.MODEL = env_model.strip() if env_model else "gpt-4o-mini"
         cls.MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
         cls.TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
         cls.TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "60"))
@@ -134,7 +137,13 @@ Be specific and practical. Prioritize recommendations by severity."""
             logger.debug(f"Updated API_KEY={'set' if cls.API_KEY else 'not set'}")
         
         if "model" in config:
-            cls.MODEL = str(config["model"])
+            model_value = str(config["model"]).strip()
+            if model_value:
+                cls.MODEL = model_value
+            else:
+                # Empty model - use default
+                cls.MODEL = "gpt-4o-mini"
+                logger.warning(f"Empty model provided, using default: {cls.MODEL}")
             logger.debug(f"Updated MODEL={cls.MODEL}")
         
         if "max_tokens" in config:
@@ -181,6 +190,9 @@ class AppConfig:
     
     # Enable profiling
     ENABLE_PROFILING: bool = os.getenv("ENABLE_PROFILING", "false").lower() == "true"
+    
+    # HTTP request/response logging (logs all HTTP requests and responses)
+    HTTP_LOGGING: bool = os.getenv("HTTP_LOGGING", "true").lower() in ("true", "1", "yes")
     
     # Insight file limit - maximum number of files allowed per insight analysis
     MAX_FILES: int = int(os.getenv("INSIGHT_MAX_FILES", "20"))

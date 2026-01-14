@@ -3,7 +3,7 @@ from pydantic import BaseModel, validator
 from typing import Literal
 import logging
 
-from app.core.config import AppConfig
+from app.core.config import AppConfig, AIConfig
 
 router = APIRouter(prefix="/api/logging", tags=["logging"])
 
@@ -37,6 +37,22 @@ class ResultMaxLinesConfigUpdate(BaseModel):
         if v > 100000:
             raise ValueError("Result max lines cannot exceed 100000")
         return v
+
+
+class HTTPLoggingConfigResponse(BaseModel):
+    http_logging: bool
+
+
+class HTTPLoggingConfigUpdate(BaseModel):
+    http_logging: bool
+
+
+class AIDetailedLoggingConfigResponse(BaseModel):
+    detailed_logging: bool
+
+
+class AIDetailedLoggingConfigUpdate(BaseModel):
+    detailed_logging: bool
 
 
 @router.get("/config", response_model=LoggingConfigResponse)
@@ -93,4 +109,54 @@ async def update_result_max_lines_config(config: ResultMaxLinesConfigUpdate):
     except Exception as e:
         logger.error(f"Unexpected error updating result max lines: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update result max lines: {str(e)}")
+
+
+@router.get("/http-logging", response_model=HTTPLoggingConfigResponse)
+async def get_http_logging_config():
+    """Get the current HTTP logging configuration."""
+    logger.debug("Getting HTTP logging configuration")
+    return HTTPLoggingConfigResponse(
+        http_logging=AppConfig.HTTP_LOGGING
+    )
+
+
+@router.put("/http-logging", response_model=HTTPLoggingConfigResponse)
+async def update_http_logging_config(config: HTTPLoggingConfigUpdate):
+    """Update the HTTP logging configuration."""
+    try:
+        logger.info(f"Updating HTTP logging to: {config.http_logging}")
+        AppConfig.HTTP_LOGGING = config.http_logging
+        logger.info(f"HTTP logging updated successfully to: {config.http_logging}")
+        
+        return HTTPLoggingConfigResponse(
+            http_logging=AppConfig.HTTP_LOGGING
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error updating HTTP logging: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update HTTP logging: {str(e)}")
+
+
+@router.get("/ai-detailed-logging", response_model=AIDetailedLoggingConfigResponse)
+async def get_ai_detailed_logging_config():
+    """Get the current AI detailed logging configuration."""
+    logger.debug("Getting AI detailed logging configuration")
+    return AIDetailedLoggingConfigResponse(
+        detailed_logging=AIConfig.DETAILED_LOGGING
+    )
+
+
+@router.put("/ai-detailed-logging", response_model=AIDetailedLoggingConfigResponse)
+async def update_ai_detailed_logging_config(config: AIDetailedLoggingConfigUpdate):
+    """Update the AI detailed logging configuration."""
+    try:
+        logger.info(f"Updating AI detailed logging to: {config.detailed_logging}")
+        AIConfig.DETAILED_LOGGING = config.detailed_logging
+        logger.info(f"AI detailed logging updated successfully to: {config.detailed_logging}")
+        
+        return AIDetailedLoggingConfigResponse(
+            detailed_logging=AIConfig.DETAILED_LOGGING
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error updating AI detailed logging: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update AI detailed logging: {str(e)}")
 

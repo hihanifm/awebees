@@ -643,6 +643,42 @@ export const apiClient = {
   },
 
   /**
+   * Get HTTP logging configuration from backend.
+   */
+  async getHTTPLoggingConfig(): Promise<{ http_logging: boolean }> {
+    return fetchJSON("/api/logging/http-logging");
+  },
+
+  /**
+   * Update HTTP logging configuration in backend.
+   * @param enabled Whether to enable HTTP request/response logging
+   */
+  async updateHTTPLoggingConfig(enabled: boolean): Promise<{ http_logging: boolean }> {
+    return fetchJSON("/api/logging/http-logging", {
+      method: "PUT",
+      body: JSON.stringify({ http_logging: enabled }),
+    });
+  },
+
+  /**
+   * Get AI detailed logging configuration from backend.
+   */
+  async getAIDetailedLoggingConfig(): Promise<{ detailed_logging: boolean }> {
+    return fetchJSON("/api/logging/ai-detailed-logging");
+  },
+
+  /**
+   * Update AI detailed logging configuration in backend.
+   * @param enabled Whether to enable detailed AI interaction logging
+   */
+  async updateAIDetailedLoggingConfig(enabled: boolean): Promise<{ detailed_logging: boolean }> {
+    return fetchJSON("/api/logging/ai-detailed-logging", {
+      method: "PUT",
+      body: JSON.stringify({ detailed_logging: enabled }),
+    });
+  },
+
+  /**
    * Open a log file in the system default editor.
    * @param logType Type of log file to open ("backend" or "frontend")
    */

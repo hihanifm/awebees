@@ -36,10 +36,24 @@ class AIService:
             self.base_url = env_base_url
             logger.debug(f"AI Service: base_url not provided, using env/default: {self.base_url}")
         
-        logger.debug(f"AI Service: Initialized with base_url={self.base_url}, model={model or os.getenv('OPENAI_MODEL', 'gpt-4o-mini')}")
+        # Handle model similar to base_url - if explicitly provided, use it or default, don't fall back to env
+        if model is not None:
+            # If explicitly provided (even as empty string), use it or default - don't check env
+            if model.strip():
+                self.model = model
+            else:
+                # Empty string provided - use default instead of env var
+                self.model = "gpt-4o-mini"
+                logger.debug(f"AI Service: model was empty string, using default: {self.model}")
+        else:
+            # model is None - only then fall back to env var (for direct instantiation)
+            env_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            self.model = env_model
+            logger.debug(f"AI Service: model not provided, using env/default: {self.model}")
+        
+        logger.debug(f"AI Service: Initialized with base_url={self.base_url}, model={self.model}")
         
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.timeout = timeout
@@ -235,6 +249,11 @@ Be specific and practical."""
         
         system_prompt = self.get_system_prompt(prompt_type)
         user_prompt = self.build_prompt(content, prompt_type, custom_prompt, variables)
+        
+        # Validate model is set
+        if not self.model or not self.model.strip():
+            logger.error(f"AI Service: Model is empty or invalid: '{self.model}', using default 'gpt-4o-mini'")
+            self.model = "gpt-4o-mini"
         
         logger.info(f"AI Service: Starting streaming analysis (model: {self.model}, prompt_type: {prompt_type})")
         
@@ -644,16 +663,22 @@ def get_ai_service() -> AIService:
             _ai_service = None
     
     if _ai_service is None:
-        logger.debug(f"AI Service: Creating new service instance with AIConfig.BASE_URL='{AIConfig.BASE_URL}'")
+        # Ensure MODEL is valid (not empty)
+        model_to_use = AIConfig.MODEL.strip() if AIConfig.MODEL else "gpt-4o-mini"
+        if not model_to_use:
+            model_to_use = "gpt-4o-mini"
+            logger.warning(f"AI Service: AIConfig.MODEL was empty, using default: {model_to_use}")
+        
+        logger.debug(f"AI Service: Creating new service instance with AIConfig.BASE_URL='{AIConfig.BASE_URL}', AIConfig.MODEL='{AIConfig.MODEL}' -> using '{model_to_use}'")
         _ai_service = AIService(
             base_url=AIConfig.BASE_URL,
             api_key=AIConfig.API_KEY,
-            model=AIConfig.MODEL,
+            model=model_to_use,
             max_tokens=AIConfig.MAX_TOKENS,
             temperature=AIConfig.TEMPERATURE,
             timeout=AIConfig.TIMEOUT
         )
-        logger.debug(f"AI Service: Service instance created with base_url={_ai_service.base_url}, model={_ai_service.model}")
+        logger.info(f"AI Service: Service instance created with base_url={_ai_service.base_url}, model={_ai_service.model}")
     else:
         logger.debug(f"AI Service: Returning existing service instance with base_url={_ai_service.base_url}, model={_ai_service.model}")
     return _ai_service

@@ -11,6 +11,7 @@ from app.version import get_version
 from app.core.plugin_manager import get_plugin_manager
 from app.core.config import AppConfig
 from app.api.routes import files, insights, analyze, errors, insight_paths, playground, logging as logging_routes, logs, help, safe_mode
+from app.middleware.http_logging import HTTPLoggingMiddleware
 
 load_dotenv()
 
@@ -96,6 +97,10 @@ app = FastAPI(
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:34000")
 serve_frontend = os.getenv("SERVE_FRONTEND", "false").lower() in ("true", "1", "yes")
+
+# Add HTTP logging middleware (should be added before CORS to log all requests)
+if AppConfig.HTTP_LOGGING:
+    app.add_middleware(HTTPLoggingMiddleware)
 
 if serve_frontend:
     # When serving frontend from backend, allow same origin and configured frontend URL
