@@ -9,9 +9,6 @@ load_dotenv(override=True)
 
 
 class AIConfig:
-    # Flag to prevent reloading from .env after manual update
-    _config_updated: bool = False
-    
     # Global AI toggle
     ENABLED: bool = os.getenv("AI_ENABLED", "false").lower() == "true"
     
@@ -161,9 +158,7 @@ Be specific and practical. Prioritize recommendations by severity."""
         logger = logging.getLogger(__name__)
         
         # Don't reload if config was manually updated (unless forced)
-        if cls._config_updated and not force:
-            logger.info("AIConfig.reload_from_env: Skipping reload - config was manually updated. Use force=True to override.")
-            return
+        # No flag needed - AIService reads directly from AIConfig, so reload is always safe
         
         load_dotenv(override=True)
         
@@ -239,9 +234,6 @@ Be specific and practical. Prioritize recommendations by severity."""
             old_detailed_logging = cls.DETAILED_LOGGING
             cls.DETAILED_LOGGING = bool(config["detailed_logging"])
             logger.info(f"Updated DETAILED_LOGGING: {old_detailed_logging} -> {cls.DETAILED_LOGGING}")
-        
-        # Mark that config has been manually updated (prevents accidental reload from .env)
-        cls._config_updated = True
         
         # Log final values after update
         logger.info(f"AIConfig.update_from_dict: Final values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")

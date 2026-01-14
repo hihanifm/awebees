@@ -228,11 +228,14 @@ Path: {user_path}"""
             from app.services.ai_service import get_ai_service
             ai_service = get_ai_service()
             
-            # Check if AI is configured via the service (which uses current AIConfig)
+            # Check if AI is configured via AIConfig (which checks both API_KEY and ENABLED)
+            # Import here to avoid circular import (config -> utils -> insight_base)
             from app.core.config import AIConfig
-            logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, ENABLED={AIConfig.ENABLED}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}, service.base_url={ai_service.base_url}")
+            logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, ENABLED={AIConfig.ENABLED}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}, base_url={AIConfig.BASE_URL}")
             
-            if ai_service.is_configured():
+            # Use AIConfig.is_configured() which checks both ENABLED and API_KEY
+            # ai_service.is_configured() only checks API_KEY, not ENABLED
+            if AIConfig.is_configured():
                 try:
                     logger.info(f"AI Auto-trigger: Starting auto-analysis with prompt_type={self.ai_prompt_type}")
                     
@@ -250,7 +253,9 @@ Path: {user_path}"""
                     error_msg = str(e)
                     
                     # Extract AI server URL from error message if present, or add it
-                    server_info = f" (AI Server: {ai_service.base_url})"
+                    # Import here to avoid circular import (config -> utils -> insight_base)
+                    from app.core.config import AIConfig
+                    server_info = f" (AI Server: {AIConfig.BASE_URL})"
                     if server_info not in error_msg:
                         # Format error message to be more user-friendly
                         # Remove technical prefixes if present, but preserve server info
@@ -266,7 +271,9 @@ Path: {user_path}"""
                             error_msg = error_msg.replace("AI API connection error: ", f"AI API connection error{server_info}: ", 1)
                         else:
                             # Add server info at the beginning if not present
-                            error_msg = f"AI Server: {ai_service.base_url}\n{error_msg}"
+                            # Import here to avoid circular import (config -> utils -> insight_base)
+                            from app.core.config import AIConfig
+                            error_msg = f"AI Server: {AIConfig.BASE_URL}\n{error_msg}"
                     
                     # Provide helpful hints for common errors
                     if "endpoint" in error_msg.lower() or "unexpected" in error_msg.lower():

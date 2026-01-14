@@ -578,27 +578,9 @@ async def update_ai_config(config: AIConfigUpdate):
         reset_ai_service()
         logger.info("AI Config API: AI service singleton reset")
         
-        # Verify the service will use the new config by getting it
-        from app.services.ai_service import get_ai_service
-        test_service = get_ai_service()
-        logger.info(f"AI Config API: Verified service after reset - model={test_service.model}, base_url={test_service.base_url}, max_tokens={test_service.max_tokens}, temperature={test_service.temperature}")
-        
-        # Double-check: ensure service matches config
-        if (test_service.model != AIConfig.MODEL or 
-            test_service.base_url != AIConfig.BASE_URL or
-            test_service.max_tokens != AIConfig.MAX_TOKENS or
-            test_service.temperature != AIConfig.TEMPERATURE):
-            logger.error(
-                f"AI Config API: MISMATCH DETECTED! "
-                f"Service model={test_service.model} != AIConfig.MODEL={AIConfig.MODEL}, "
-                f"Service base_url={test_service.base_url} != AIConfig.BASE_URL={AIConfig.BASE_URL}, "
-                f"Service max_tokens={test_service.max_tokens} != AIConfig.MAX_TOKENS={AIConfig.MAX_TOKENS}, "
-                f"Service temperature={test_service.temperature} != AIConfig.TEMPERATURE={AIConfig.TEMPERATURE}"
-            )
-            # Force reset again
-            reset_ai_service()
-            test_service = get_ai_service()
-            logger.info(f"AI Config API: After forced reset - model={test_service.model}, base_url={test_service.base_url}")
+        # Reset service singleton to ensure it reads fresh config
+        from app.services.ai_service import reset_ai_service
+        reset_ai_service()
         
         logger.info("AI Config API: Configuration updated successfully")
         return {"status": "success", "message": "AI configuration updated"}
@@ -629,7 +611,7 @@ async def test_ai_connection():
     
     try:
         ai_service = get_ai_service()
-        logger.debug(f"AI Test API: Using service with base_url={ai_service.base_url}")
+        logger.debug(f"AI Test API: Using service with base_url={AIConfig.BASE_URL}")
         success, message = await ai_service.test_connection()
         
         logger.info(f"AI Test API: Test {'successful' if success else 'failed'}: {message}")
@@ -664,19 +646,41 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
         }
     
     try:
-        from app.services.ai_service import AIService
+        from app.services.ai_service import AIService, get_ai_service
+        from app.core.config import AIConfig
         
-        test_service = AIService(
-            base_url=config.base_url,
-            api_key=config.api_key,
-            model=config.model or "gpt-4o-mini",
-            max_tokens=config.max_tokens or 2000,
-            temperature=config.temperature or 0.7,
-            timeout=60
-        )
+        # Temporarily update AIConfig for testing
+        old_base_url = AIConfig.BASE_URL
+        old_api_key = AIConfig.API_KEY
+        old_model = AIConfig.MODEL
+        old_max_tokens = AIConfig.MAX_TOKENS
+        old_temperature = AIConfig.TEMPERATURE
+        old_timeout = AIConfig.TIMEOUT
         
-        logger.debug(f"AI Test API: Created test service with base_url={test_service.base_url}")
-        success, message = await test_service.test_connection()
+        try:
+            AIConfig.BASE_URL = config.base_url
+            AIConfig.API_KEY = config.api_key
+            AIConfig.MODEL = config.model or "gpt-4o-mini"
+            AIConfig.MAX_TOKENS = config.max_tokens or 2000
+            AIConfig.TEMPERATURE = config.temperature or 0.7
+            AIConfig.TIMEOUT = 60
+            
+            # Reset service to pick up new config
+            from app.services.ai_service import reset_ai_service
+            reset_ai_service()
+            
+            test_service = get_ai_service()
+            logger.debug(f"AI Test API: Created test service with base_url={AIConfig.BASE_URL}")
+            success, message = await test_service.test_connection()
+        finally:
+            # Restore original config
+            AIConfig.BASE_URL = old_base_url
+            AIConfig.API_KEY = old_api_key
+            AIConfig.MODEL = old_model
+            AIConfig.MAX_TOKENS = old_max_tokens
+            AIConfig.TEMPERATURE = old_temperature
+            AIConfig.TIMEOUT = old_timeout
+            reset_ai_service()
         
         logger.info(f"AI Test API: Test {'successful' if success else 'failed'}: {message}")
         return {
@@ -709,18 +713,39 @@ async def get_available_models(config: AIConfigUpdate):
         return {"models": []}
     
     try:
-        from app.services.ai_service import AIService
+        from app.services.ai_service import get_ai_service, reset_ai_service
+        from app.core.config import AIConfig
         
-        temp_service = AIService(
-            base_url=config.base_url,
-            api_key=config.api_key or "dummy-key",  # Some servers don't require key for /models
-            model=config.model or "gpt-4o-mini",
-            max_tokens=config.max_tokens or 2000,
-            temperature=config.temperature or 0.7,
-            timeout=10
-        )
+        # Temporarily update AIConfig for testing
+        old_base_url = AIConfig.BASE_URL
+        old_api_key = AIConfig.API_KEY
+        old_model = AIConfig.MODEL
+        old_max_tokens = AIConfig.MAX_TOKENS
+        old_temperature = AIConfig.TEMPERATURE
+        old_timeout = AIConfig.TIMEOUT
         
-        models = await temp_service.get_available_models()
+        try:
+            AIConfig.BASE_URL = config.base_url
+            AIConfig.API_KEY = config.api_key or "dummy-key"  # Some servers don't require key for /models
+            AIConfig.MODEL = config.model or "gpt-4o-mini"
+            AIConfig.MAX_TOKENS = config.max_tokens or 2000
+            AIConfig.TEMPERATURE = config.temperature or 0.7
+            AIConfig.TIMEOUT = 10
+            
+            # Reset service to pick up new config
+            reset_ai_service()
+            
+            temp_service = get_ai_service()
+            models = await temp_service.get_available_models()
+        finally:
+            # Restore original config
+            AIConfig.BASE_URL = old_base_url
+            AIConfig.API_KEY = old_api_key
+            AIConfig.MODEL = old_model
+            AIConfig.MAX_TOKENS = old_max_tokens
+            AIConfig.TEMPERATURE = old_temperature
+            AIConfig.TIMEOUT = old_timeout
+            reset_ai_service()
         
         logger.info(f"AI Models API: Found {len(models)} models")
         return {"models": models}
