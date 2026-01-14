@@ -19,7 +19,25 @@ class AIService:
         temperature: float = 0.7,
         timeout: int = 60
     ):
-        self.base_url = base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        # Use provided base_url if it's not None and not empty
+        # If base_url is explicitly provided (even if empty), use it or default - don't fall back to env var
+        # This ensures AIConfig.BASE_URL is always respected when passed from get_ai_service()
+        if base_url is not None:
+            # If explicitly provided (even as empty string), use it or default - don't check env
+            if base_url.strip():
+                self.base_url = base_url
+            else:
+                # Empty string provided - use default instead of env var
+                self.base_url = "https://api.openai.com/v1"
+                logger.debug(f"AI Service: base_url was empty string, using default: {self.base_url}")
+        else:
+            # base_url is None - only then fall back to env var (for direct instantiation)
+            env_base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            self.base_url = env_base_url
+            logger.debug(f"AI Service: base_url not provided, using env/default: {self.base_url}")
+        
+        logger.debug(f"AI Service: Initialized with base_url={self.base_url}, model={model or os.getenv('OPENAI_MODEL', 'gpt-4o-mini')}")
+        
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         self.max_tokens = max_tokens
@@ -267,8 +285,8 @@ Be specific and practical."""
                         # Read error response content
                         error_content = await response.aread()
                         error_text = error_content.decode('utf-8', errors='ignore') if error_content else ""
-                        logger.error(f"AI Service: HTTP error {response.status_code}: {error_text}")
-                        raise Exception(f"AI API error: {response.status_code} - {error_text}")
+                        logger.error(f"AI Service: HTTP error {response.status_code} from {self.base_url}: {error_text}")
+                        raise Exception(f"AI API error ({self.base_url}): {response.status_code} - {error_text}")
                     
                     # For 200 responses, check if it's actually an error by peeking at first few bytes
                     # Some proxies return 200 with error messages
@@ -295,8 +313,8 @@ Be specific and practical."""
                                 # This might be an error message, try to parse it
                                 if not line.startswith("data: "):
                                     # Plain text error (not SSE format)
-                                    logger.error(f"AI Service: Error message in response: {line}")
-                                    raise Exception(f"AI API error: {line}")
+                                    logger.error(f"AI Service: Error message in response from {self.base_url}: {line}")
+                                    raise Exception(f"AI API error ({self.base_url}): {line}")
                         
                         if line.startswith("data: "):
                             data_str = line[6:]  # Remove "data: " prefix
@@ -324,9 +342,9 @@ Be specific and practical."""
                                                 f"Try: {self.base_url}/v1"
                                             )
                                     
-                                    logger.error(f"AI Service: API returned error in stream: {error_msg}")
+                                    logger.error(f"AI Service: API returned error in stream from {self.base_url}: {error_msg}")
                                     logger.error(f"AI Service: Full error data: {data}")
-                                    raise Exception(f"AI API error: {error_msg}")
+                                    raise Exception(f"AI API error ({self.base_url}): {error_msg}")
                                 
                                 # Check for error-like patterns in the data structure
                                 if isinstance(data, dict):
@@ -334,8 +352,8 @@ Be specific and practical."""
                                     if "message" in data and any(keyword in str(data["message"]).lower() for keyword in ["error", "unexpected", "not found", "invalid"]):
                                         error_detected = True
                                         error_msg = data["message"]
-                                        logger.error(f"AI Service: Error message detected in response: {error_msg}")
-                                        raise Exception(f"AI API error: {error_msg}")
+                                        logger.error(f"AI Service: Error message detected in response from {self.base_url}: {error_msg}")
+                                        raise Exception(f"AI API error ({self.base_url}): {error_msg}")
                                 
                                 # Extract content delta
                                 if "choices" in data and len(data["choices"]) > 0:
@@ -350,8 +368,8 @@ Be specific and practical."""
                             except json.JSONDecodeError as e:
                                 # If we can't parse JSON and it looks like an error, raise it
                                 if any(keyword in data_str.lower() for keyword in ["error", "unexpected", "not found", "invalid", "failed"]):
-                                    logger.error(f"AI Service: Error message in non-JSON response: {data_str}")
-                                    raise Exception(f"AI API error: {data_str}")
+                                    logger.error(f"AI Service: Error message in non-JSON response from {self.base_url}: {data_str}")
+                                    raise Exception(f"AI API error ({self.base_url}): {data_str}")
                                 
                                 logger.warning(f"AI Service: Failed to parse SSE chunk: {e}")
                                 logger.debug(f"AI Service: Problematic data: {data_str[:200]}")
@@ -379,17 +397,17 @@ Be specific and practical."""
             if e.response.status_code == 404 and "/v1" not in self.base_url:
                 error_message += f". Hint: Try adding '/v1' to your base URL: {self.base_url}/v1"
             
-            logger.error(f"AI Service: HTTP error - {error_message}")
+            logger.error(f"AI Service: HTTP error from {self.base_url} - {error_message}")
             logger.error(f"AI Service: Request URL was: {url}")
-            raise Exception(f"AI API error: {error_message}")
+            raise Exception(f"AI API error ({self.base_url}): {error_message}")
         
         except httpx.RequestError as e:
-            logger.error(f"AI Service: Request error - {type(e).__name__}: {e}")
+            logger.error(f"AI Service: Request error from {self.base_url} - {type(e).__name__}: {e}")
             logger.error(f"AI Service: Request URL was: {url}")
-            raise Exception(f"AI API connection error: {str(e)}")
+            raise Exception(f"AI API connection error ({self.base_url}): {str(e)}")
         
         except Exception as e:
-            logger.error(f"AI Service: Unexpected error during streaming - {type(e).__name__}: {e}", exc_info=True)
+            logger.error(f"AI Service: Unexpected error during streaming from {self.base_url} - {type(e).__name__}: {e}", exc_info=True)
             logger.error(f"AI Service: Request URL was: {url}")
             raise
     
@@ -502,30 +520,30 @@ Be specific and practical."""
                     if isinstance(error_msg, dict):
                         error_msg = error_msg.get("message", str(error_msg))
                     
-                    logger.error(f"AI Service: Test connection returned error - {error_msg}")
+                    logger.error(f"AI Service: Test connection returned error from {self.base_url} - {error_msg}")
                     
                     # Check if it's an endpoint error
                     if "endpoint" in str(error_msg).lower() and "/v1" not in self.base_url:
                         return False, (
-                            f"API error: {error_msg}. "
+                            f"API error ({self.base_url}): {error_msg}. "
                             f"Hint: Try adding '/v1' to your base URL: {self.base_url}/v1"
                         )
-                    return False, f"API error: {error_msg}"
+                    return False, f"API error ({self.base_url}): {error_msg}"
                 
                 logger.info(f"AI Service: Test connection successful - model={self.model}")
                 return True, f"Connection successful (model: {self.model})"
         
         except httpx.HTTPStatusError as e:
-            logger.error(f"AI Service: Test connection HTTP status error - {e.response.status_code}: {e.response.text[:100]}")
-            return False, f"HTTP error {e.response.status_code}: {e.response.text[:100]}"
+            logger.error(f"AI Service: Test connection HTTP status error from {self.base_url} - {e.response.status_code}: {e.response.text[:100]}")
+            return False, f"HTTP error ({self.base_url}): {e.response.status_code} - {e.response.text[:100]}"
         
         except httpx.RequestError as e:
-            logger.error(f"AI Service: Test connection request error - {type(e).__name__}: {e}")
-            return False, f"Connection error: {str(e)}"
+            logger.error(f"AI Service: Test connection request error from {self.base_url} - {type(e).__name__}: {e}")
+            return False, f"Connection error ({self.base_url}): {str(e)}"
         
         except Exception as e:
-            logger.error(f"AI Service: Test connection unexpected error - {type(e).__name__}: {e}", exc_info=True)
-            return False, f"Unexpected error: {str(e)}"
+            logger.error(f"AI Service: Test connection unexpected error from {self.base_url} - {type(e).__name__}: {e}", exc_info=True)
+            return False, f"Unexpected error ({self.base_url}): {str(e)}"
     
     async def get_available_models(self) -> list[str]:
         """
@@ -563,7 +581,7 @@ Be specific and practical."""
                     )
                 
                 if response.status_code == 404:
-                    logger.warning("AI Service: Server does not support /models endpoint (404)")
+                    logger.warning(f"AI Service: Server does not support /models endpoint (404) from {self.base_url}")
                     return []
                 
                 response.raise_for_status()
@@ -572,16 +590,8 @@ Be specific and practical."""
                 try:
                     data = json.loads(response_text)
                 except json.JSONDecodeError as e:
-                    logger.warning(f"AI Service: Could not parse response JSON: {e}")
+                    logger.warning(f"AI Service: Could not parse response JSON from {self.base_url}: {e}")
                     return []
-                
-                if response.status_code == 404:
-                    logger.warning("AI Service: Server does not support /models endpoint (404)")
-                    return []
-                
-                response.raise_for_status()
-                
-                data = response.json()
                 
                 # OpenAI format: { "object": "list", "data": [{"id": "model-name", ...}] }
                 if "data" in data and isinstance(data["data"], list):
@@ -594,15 +604,15 @@ Be specific and practical."""
                 return []
         
         except httpx.HTTPStatusError as e:
-            logger.warning(f"AI Service: HTTP error fetching models - {e.response.status_code}")
+            logger.warning(f"AI Service: HTTP error fetching models from {self.base_url} - {e.response.status_code}")
             return []
         
         except httpx.RequestError as e:
-            logger.warning(f"AI Service: Request error fetching models - {type(e).__name__}: {e}")
+            logger.warning(f"AI Service: Request error fetching models from {self.base_url} - {type(e).__name__}: {e}")
             return []
         
         except Exception as e:
-            logger.error(f"AI Service: Unexpected error fetching models - {type(e).__name__}: {e}", exc_info=True)
+            logger.error(f"AI Service: Unexpected error fetching models from {self.base_url} - {type(e).__name__}: {e}", exc_info=True)
             return []
 
 
@@ -612,8 +622,29 @@ _ai_service: Optional[AIService] = None
 
 def get_ai_service() -> AIService:
     global _ai_service
+    from app.core.config import AIConfig
+    
+    # Check if service exists and if config has changed (base_url, api_key, model, etc.)
+    # If config changed, reset the service to use new config
+    if _ai_service is not None:
+        config_changed = (
+            _ai_service.base_url != AIConfig.BASE_URL or
+            _ai_service.api_key != AIConfig.API_KEY or
+            _ai_service.model != AIConfig.MODEL or
+            _ai_service.max_tokens != AIConfig.MAX_TOKENS or
+            _ai_service.temperature != AIConfig.TEMPERATURE or
+            _ai_service.timeout != AIConfig.TIMEOUT
+        )
+        if config_changed:
+            logger.info(
+                f"AI Service: Config changed "
+                f"(base_url: {_ai_service.base_url} -> {AIConfig.BASE_URL}, "
+                f"model: {_ai_service.model} -> {AIConfig.MODEL}), resetting service"
+            )
+            _ai_service = None
+    
     if _ai_service is None:
-        from app.core.config import AIConfig
+        logger.debug(f"AI Service: Creating new service instance with AIConfig.BASE_URL='{AIConfig.BASE_URL}'")
         _ai_service = AIService(
             base_url=AIConfig.BASE_URL,
             api_key=AIConfig.API_KEY,
@@ -622,6 +653,9 @@ def get_ai_service() -> AIService:
             temperature=AIConfig.TEMPERATURE,
             timeout=AIConfig.TIMEOUT
         )
+        logger.debug(f"AI Service: Service instance created with base_url={_ai_service.base_url}, model={_ai_service.model}")
+    else:
+        logger.debug(f"AI Service: Returning existing service instance with base_url={_ai_service.base_url}, model={_ai_service.model}")
     return _ai_service
 
 

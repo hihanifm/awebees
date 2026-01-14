@@ -224,15 +224,17 @@ Path: {user_path}"""
                 logger.info(f"AI Auto-trigger: Skipping AI analysis - result content is empty or whitespace-only")
                 return result
             
+            # Always get AI service from get_ai_service() to ensure we use the current config
+            from app.services.ai_service import get_ai_service
+            ai_service = get_ai_service()
+            
+            # Check if AI is configured via the service (which uses current AIConfig)
             from app.core.config import AIConfig
+            logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, ENABLED={AIConfig.ENABLED}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}, service.base_url={ai_service.base_url}")
             
-            logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, ENABLED={AIConfig.ENABLED}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}")
-            
-            if AIConfig.is_configured():
+            if ai_service.is_configured():
                 try:
                     logger.info(f"AI Auto-trigger: Starting auto-analysis with prompt_type={self.ai_prompt_type}")
-                    from app.services.ai_service import get_ai_service
-                    ai_service = get_ai_service()
                     
                     ai_result = await ai_service.analyze(
                         content=result.content,
@@ -247,12 +249,24 @@ Path: {user_path}"""
                     # Store error message so frontend can display it
                     error_msg = str(e)
                     
-                    # Format error message to be more user-friendly
-                    # Remove technical prefixes if present
-                    if error_msg.startswith("AI API error: "):
-                        error_msg = error_msg.replace("AI API error: ", "", 1)
-                    elif error_msg.startswith("AI API connection error: "):
-                        error_msg = error_msg.replace("AI API connection error: ", "", 1)
+                    # Extract AI server URL from error message if present, or add it
+                    server_info = f" (AI Server: {ai_service.base_url})"
+                    if server_info not in error_msg:
+                        # Format error message to be more user-friendly
+                        # Remove technical prefixes if present, but preserve server info
+                        if error_msg.startswith("AI API error ("):
+                            # Already has server info in format "AI API error (base_url): ..."
+                            pass
+                        elif error_msg.startswith("AI API error: "):
+                            error_msg = error_msg.replace("AI API error: ", f"AI API error{server_info}: ", 1)
+                        elif error_msg.startswith("AI API connection error ("):
+                            # Already has server info
+                            pass
+                        elif error_msg.startswith("AI API connection error: "):
+                            error_msg = error_msg.replace("AI API connection error: ", f"AI API connection error{server_info}: ", 1)
+                        else:
+                            # Add server info at the beginning if not present
+                            error_msg = f"AI Server: {ai_service.base_url}\n{error_msg}"
                     
                     # Provide helpful hints for common errors
                     if "endpoint" in error_msg.lower() or "unexpected" in error_msg.lower():

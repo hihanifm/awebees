@@ -10,6 +10,20 @@ from datetime import datetime
 
 from app.core.plugin_manager import get_plugin_manager
 from app.core.models import InsightResult, ProgressEvent
+
+
+def _result_for_progress(result: InsightResult) -> Dict[str, Any]:
+    """
+    Convert InsightResult to dict for progress events, excluding large AI fields.
+    
+    Excludes ai_analysis and ai_summary from progress events to reduce payload size
+    in the progress windows. These fields are still included in the final result event.
+    """
+    result_dict = result.model_dump()
+    # Remove large AI fields from progress events to reduce payload size
+    result_dict.pop("ai_analysis", None)
+    result_dict.pop("ai_summary", None)
+    return result_dict
 from app.core.task_manager import get_task_manager
 from app.services.file_handler import CancelledError
 from app.services.ai_service import get_ai_service
@@ -143,7 +157,7 @@ async def _run_analysis_with_progress(
                         task_id=task_id,
                         insight_id=insight_id,
                         file_path=user_path,
-                        data=path_result.model_dump()
+                        data=_result_for_progress(path_result)
                     ))
                 
                 insight_elapsed = time.time() - insight_start_time
@@ -458,13 +472,11 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
             logger.error(f"AI Analyze API: Error during analysis: {e}", exc_info=True)
             
             # Format error message to be more user-friendly
+            # Note: Server info is already included in error message from ai_service
             error_message = str(e)
             
-            # Remove technical prefixes if present
-            if error_message.startswith("AI API error: "):
-                error_message = error_message.replace("AI API error: ", "", 1)
-            elif error_message.startswith("AI API connection error: "):
-                error_message = error_message.replace("AI API connection error: ", "", 1)
+            # Server info is already in format "AI API error (base_url): ..." or "AI API connection error (base_url): ..."
+            # Keep it as is so users can see which server was used
             
             # Provide helpful hints for common errors
             if "endpoint" in error_message.lower() or "unexpected" in error_message.lower():
