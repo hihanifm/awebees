@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.16.0] - 2026-01-14
+
+### Fixed
+- Fix AI config reload on hot reload: Clear env vars and reload from .env file on module import to prevent stale config after uvicorn hot reload
+- Fix AI response display: Include ai_analysis in final result event (was being excluded by _response_for_progress)
+
+### Changed
+- Add detailed logging for config reload to help debug config issues
+
+[5.16.0]: https://github.com/hihanifm/awebees/releases/tag/v5.16.0
+
 ## [5.0.0] - 2026-01-11
 
 ### Added
