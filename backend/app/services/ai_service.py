@@ -189,32 +189,6 @@ Be specific and practical."""
         
         return prompt
     
-    def _build_url(self, endpoint: str) -> str:
-        """
-        Build full URL with /v1 automatically added if not present.
-        
-        Args:
-            endpoint: The API endpoint path (e.g., "/chat/completions", "/models")
-        
-        Returns:
-            Full URL with /v1 prefix if needed
-        """
-        base_url = self._get_base_url()
-        # Strip trailing slashes
-        base_url = base_url.rstrip('/')
-        
-        # Check if /v1 is already in the base URL (case-insensitive)
-        base_url_lower = base_url.lower()
-        if not base_url_lower.endswith('/v1'):
-            # Add /v1 if not present
-            base_url = f"{base_url}/v1"
-        
-        # Ensure endpoint starts with /
-        if not endpoint.startswith('/'):
-            endpoint = f"/{endpoint}"
-        
-        return f"{base_url}{endpoint}"
-    
     def _build_headers(self) -> Dict[str, str]:
         """Build HTTP headers for AI API requests."""
         api_key = self._get_api_key()
@@ -272,7 +246,7 @@ Be specific and practical."""
         
         logger.info(f"AI Service: Starting streaming analysis (model: {model}, prompt_type: {prompt_type})")
         
-        url = self._build_url("/chat/completions")
+        url = f"{base_url.rstrip('/')}/chat/completions"
         headers = self._build_headers()
         
         payload = {
@@ -492,7 +466,7 @@ Be specific and practical."""
             
             # Simple test with minimal content
             test_prompt = "Respond with 'OK' if you can read this."
-            url = self._build_url("/chat/completions")
+            url = f"{base_url.rstrip('/')}/chat/completions"
             
             logger.info(f"AI Service: Testing connection to {url}")
             logger.debug(f"AI Service: Test using model={model}")
@@ -604,7 +578,7 @@ Be specific and practical."""
         
         try:
             base_url = self._get_base_url()
-            url = self._build_url("/models")
+            url = f"{base_url.rstrip('/')}/models"
             logger.info(f"AI Service: Fetching available models from {url}")
             
             async with httpx.AsyncClient(timeout=10) as client:
