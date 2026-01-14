@@ -22,7 +22,7 @@
     "home": "Home",
     "tagline": "Local-first, modular insights for your data — powered by a web UI.",
     "enterFilePaths": "Enter File or Folder Paths",
-    "filePathsPlaceholder": "Enter file or folder paths (one per line)\nExample:\n/Users/username/logs/file.log\n/var/log/app.log",
+    "filePathsPlaceholder": "Enter file or folder paths...",
     "filePathsHint": "Enter absolute paths to log files or folders on the server (e.g., /Users/username/logs/file.log or /var/log/app.log). Folders will be scanned recursively.",
     "loadSampleFile": "Load Sample File",
     "selectSample": "Select Sample",

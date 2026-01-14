@@ -231,7 +231,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 font-sans">
-      <main className="flex min-h-screen w-full max-w-[90%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x border-border pt-8">
+      <main className="flex min-h-screen w-full max-w-[99%] flex-col gap-8 pb-8 px-4 mx-auto bg-background/80 backdrop-blur-sm border-x-[0.5px] border-border/30 pt-8">
         {/* Backend Errors Banner */}
         {backendErrors.length > 0 && (
           <section>
@@ -242,15 +242,15 @@ export default function Home() {
         <div className="space-y-8">
               {/* File Selection */}
               <section>
-                <h2 className="text-lg font-semibold mb-4">{t("app.enterFilePaths")}</h2>
+                <h2 className="text-base font-semibold mb-4">{t("app.enterFilePaths")}</h2>
             <div className="space-y-2">
               <TextareaWithHistory
                 value={filePaths}
                 onChange={setFilePaths}
                 storageKey="lens_file_paths_history"
                 placeholder={t("app.filePathsPlaceholder")}
-                className="w-full h-[3.5rem] rounded-md border border-input bg-muted px-4 py-2 font-mono text-sm resize-y"
-                rows={2}
+                className="w-full rounded-md border border-input bg-muted px-4 py-2 font-mono text-sm resize-y"
+                rows={1}
                 disabled={analyzing}
               />
               {availableSamples.length > 0 && (
@@ -275,24 +275,13 @@ export default function Home() {
 
           {/* Insight Selection */}
           <section>
-            <h2 className="text-lg font-semibold mb-4">{t("app.selectInsights")}</h2>
+            <h2 className="text-base font-semibold mb-4">{t("app.selectInsights")}</h2>
             <InsightList
               selectedInsightIds={selectedInsightIds}
               onSelectionChange={setSelectedInsightIds}
             />
             <CustomParamsInput value={customParams} onChange={setCustomParams} />
           </section>
-
-          {/* Progress Widget */}
-          {(analyzing || progressEvents.length > 0) && (
-            <section>
-              <ProgressWidget
-                events={progressEvents}
-                currentTaskId={currentTaskId}
-                onCancel={handleCancel}
-              />
-            </section>
-          )}
 
           {/* Analyze Button */}
           <section>
@@ -309,6 +298,17 @@ export default function Home() {
               </div>
             )}
           </section>
+
+          {/* Progress Widget */}
+          {(analyzing || progressEvents.length > 0) && (
+            <section>
+              <ProgressWidget
+                events={progressEvents}
+                currentTaskId={currentTaskId}
+                onCancel={handleCancel}
+              />
+            </section>
+          )}
 
           {/* Results */}
           {analysisResponse && (

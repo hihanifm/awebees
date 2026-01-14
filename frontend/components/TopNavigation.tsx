@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Settings, HelpCircle, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger";
@@ -18,7 +17,6 @@ interface TopNavigationProps {
 export function TopNavigation({ className }: TopNavigationProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [safeMode, setSafeMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
@@ -214,25 +212,22 @@ export function TopNavigation({ className }: TopNavigationProps) {
             </Link>
 
             {/* Settings Tab */}
-            <button
-              onClick={() => setSettingsOpen(true)}
+            <Link
+              href="/settings"
               className={cn(
-                "px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2",
+                "px-4 py-2 rounded-md text-sm font-medium transition-all no-underline flex items-center gap-2",
                 "hover:bg-primary/10",
-                settingsOpen
+                isActive("/settings")
                   ? "bg-primary/15 text-primary font-semibold border-b-2 border-primary"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Settings className="h-4 w-4" />
               {t("common.settings")}
-            </button>
+            </Link>
           </div>
         </div>
       </nav>
-
-      {/* Settings Dialog */}
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </>
   );
 }
