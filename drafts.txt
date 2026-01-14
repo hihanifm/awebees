@@ -1,3 +1,5 @@
+Unable to copy 'C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\\Lib\\venv\\scripts\\nt\\venvwlauncher.exe' to 'C:\\Program Files (x86)\\LensAI\\venv\\Scripts\\pythonw.exe'
+
 1512 http fetch GET https://registry.npmjs.org/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz attempt 3 failed with UNABLE_TO_GET_ISSUER_CERT_LOCALLY
 1513 verbose reify failed optional dependency C:\Users\m.hanifa\Desktop\work\lens\awebees\frontend\node_modules\@unrs\resolver-binding-win32-x64-msvc
 1514 silly reify mark deleted [
