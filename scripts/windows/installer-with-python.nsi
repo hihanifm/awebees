@@ -262,6 +262,9 @@ Section "Lens Application" SecApp
     
     ; Create desktop shortcut (optional)
     CreateShortcut "$DESKTOP\LensAI.lnk" "$INSTDIR\lens-start.bat" "" "$INSTDIR\lens-start.bat" 0
+    
+    ; Automatically start the application after installation
+    ExecShell "open" "$INSTDIR\lens-start.bat"
 SectionEnd
 
 ; Uninstaller Section
