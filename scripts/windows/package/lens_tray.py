@@ -72,10 +72,6 @@ class LensTrayApp:
             "Lens Backend Server",
             self.menu
         )
-        
-        # Set icon to always be visible in Windows notification area
-        if sys.platform == "win32":
-            self._set_icon_always_visible()
     
     def _load_config(self):
         """Load port and host from backend/.env if it exists."""
@@ -111,133 +107,6 @@ class LensTrayApp:
         # Fallback: create a simple icon programmatically
         img = Image.new('RGB', (32, 32), color='#4F46E5')
         return img
-    
-    def _set_icon_always_visible(self):
-        """Set the tray icon to always be visible in Windows notification area.
-        
-        This function attempts to make the icon visible by:
-        1. Using Windows API to get the current thread's window handle
-        2. Setting the icon version to NOTIFYICON_VERSION_4 via Shell_NotifyIcon
-        3. Using registry to hint Windows to show the icon
-        
-        Note: Windows 10/11 may still hide icons in the overflow area by default.
-        Users can manually set icons to "Always show" in Taskbar settings.
-        """
-        if sys.platform != "win32":
-            return
-        
-        try:
-            import ctypes
-            from ctypes import wintypes
-            import winreg
-            
-            # Constants for Shell_NotifyIcon
-            NIM_SETVERSION = 0x00000004
-            NOTIFYICON_VERSION_4 = 4
-            
-            # Get Windows API functions
-            shell32 = ctypes.windll.shell32
-            user32 = ctypes.windll.user32
-            kernel32 = ctypes.windll.kernel32
-            
-            # Try to get the window handle for the current thread
-            # pystray creates a hidden window for the tray icon
-            try:
-                # Get current thread ID
-                thread_id = kernel32.GetCurrentThreadId()
-                
-                # Try to find window by enumerating windows in current process
-                # This is a best-effort approach since pystray doesn't expose the handle
-                def enum_windows_callback(hwnd, lParam):
-                    """Callback for EnumWindows to find our window."""
-                    # Check if window belongs to current thread
-                    window_thread_id = user32.GetWindowThreadProcessId(hwnd, None)
-                    if window_thread_id == thread_id:
-                        # Check if it's a message-only window (pystray uses these)
-                        # Store the handle if it looks like a tray icon window
-                        window_text = ctypes.create_unicode_buffer(256)
-                        user32.GetWindowTextW(hwnd, window_text, 256)
-                        class_name = ctypes.create_unicode_buffer(256)
-                        user32.GetClassNameW(hwnd, class_name, 256)
-                        
-                        # pystray typically creates windows with specific characteristics
-                        # We'll try to use any window handle we find for this thread
-                        if not hasattr(enum_windows_callback, 'found_hwnd'):
-                            enum_windows_callback.found_hwnd = hwnd
-                    return True
-                
-                # Define the callback function type
-                WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
-                enum_windows_callback.found_hwnd = None
-                callback = WNDENUMPROC(enum_windows_callback)
-                
-                # Enumerate all windows to find ours
-                user32.EnumWindows(callback, 0)
-                hwnd = enum_windows_callback.found_hwnd
-                
-                if hwnd:
-                    # Define NOTIFYICONDATA structure
-                    class NOTIFYICONDATA(ctypes.Structure):
-                        _fields_ = [
-                            ('cbSize', wintypes.DWORD),
-                            ('hWnd', wintypes.HWND),
-                            ('uID', wintypes.UINT),
-                            ('uFlags', wintypes.UINT),
-                            ('uCallbackMessage', wintypes.UINT),
-                            ('hIcon', wintypes.HICON),
-                            ('szTip', wintypes.WCHAR * 128),
-                            ('dwState', wintypes.DWORD),
-                            ('dwStateMask', wintypes.DWORD),
-                            ('szInfo', wintypes.WCHAR * 256),
-                            ('uTimeoutOrVersion', wintypes.UINT),
-                            ('szInfoTitle', wintypes.WCHAR * 64),
-                            ('dwInfoFlags', wintypes.DWORD),
-                            ('guidItem', ctypes.c_byte * 16),
-                            ('hBalloonIcon', wintypes.HICON),
-                        ]
-                    
-                    # Create NOTIFYICONDATA structure
-                    nid = NOTIFYICONDATA()
-                    nid.cbSize = ctypes.sizeof(NOTIFYICONDATA)
-                    nid.hWnd = hwnd
-                    nid.uID = 1  # Icon ID (pystray typically uses 1)
-                    nid.uTimeoutOrVersion = NOTIFYICON_VERSION_4
-                    
-                    # Set the version - this helps with icon visibility
-                    result = shell32.Shell_NotifyIconW(NIM_SETVERSION, ctypes.byref(nid))
-                    if result:
-                        self._log_info("Successfully set icon version to NOTIFYICON_VERSION_4")
-                    else:
-                        self._log_info("Failed to set icon version (icon may not be created yet)")
-                
-            except Exception as api_error:
-                self._log_error(f"Windows API method failed: {api_error}")
-            
-            # Also try to influence via registry
-            # Windows stores icon visibility in binary format, but we can at least
-            # ensure the registry key exists
-            try:
-                reg_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\TrayNotify"
-                try:
-                    key = winreg.OpenKey(
-                        winreg.HKEY_CURRENT_USER,
-                        reg_path,
-                        0,
-                        winreg.KEY_READ
-                    )
-                    winreg.CloseKey(key)
-                    self._log_info("Notification area registry key exists")
-                except (OSError, FileNotFoundError):
-                    # Key doesn't exist yet - Windows will create it when icon is added
-                    self._log_info("Notification area registry key will be created by Windows")
-            except Exception as reg_error:
-                self._log_error(f"Registry check failed: {reg_error}")
-                
-        except ImportError as import_error:
-            self._log_error(f"Required module not available: {import_error}")
-        except Exception as e:
-            self._log_error(f"Error in _set_icon_always_visible: {e}")
-            # Don't fail the application if icon visibility setting fails
     
     def _log_error(self, message):
         """Log error message to log file."""
@@ -481,16 +350,6 @@ class LensTrayApp:
     def run(self):
         """Run the tray application."""
         self._log_info("Starting Lens tray application...")
-        
-        # Set icon visibility after a short delay to ensure icon is created
-        if sys.platform == "win32":
-            def set_visibility_delayed():
-                time.sleep(1)  # Give pystray time to create the icon
-                self._set_icon_always_visible()
-            
-            import threading
-            threading.Thread(target=set_visibility_delayed, daemon=True).start()
-        
         self.icon.run()
 
 

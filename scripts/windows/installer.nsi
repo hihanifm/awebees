@@ -270,13 +270,15 @@ Function uninstallPrevious
     ; Found existing installation
     DetailPrint "Existing LensAI installation detected"
     
-    ; Check if app is running (check for python.exe processes)
-    ; Use a simple check: try to find python.exe processes
+    ; Check if app is running (check for both python.exe and pythonw.exe processes)
+    ; python.exe = backend server, pythonw.exe = tray icon
     DetailPrint "Checking for running LensAI processes..."
     ExecWait 'cmd /c tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH | findstr /C:"python.exe"' $R0
-    ; If findstr finds python.exe, exit code is 0 (found)
+    ExecWait 'cmd /c tasklist /FI "IMAGENAME eq pythonw.exe" /FO CSV /NH | findstr /C:"pythonw.exe"' $R3
+    ; If findstr finds either process, exit code is 0 (found)
     ; If findstr doesn't find it, exit code is non-zero (not found)
     IntCmp $R0 0 processRunning
+    IntCmp $R3 0 processRunning
     ; No process found - continue
     Goto continueUninstall
     
@@ -284,14 +286,18 @@ Function uninstallPrevious
     ; Python process found - ask user to close
     MessageBox MB_YESNO|MB_ICONEXCLAMATION "LensAI appears to be running.$\n$\nThe application must be closed before upgrading.$\n$\nWould you like to close it now and continue with the upgrade?" IDNO abortUpgrade
     ; Try to stop python processes (necessary for upgrade)
+    ; Stop both python.exe (backend server) and pythonw.exe (tray icon)
     DetailPrint "Stopping running LensAI processes..."
     ExecWait 'cmd /c taskkill /F /IM python.exe /T' $R1
+    ExecWait 'cmd /c taskkill /F /IM pythonw.exe /T' $R4
     ; Give processes time to terminate (increased from 2000ms to 5000ms)
     Sleep 5000
     ; Verify processes are actually gone
     DetailPrint "Verifying processes have terminated..."
     ExecWait 'cmd /c tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH | findstr /C:"python.exe"' $R2
+    ExecWait 'cmd /c tasklist /FI "IMAGENAME eq pythonw.exe" /FO CSV /NH | findstr /C:"pythonw.exe"' $R5
     IntCmp $R2 0 processesStillRunning
+    IntCmp $R5 0 processesStillRunning
     ; Processes are gone, continue
     Goto continueUninstall
     processesStillRunning:
@@ -299,7 +305,9 @@ Function uninstallPrevious
     DetailPrint "Some processes still running, waiting additional 3 seconds..."
     Sleep 3000
     ExecWait 'cmd /c tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH | findstr /C:"python.exe"' $R2
+    ExecWait 'cmd /c tasklist /FI "IMAGENAME eq pythonw.exe" /FO CSV /NH | findstr /C:"pythonw.exe"' $R5
     IntCmp $R2 0 warnProcessesStillRunning
+    IntCmp $R5 0 warnProcessesStillRunning
     ; Processes are now gone
     Goto continueUninstall
     warnProcessesStillRunning:
