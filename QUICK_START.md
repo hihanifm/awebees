@@ -35,7 +35,7 @@ graph TB
 - **LensAI Engine**: The FastAPI Python backend that processes requests, loads insights, and analyzes your log files
 - **Built-in Insights**: Pre-installed insights that come with LensAI (e.g., Error Detector, Line Count)
 - **Local Insights**: Custom insights from your LensInsights repository that you configure via Settings
-- **Configuration**: The `insight_paths.json` file stores paths to your external insight directories
+- **Configuration**: The `~/.lensai/insight_paths.json` file stores paths to your external insight directories
 - **Log Files**: Your log files on the local filesystem that are processed by insights
 - **AI Services** (optional): Cloud or local LLM services for enhanced analysis
 

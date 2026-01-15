@@ -15,12 +15,13 @@ class InsightPathsConfig:
         Initialize insight paths configuration.
         
         Args:
-            config_file: Path to config file (defaults to backend/insight_paths.json)
+            config_file: Path to config file (defaults to ~/.lensai/insight_paths.json)
         """
         if config_file is None:
-            # Default to backend directory
-            backend_dir = Path(__file__).parent.parent.parent
-            config_file = str(backend_dir / "insight_paths.json")
+            # Use ~/.lensai/insight_paths.json (or C:\Users\username\.lensai\insight_paths.json on Windows)
+            home_dir = Path.home()
+            lensai_dir = home_dir / ".lensai"
+            config_file = str(lensai_dir / "insight_paths.json")
         
         self.config_file = Path(config_file)
         self._paths: List[str] = []
