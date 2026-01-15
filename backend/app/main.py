@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from app.version import get_version
 from app.core.plugin_manager import get_plugin_manager
 from app.core.config import AppConfig
-from app.api.routes import files, insights, analyze, errors, insight_paths, playground, logging as logging_routes, logs, help, safe_mode
+from app.api.routes import files, insights, analyze, errors, insight_paths, playground, logging as logging_routes, logs, help, safe_mode, favorites
 from app.middleware.http_logging import HTTPLoggingMiddleware
 
 load_dotenv()
@@ -133,6 +133,7 @@ app.include_router(logging_routes.router)
 app.include_router(logs.router)
 app.include_router(help.router)
 app.include_router(safe_mode.router)
+app.include_router(favorites.router)
 
 
 @app.on_event("startup")

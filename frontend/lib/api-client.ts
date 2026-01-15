@@ -45,6 +45,65 @@ export const apiClient = {
   },
 
   /**
+   * Get list of favorited insight IDs.
+   */
+  async getFavorites(): Promise<string[]> {
+    const response = await fetchJSON<{ favorites: string[] }>("/api/favorites");
+    return response.favorites;
+  },
+
+  /**
+   * Add an insight to favorites.
+   * @param insightId The ID of the insight to favorite.
+   */
+  async addFavorite(insightId: string): Promise<string[]> {
+    const response = await fetchJSON<{ favorites: string[] }>(`/api/favorites/${insightId}`, {
+      method: "POST",
+    });
+    return response.favorites;
+  },
+
+  /**
+   * Remove an insight from favorites.
+   * @param insightId The ID of the insight to unfavorite.
+   */
+  async removeFavorite(insightId: string): Promise<string[]> {
+    const response = await fetchJSON<{ favorites: string[] }>(`/api/favorites/${insightId}`, {
+      method: "DELETE",
+    });
+    return response.favorites;
+  },
+
+  /**
+   * Toggle favorite status for an insight.
+   * @param insightId The ID of the insight to toggle.
+   * @returns The updated list of favorites and whether the insight is now favorited.
+   */
+  async toggleFavorite(insightId: string): Promise<{ favorites: string[]; isFavorite: boolean }> {
+    // Check current status first
+    const statusResponse = await fetchJSON<{ is_favorite: boolean }>(`/api/favorites/${insightId}`);
+    const wasFavorite = statusResponse.is_favorite;
+
+    // Toggle the favorite status
+    if (wasFavorite) {
+      const favorites = await this.removeFavorite(insightId);
+      return { favorites, isFavorite: false };
+    } else {
+      const favorites = await this.addFavorite(insightId);
+      return { favorites, isFavorite: true };
+    }
+  },
+
+  /**
+   * Check if an insight is favorited.
+   * @param insightId The ID of the insight to check.
+   */
+  async isFavorite(insightId: string): Promise<boolean> {
+    const response = await fetchJSON<{ is_favorite: boolean }>(`/api/favorites/${insightId}`);
+    return response.is_favorite;
+  },
+
+  /**
    * Select files and/or folders for analysis.
    * @param paths List of file or folder paths on the server.
    */

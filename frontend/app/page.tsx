@@ -37,6 +37,12 @@ function stripQuotes(path: string): string {
   return path;
 }
 
+const HOME_STORAGE_KEYS = {
+  SELECTED_INSIGHT_IDS: "lens_home_selected_insight_ids",
+  ANALYSIS_RESPONSE: "lens_home_analysis_response",
+  CUSTOM_PARAMS: "lens_home_custom_params",
+};
+
 export default function Home() {
   const { t } = useTranslation();
   const [filePaths, setFilePaths] = useState<string>("");
@@ -70,12 +76,48 @@ export default function Home() {
     setBackendErrors((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Load last used paths from localStorage on mount
+  // Load persisted state from localStorage on mount
   useEffect(() => {
+    // Load file paths from history
     const STORAGE_KEY = "lens_file_paths_history";
     const lastPath = getMostRecentInput(STORAGE_KEY);
     if (lastPath) {
       setFilePaths(lastPath);
+    }
+
+    // Load selected insight IDs
+    try {
+      const savedInsightIds = localStorage.getItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS);
+      if (savedInsightIds) {
+        const parsed = JSON.parse(savedInsightIds);
+        if (Array.isArray(parsed)) {
+          setSelectedInsightIds(parsed);
+        }
+      }
+    } catch (err) {
+      logger.error("Failed to load selected insight IDs:", err);
+    }
+
+    // Load analysis response
+    try {
+      const savedResponse = localStorage.getItem(HOME_STORAGE_KEYS.ANALYSIS_RESPONSE);
+      if (savedResponse) {
+        const parsed = JSON.parse(savedResponse);
+        setAnalysisResponse(parsed);
+      }
+    } catch (err) {
+      logger.error("Failed to load analysis response:", err);
+    }
+
+    // Load custom params
+    try {
+      const savedParams = localStorage.getItem(HOME_STORAGE_KEYS.CUSTOM_PARAMS);
+      if (savedParams) {
+        const parsed = JSON.parse(savedParams);
+        setCustomParams(parsed);
+      }
+    } catch (err) {
+      logger.error("Failed to load custom params:", err);
     }
   }, []);
 
@@ -117,6 +159,45 @@ export default function Home() {
     }
   }, [selectedSampleId, availableSamples]);
 
+  // Persist selected insight IDs to localStorage
+  useEffect(() => {
+    try {
+      if (selectedInsightIds.length > 0) {
+        localStorage.setItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS, JSON.stringify(selectedInsightIds));
+      } else {
+        localStorage.removeItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS);
+      }
+    } catch (err) {
+      logger.error("Failed to save selected insight IDs:", err);
+    }
+  }, [selectedInsightIds]);
+
+  // Persist analysis response to localStorage
+  useEffect(() => {
+    try {
+      if (analysisResponse) {
+        localStorage.setItem(HOME_STORAGE_KEYS.ANALYSIS_RESPONSE, JSON.stringify(analysisResponse));
+      } else {
+        localStorage.removeItem(HOME_STORAGE_KEYS.ANALYSIS_RESPONSE);
+      }
+    } catch (err) {
+      logger.error("Failed to save analysis response:", err);
+    }
+  }, [analysisResponse]);
+
+  // Persist custom params to localStorage
+  useEffect(() => {
+    try {
+      if (customParams && Object.keys(customParams).length > 0) {
+        localStorage.setItem(HOME_STORAGE_KEYS.CUSTOM_PARAMS, JSON.stringify(customParams));
+      } else {
+        localStorage.removeItem(HOME_STORAGE_KEYS.CUSTOM_PARAMS);
+      }
+    } catch (err) {
+      logger.error("Failed to save custom params:", err);
+    }
+  }, [customParams]);
+
   const handleCancel = async () => {
     if (currentTaskId) {
       try {
@@ -148,9 +229,16 @@ export default function Home() {
 
     setAnalyzing(true);
     setError(null);
+    // Clear previous results when starting a new analysis session
     setAnalysisResponse(null);
     setProgressEvents([]);
     setCurrentTaskId(null);
+    // Clear persisted analysis response
+    try {
+      localStorage.removeItem(HOME_STORAGE_KEYS.ANALYSIS_RESPONSE);
+    } catch (err) {
+      logger.error("Failed to clear analysis response from localStorage:", err);
+    }
 
     try {
       // Paths are already saved to history via TextareaWithHistory component

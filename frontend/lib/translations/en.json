@@ -189,7 +189,10 @@
   "insights": {
     "availableInsights": "Available Insights",
     "loading": "Loading insights...",
-    "noInsights": "No insights available"
+    "noInsights": "No insights available",
+    "favorites": "Favorites",
+    "allInsights": "All Insights",
+    "noFavorites": "No favorite insights yet"
   },
   "results": {
     "analysisResults": "Analysis Results",

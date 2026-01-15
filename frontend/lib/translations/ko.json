@@ -189,7 +189,10 @@
   "insights": {
     "availableInsights": "사용 가능한 인사이트",
     "loading": "인사이트 로딩 중...",
-    "noInsights": "사용 가능한 인사이트가 없습니다"
+    "noInsights": "사용 가능한 인사이트가 없습니다",
+    "favorites": "즐겨찾기",
+    "allInsights": "전체 인사이트",
+    "noFavorites": "즐겨찾기한 인사이트가 없습니다"
   },
   "results": {
     "analysisResults": "분석 결과",

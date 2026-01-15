@@ -29,6 +29,10 @@ const STORAGE_KEYS = {
   ACTIVE_TAB: "lens_playground_active_tab",
   FILE_PATH_HISTORY: "lens_playground_file_path_history",
   RIPGREP_COMMAND_HISTORY: "lens_playground_ripgrep_command_history",
+  ANALYSIS_RESPONSE: "lens_playground_analysis_response",
+  AI_RESPONSE: "lens_playground_ai_response",
+  AI_ERROR: "lens_playground_ai_error",
+  AI_EXECUTION_TIME: "lens_playground_ai_execution_time",
 };
 
 export default function PlaygroundPage() {
@@ -98,6 +102,47 @@ export default function PlaygroundPage() {
       setUserPrompt(currentTab === "text" ? "Please analyze the text above." : "Please analyze the filtered results above.");
     }
 
+    // Load persisted analysis response (filter mode)
+    try {
+      const savedResponse = localStorage.getItem(STORAGE_KEYS.ANALYSIS_RESPONSE);
+      if (savedResponse) {
+        const parsed = JSON.parse(savedResponse);
+        setAnalysisResponse(parsed);
+      }
+    } catch (err) {
+      logger.error("Failed to load analysis response:", err);
+    }
+
+    // Load persisted AI response (text mode)
+    try {
+      const savedAiResponse = localStorage.getItem(STORAGE_KEYS.AI_RESPONSE);
+      if (savedAiResponse) {
+        setAiResponse(savedAiResponse);
+      }
+    } catch (err) {
+      logger.error("Failed to load AI response:", err);
+    }
+
+    // Load persisted AI error
+    try {
+      const savedAiError = localStorage.getItem(STORAGE_KEYS.AI_ERROR);
+      if (savedAiError) {
+        setAiError(savedAiError);
+      }
+    } catch (err) {
+      logger.error("Failed to load AI error:", err);
+    }
+
+    // Load persisted AI execution time
+    try {
+      const savedExecutionTime = localStorage.getItem(STORAGE_KEYS.AI_EXECUTION_TIME);
+      if (savedExecutionTime) {
+        setAiExecutionTime(parseFloat(savedExecutionTime));
+      }
+    } catch (err) {
+      logger.error("Failed to load AI execution time:", err);
+    }
+
     // Load default prompts
     apiClient.getAISystemPrompts().then(setDefaultPrompts).catch(console.error);
   }, []);
@@ -139,6 +184,58 @@ export default function PlaygroundPage() {
     }
   }, [userPrompt]);
 
+  // Persist analysis response to localStorage (filter mode)
+  useEffect(() => {
+    try {
+      if (analysisResponse) {
+        localStorage.setItem(STORAGE_KEYS.ANALYSIS_RESPONSE, JSON.stringify(analysisResponse));
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.ANALYSIS_RESPONSE);
+      }
+    } catch (err) {
+      logger.error("Failed to save analysis response:", err);
+    }
+  }, [analysisResponse]);
+
+  // Persist AI response to localStorage (text mode)
+  useEffect(() => {
+    try {
+      if (aiResponse) {
+        localStorage.setItem(STORAGE_KEYS.AI_RESPONSE, aiResponse);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.AI_RESPONSE);
+      }
+    } catch (err) {
+      logger.error("Failed to save AI response:", err);
+    }
+  }, [aiResponse]);
+
+  // Persist AI error to localStorage
+  useEffect(() => {
+    try {
+      if (aiError) {
+        localStorage.setItem(STORAGE_KEYS.AI_ERROR, aiError);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.AI_ERROR);
+      }
+    } catch (err) {
+      logger.error("Failed to save AI error:", err);
+    }
+  }, [aiError]);
+
+  // Persist AI execution time to localStorage
+  useEffect(() => {
+    try {
+      if (aiExecutionTime !== undefined) {
+        localStorage.setItem(STORAGE_KEYS.AI_EXECUTION_TIME, aiExecutionTime.toString());
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.AI_EXECUTION_TIME);
+      }
+    } catch (err) {
+      logger.error("Failed to save AI execution time:", err);
+    }
+  }, [aiExecutionTime]);
+
   // Strip surrounding quotes from a string if they match at both ends
   function stripQuotes(path: string): string {
     if (!path || path.length < 2) {
@@ -174,9 +271,16 @@ export default function PlaygroundPage() {
 
     setAnalyzing(true);
     setError(null);
+    // Clear previous results when starting a new analysis session
     setAnalysisResponse(null);
     setProgressEvents([]);
     setCurrentTaskId(null);
+    // Clear persisted analysis response
+    try {
+      localStorage.removeItem(STORAGE_KEYS.ANALYSIS_RESPONSE);
+    } catch (err) {
+      logger.error("Failed to clear analysis response from localStorage:", err);
+    }
 
     try {
       // Extract task ID from first progress event
@@ -286,8 +390,17 @@ export default function PlaygroundPage() {
     setAiStreaming(true);
     setAiError(null);
     setConfigError(null);
+    // Clear previous AI results when starting a new analysis session
     setAiResponse("");
     setAiExecutionTime(undefined);
+    // Clear persisted AI response
+    try {
+      localStorage.removeItem(STORAGE_KEYS.AI_RESPONSE);
+      localStorage.removeItem(STORAGE_KEYS.AI_ERROR);
+      localStorage.removeItem(STORAGE_KEYS.AI_EXECUTION_TIME);
+    } catch (err) {
+      logger.error("Failed to clear AI response from localStorage:", err);
+    }
 
     const startTime = Date.now();
 
