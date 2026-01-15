@@ -97,7 +97,7 @@ export function StatusBar({}: StatusBarProps) {
     fetchProfilingStatus();
     fetchRipgrepStatus();
     
-    // Check API status periodically (every 2 minutes)
+    // Check API status periodically (every 5 minutes)
     const interval = setInterval(() => {
       fetch(`${API_URL}/api/health`)
         .then((res) => {
@@ -111,7 +111,7 @@ export function StatusBar({}: StatusBarProps) {
         .catch(() => {
           setApiStatus("offline");
         });
-    }, 120000); // 2 minutes (120000 ms)
+    }, 300000); // 5 minutes (300000 ms)
 
     return () => clearInterval(interval);
   }, []);
