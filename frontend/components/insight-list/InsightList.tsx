@@ -177,41 +177,28 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                       title={insight.description}
                       onClick={() => handleToggle(insight.id)}
                     >
-                      {/* Star icon - favorite indicator (top-left) */}
+                      {/* Star icon - favorite indicator (top-right) */}
                       <button
                         onClick={(e) => handleStarClick(e, insight.id)}
-                        className={`absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200 border-2 z-20
+                        className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200 z-20
                           ${favorited 
-                            ? 'bg-primary dark:bg-primary border-primary dark:border-primary scale-100 opacity-100' 
-                            : 'bg-muted dark:bg-muted border-muted-foreground/30 dark:border-muted-foreground/30 scale-90 opacity-40 group-hover:opacity-70 group-hover:scale-100'
+                            ? 'scale-100 opacity-100' 
+                            : 'scale-100 opacity-80 group-hover:opacity-100 group-hover:scale-105'
                           }
                           hover:scale-110 hover:opacity-100`}
                         aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
                         title={favorited ? "Remove from favorites" : "Add to favorites"}
                       >
                         <Star 
-                          className={`w-3 h-3 transition-colors duration-200 ${
+                          className={`w-3.5 h-3.5 transition-colors duration-200 ${
                             favorited 
-                              ? 'text-white dark:text-white fill-current' 
-                              : 'text-muted-foreground dark:text-muted-foreground fill-none'
+                              ? 'text-yellow-500 dark:text-yellow-500 fill-yellow-500 dark:fill-yellow-500' 
+                              : 'text-foreground dark:text-foreground fill-none'
                           }`}
-                          fill={favorited ? "currentColor" : "none"}
-                          strokeWidth={favorited ? 0 : 2}
+                          fill={favorited ? "#eab308" : "none"}
+                          strokeWidth={favorited ? 0 : 2.5}
                         />
                       </button>
-
-                      {/* Visual selection indicator - checkmark badge (top-right) */}
-                      <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200 border-2 
-                        ${isSelected 
-                          ? 'bg-primary dark:bg-primary border-primary dark:border-primary scale-100' 
-                          : 'bg-muted dark:bg-muted border-muted-foreground/30 dark:border-muted-foreground/30 scale-90 opacity-40 group-hover:opacity-70'
-                        }`}>
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white dark:text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" stroke="currentColor">
-                            <path d="M5 13l4 4L19 7"></path>
-                          </svg>
-                        )}
-                      </div>
                       
                       <Checkbox
                         id={insight.id}
