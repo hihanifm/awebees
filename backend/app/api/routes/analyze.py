@@ -429,14 +429,16 @@ class AIConfigUpdate(BaseModel):
     model: Optional[str] = None
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    streaming_enabled: Optional[bool] = None
 
 
 @router.post("/ai/analyze")
 async def ai_analyze_result(request: AIAnalyzeRequest):
     """
-    Analyze content with AI and stream the response.
+    Analyze content with AI and return the response.
     
-    Returns SSE stream of AI analysis.
+    Returns SSE stream of AI analysis if streaming is enabled,
+    or JSON response if streaming is disabled.
     """
     logger.info(f"AI Analyze API: Starting analysis (prompt_type: {request.prompt_type})")
     
@@ -456,15 +458,94 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
     else:
         limited_content = request.content
     
-    async def stream_ai_response() -> AsyncGenerator[str, None]:
+    # Check if streaming is enabled
+    streaming_enabled = AIConfig.STREAMING_ENABLED
+    
+    if streaming_enabled:
+        # Streaming mode: return SSE stream
+        async def stream_ai_response() -> AsyncGenerator[str, None]:
+            try:
+                ai_service = get_ai_service()
+                
+                yield _format_sse_event({
+                    "type": "ai_start",
+                    "message": "AI analysis starting..."
+                })
+                
+                full_response = []
+                async for chunk in ai_service.analyze_stream(
+                    content=limited_content,
+                    prompt_type=request.prompt_type,
+                    custom_prompt=request.custom_prompt,
+                    variables=request.variables
+                ):
+                    full_response.append(chunk)
+                    yield _format_sse_event({
+                        "type": "ai_chunk",
+                        "content": chunk
+                    })
+                
+                yield _format_sse_event({
+                    "type": "ai_complete",
+                    "message": "AI analysis complete",
+                    "full_content": "".join(full_response)
+                })
+                
+                logger.info("AI Analyze API: Analysis complete")
+            
+            except Exception as e:
+                logger.error(f"AI Analyze API: Error during analysis: {e}", exc_info=True)
+                
+                # Format error message to be more user-friendly
+                error_message = str(e)
+                
+                # Provide helpful hints for common errors
+                if "endpoint" in error_message.lower() or "unexpected" in error_message.lower():
+                    if "/v1" not in error_message:
+                        error_message = (
+                            f"{error_message}\n\n"
+                            f"💡 Tip: Make sure your AI Base URL includes '/v1' at the end "
+                            f"(e.g., https://api.openai.com/v1 or http://localhost:1234/v1)"
+                        )
+                elif "401" in error_message or "unauthorized" in error_message.lower():
+                    error_message = (
+                        f"{error_message}\n\n"
+                        f"💡 Tip: Check that your API key is correct and has the necessary permissions."
+                    )
+                elif "404" in error_message or "not found" in error_message.lower():
+                    error_message = (
+                        f"{error_message}\n\n"
+                        f"💡 Tip: Verify that your AI Base URL is correct and the endpoint exists."
+                    )
+                elif "connection" in error_message.lower() or "timeout" in error_message.lower():
+                    error_message = (
+                        f"{error_message}\n\n"
+                        f"💡 Tip: Check your network connection and ensure the AI service is accessible."
+                    )
+                
+                yield _format_sse_event({
+                    "type": "ai_error",
+                    "message": error_message,
+                    "error": True
+                })
+        
+        return StreamingResponse(
+            stream_ai_response(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
+    else:
+        # Non-streaming mode: return JSON response
         try:
             ai_service = get_ai_service()
             
-            yield _format_sse_event({
-                "type": "ai_start",
-                "message": "AI analysis starting..."
-            })
+            logger.info("AI Analyze API: Using non-streaming mode")
             
+            # Collect all chunks from analyze_stream (even in non-streaming mode, it yields chunks)
             full_response = []
             async for chunk in ai_service.analyze_stream(
                 content=limited_content,
@@ -473,28 +554,22 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
                 variables=request.variables
             ):
                 full_response.append(chunk)
-                yield _format_sse_event({
-                    "type": "ai_chunk",
-                    "content": chunk
-                })
             
-            yield _format_sse_event({
+            content = "".join(full_response)
+            logger.info("AI Analyze API: Analysis complete (non-streaming)")
+            
+            return {
                 "type": "ai_complete",
                 "message": "AI analysis complete",
-                "full_content": "".join(full_response)
-            })
-            
-            logger.info("AI Analyze API: Analysis complete")
+                "content": content,
+                "full_content": content
+            }
         
         except Exception as e:
             logger.error(f"AI Analyze API: Error during analysis: {e}", exc_info=True)
             
             # Format error message to be more user-friendly
-            # Note: Server info is already included in error message from ai_service
             error_message = str(e)
-            
-            # Server info is already in format "AI API error (base_url): ..." or "AI API connection error (base_url): ..."
-            # Keep it as is so users can see which server was used
             
             # Provide helpful hints for common errors
             if "endpoint" in error_message.lower() or "unexpected" in error_message.lower():
@@ -520,21 +595,10 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
                     f"💡 Tip: Check your network connection and ensure the AI service is accessible."
                 )
             
-            yield _format_sse_event({
-                "type": "ai_error",
-                "message": error_message,
-                "error": True
-            })
-    
-    return StreamingResponse(
-        stream_ai_response(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
-    )
+            raise HTTPException(
+                status_code=500,
+                detail=error_message
+            )
 
 
 @router.get("/ai/config")
@@ -637,7 +701,7 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
     Returns success status and message.
     """
     logger.info("AI Test API: Testing connection with provided config")
-    logger.debug(f"AI Test API: Test config - base_url={config.base_url}, model={config.model}")
+    logger.debug(f"AI Test API: Test config - base_url={config.base_url}, model={config.model}, streaming_enabled={getattr(config, 'streaming_enabled', None)}")
     
     if not config.base_url or not config.api_key:
         return {
@@ -656,6 +720,7 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
         old_max_tokens = AIConfig.MAX_TOKENS
         old_temperature = AIConfig.TEMPERATURE
         old_timeout = AIConfig.TIMEOUT
+        old_streaming_enabled = AIConfig.STREAMING_ENABLED
         
         try:
             AIConfig.BASE_URL = config.base_url
@@ -664,13 +729,15 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
             AIConfig.MAX_TOKENS = config.max_tokens or 2000
             AIConfig.TEMPERATURE = config.temperature or 0.7
             AIConfig.TIMEOUT = 60
+            # Use streaming_enabled from config if provided, otherwise default to True
+            AIConfig.STREAMING_ENABLED = config.streaming_enabled if config.streaming_enabled is not None else True
             
             # Reset service to pick up new config
             from app.services.ai_service import reset_ai_service
             reset_ai_service()
             
             test_service = get_ai_service()
-            logger.debug(f"AI Test API: Created test service with base_url={AIConfig.BASE_URL}")
+            logger.debug(f"AI Test API: Created test service with base_url={AIConfig.BASE_URL}, streaming_enabled={AIConfig.STREAMING_ENABLED}")
             success, message = await test_service.test_connection()
         finally:
             # Restore original config
@@ -680,6 +747,7 @@ async def test_ai_connection_with_config(config: AIConfigUpdate):
             AIConfig.MAX_TOKENS = old_max_tokens
             AIConfig.TEMPERATURE = old_temperature
             AIConfig.TIMEOUT = old_timeout
+            AIConfig.STREAMING_ENABLED = old_streaming_enabled
             reset_ai_service()
         
         logger.info(f"AI Test API: Test {'successful' if success else 'failed'}: {message}")

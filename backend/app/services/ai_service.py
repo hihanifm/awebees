@@ -23,6 +23,22 @@ class AIService:
         from app.core.config import AIConfig
         return AIConfig.BASE_URL
     
+    def _normalize_base_url(self, base_url: str) -> str:
+        """
+        Normalize base URL to ensure it ends with /v1 for OpenAI-compatible endpoints.
+        
+        Args:
+            base_url: The base URL to normalize
+            
+        Returns:
+            Base URL with /v1 suffix if not already present
+        """
+        base_url_clean = base_url.rstrip('/')
+        if not base_url_clean.endswith('/v1'):
+            base_url_clean = f"{base_url_clean}/v1"
+            logger.debug(f"AI Service: Added /v1 prefix to base URL: {base_url.rstrip('/')} -> {base_url_clean}")
+        return base_url_clean
+    
     def _get_api_key(self) -> str:
         """Get API key from AIConfig."""
         from app.core.config import AIConfig
@@ -56,6 +72,14 @@ class AIService:
             return AIConfig.DETAILED_LOGGING
         except Exception:
             return False
+    
+    def _is_streaming_enabled(self) -> bool:
+        """Check if streaming is enabled via config."""
+        try:
+            from app.core.config import AIConfig
+            return AIConfig.STREAMING_ENABLED
+        except Exception:
+            return True  # Default to streaming for backward compatibility
     
     def _mask_sensitive_headers(self, headers: Dict[str, str]) -> Dict[str, str]:
         """Mask sensitive data in headers for logging."""
@@ -243,10 +267,16 @@ Be specific and practical."""
         max_tokens = self._get_max_tokens()
         temperature = self._get_temperature()
         timeout = self._get_timeout()
+        streaming_enabled = self._is_streaming_enabled()
         
-        logger.info(f"AI Service: Starting streaming analysis (model: {model}, prompt_type: {prompt_type})")
+        if streaming_enabled:
+            logger.info(f"AI Service: Starting streaming analysis (model: {model}, prompt_type: {prompt_type})")
+        else:
+            logger.info(f"AI Service: Starting non-streaming analysis (model: {model}, prompt_type: {prompt_type})")
         
-        url = f"{base_url.rstrip('/')}/chat/completions"
+        # Normalize base URL to ensure /v1 suffix
+        base_url_clean = self._normalize_base_url(base_url)
+        url = f"{base_url_clean}/chat/completions"
         headers = self._build_headers()
         
         payload = {
@@ -257,7 +287,7 @@ Be specific and practical."""
             ],
             "max_tokens": max_tokens,
             "temperature": temperature,
-            "stream": True
+            "stream": streaming_enabled
         }
         
         # Log detailed request if enabled
@@ -265,130 +295,22 @@ Be specific and practical."""
         
         # Log request details (truncate content for readability)
         logger.info(f"AI Service: Sending request to {url}")
-        logger.debug(f"AI Service: Model={model}, max_tokens={max_tokens}, temperature={temperature}")
+        logger.debug(f"AI Service: Model={model}, max_tokens={max_tokens}, temperature={temperature}, streaming={streaming_enabled}")
         logger.debug(f"AI Service: System prompt length: {len(system_prompt)} chars")
         logger.debug(f"AI Service: User prompt length: {len(user_prompt)} chars")
         
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
-                async with client.stream("POST", url, headers=headers, json=payload) as response:
-                    # Log detailed response if enabled
-                    self._log_detailed_response(
-                        response.status_code,
-                        dict(response.headers),
-                        is_stream=True
-                    )
-                    
-                    # Log response status
-                    logger.info(f"AI Service: Received response with status {response.status_code}")
-                    
-                    # Check Content-Type header for error responses
-                    content_type = response.headers.get("content-type", "").lower()
-                    if "application/json" in content_type and response.status_code == 200:
-                        # For JSON responses with 200, we'll check the body for errors
-                        pass  # Will be checked in stream processing
-                    
-                    # Check status before processing stream
-                    if response.status_code >= 400:
-                        # Read error response content
-                        error_content = await response.aread()
-                        error_text = error_content.decode('utf-8', errors='ignore') if error_content else ""
-                        logger.error(f"AI Service: HTTP error {response.status_code} from {base_url}: {error_text}")
-                        raise Exception(f"AI API error ({base_url}): {response.status_code} - {error_text}")
-                    
-                    # For 200 responses, check if it's actually an error by peeking at first few bytes
-                    # Some proxies return 200 with error messages
-                    if response.status_code == 200:
-                        # We'll check the first line of the stream for error patterns
-                        pass  # Will be checked in stream processing
-                    
-                    # Track streaming metrics
-                    chunk_count = 0
-                    total_chars = 0
-                    first_line = True
-                    error_detected = False
-                    
-                    async for line in response.aiter_lines():
-                        if not line.strip():
-                            continue
-                        
-                        # Check first non-empty line for error messages (some proxies return errors in plain text)
-                        if first_line:
-                            first_line = False
-                            line_lower = line.lower()
-                            # Check for common error patterns even if status is 200
-                            if any(keyword in line_lower for keyword in ["error", "unexpected", "not found", "invalid", "failed"]):
-                                # This might be an error message, try to parse it
-                                if not line.startswith("data: "):
-                                    # Plain text error (not SSE format)
-                                    logger.error(f"AI Service: Error message in response from {base_url}: {line}")
-                                    raise Exception(f"AI API error ({base_url}): {line}")
-                        
-                        if line.startswith("data: "):
-                            data_str = line[6:]  # Remove "data: " prefix
-                            
-                            if data_str == "[DONE]":
-                                logger.debug(f"AI Service: Stream completed - received {chunk_count} chunks, {total_chars} characters")
-                                break
-                            
-                            try:
-                                data = json.loads(data_str)
-                                
-                                # Check for errors in the response
-                                if "error" in data:
-                                    error_detected = True
-                                    error_msg = data["error"]
-                                    if isinstance(error_msg, dict):
-                                        error_msg = error_msg.get("message", str(error_msg))
-                                    
-                                    # Add helpful hint for endpoint errors
-                                    if "endpoint" in str(error_msg).lower() or "unexpected" in str(error_msg).lower():
-                                        if "/v1" not in base_url:
-                                            error_msg = (
-                                                f"{error_msg}. "
-                                                f"Hint: Your base URL might be missing '/v1'. "
-                                                f"Try: {base_url}/v1"
-                                            )
-                                    
-                                    logger.error(f"AI Service: API returned error in stream from {base_url}: {error_msg}")
-                                    logger.error(f"AI Service: Full error data: {data}")
-                                    raise Exception(f"AI API error ({base_url}): {error_msg}")
-                                
-                                # Check for error-like patterns in the data structure
-                                if isinstance(data, dict):
-                                    # Some APIs return errors in different formats
-                                    if "message" in data and any(keyword in str(data["message"]).lower() for keyword in ["error", "unexpected", "not found", "invalid"]):
-                                        error_detected = True
-                                        error_msg = data["message"]
-                                        logger.error(f"AI Service: Error message detected in response from {base_url}: {error_msg}")
-                                        raise Exception(f"AI API error ({base_url}): {error_msg}")
-                                
-                                # Extract content delta
-                                if "choices" in data and len(data["choices"]) > 0:
-                                    delta = data["choices"][0].get("delta", {})
-                                    content_chunk = delta.get("content")
-                                    
-                                    if content_chunk:
-                                        chunk_count += 1
-                                        total_chars += len(content_chunk)
-                                        yield content_chunk
-                            
-                            except json.JSONDecodeError as e:
-                                # If we can't parse JSON and it looks like an error, raise it
-                                if any(keyword in data_str.lower() for keyword in ["error", "unexpected", "not found", "invalid", "failed"]):
-                                    logger.error(f"AI Service: Error message in non-JSON response from {base_url}: {data_str}")
-                                    raise Exception(f"AI API error ({base_url}): {data_str}")
-                                
-                                logger.warning(f"AI Service: Failed to parse SSE chunk: {e}")
-                                logger.debug(f"AI Service: Problematic data: {data_str[:200]}")
-                                continue
-                    
-                    # If we got a 200 response but no content chunks and no error was detected, something might be wrong
-                    if chunk_count == 0 and not error_detected and response.status_code == 200:
-                        logger.warning(f"AI Service: Received 200 response but no content chunks were yielded")
-                        # Don't raise here as some APIs might legitimately return empty responses
-            
-            logger.info(f"AI Service: Streaming analysis complete - {chunk_count} chunks, {total_chars} characters")
+                if streaming_enabled:
+                    # Streaming mode: use stream() method
+                    async with client.stream("POST", url, headers=headers, json=payload) as response:
+                        async for chunk in self._handle_streaming_response(response, base_url, url):
+                            yield chunk
+                else:
+                    # Non-streaming mode: use regular POST request
+                    response = await client.post(url, headers=headers, json=payload)
+                    async for chunk in self._handle_non_streaming_response(response, base_url, url):
+                        yield chunk
         
         except httpx.HTTPStatusError as e:
             # This shouldn't happen now since we check status before raise_for_status
@@ -421,6 +343,180 @@ Be specific and practical."""
             logger.error(f"AI Service: Unexpected error during streaming from {base_url} - {type(e).__name__}: {e}", exc_info=True)
             logger.error(f"AI Service: Request URL was: {url}")
             raise
+    
+    async def _handle_streaming_response(self, response, base_url: str, url: str) -> AsyncIterator[str]:
+        """Handle streaming SSE response."""
+        # Log detailed response if enabled
+        self._log_detailed_response(
+            response.status_code,
+            dict(response.headers),
+            is_stream=True
+        )
+        
+        # Log response status
+        logger.info(f"AI Service: Received response with status {response.status_code}")
+        
+        # Check status before processing stream
+        if response.status_code >= 400:
+            # Read error response content
+            error_content = await response.aread()
+            error_text = error_content.decode('utf-8', errors='ignore') if error_content else ""
+            logger.error(f"AI Service: HTTP error {response.status_code} from {base_url}: {error_text}")
+            raise Exception(f"AI API error ({base_url}): {response.status_code} - {error_text}")
+        
+        # Track streaming metrics
+        chunk_count = 0
+        total_chars = 0
+        first_line = True
+        error_detected = False
+        
+        async for line in response.aiter_lines():
+            if not line.strip():
+                continue
+            
+            # Check first non-empty line for error messages (some proxies return errors in plain text)
+            if first_line:
+                first_line = False
+                line_lower = line.lower()
+                # Check for common error patterns even if status is 200
+                if any(keyword in line_lower for keyword in ["error", "unexpected", "not found", "invalid", "failed"]):
+                    # This might be an error message, try to parse it
+                    if not line.startswith("data: "):
+                        # Plain text error (not SSE format)
+                        logger.error(f"AI Service: Error message in response from {base_url}: {line}")
+                        raise Exception(f"AI API error ({base_url}): {line}")
+            
+            if line.startswith("data: "):
+                data_str = line[6:]  # Remove "data: " prefix
+                
+                if data_str == "[DONE]":
+                    logger.debug(f"AI Service: Stream completed - received {chunk_count} chunks, {total_chars} characters")
+                    break
+                
+                try:
+                    data = json.loads(data_str)
+                    
+                    # Check for errors in the response
+                    if "error" in data:
+                        error_detected = True
+                        error_msg = data["error"]
+                        if isinstance(error_msg, dict):
+                            error_msg = error_msg.get("message", str(error_msg))
+                        
+                        # Add helpful hint for endpoint errors
+                        if "endpoint" in str(error_msg).lower() or "unexpected" in str(error_msg).lower():
+                            if "/v1" not in base_url:
+                                error_msg = (
+                                    f"{error_msg}. "
+                                    f"Hint: Your base URL might be missing '/v1'. "
+                                    f"Try: {base_url}/v1"
+                                )
+                        
+                        logger.error(f"AI Service: API returned error in stream from {base_url}: {error_msg}")
+                        logger.error(f"AI Service: Full error data: {data}")
+                        raise Exception(f"AI API error ({base_url}): {error_msg}")
+                    
+                    # Check for error-like patterns in the data structure
+                    if isinstance(data, dict):
+                        # Some APIs return errors in different formats
+                        if "message" in data and any(keyword in str(data["message"]).lower() for keyword in ["error", "unexpected", "not found", "invalid"]):
+                            error_detected = True
+                            error_msg = data["message"]
+                            logger.error(f"AI Service: Error message detected in response from {base_url}: {error_msg}")
+                            raise Exception(f"AI API error ({base_url}): {error_msg}")
+                    
+                    # Extract content delta
+                    if "choices" in data and len(data["choices"]) > 0:
+                        delta = data["choices"][0].get("delta", {})
+                        content_chunk = delta.get("content")
+                        
+                        if content_chunk:
+                            chunk_count += 1
+                            total_chars += len(content_chunk)
+                            yield content_chunk
+                
+                except json.JSONDecodeError as e:
+                    # If we can't parse JSON and it looks like an error, raise it
+                    if any(keyword in data_str.lower() for keyword in ["error", "unexpected", "not found", "invalid", "failed"]):
+                        logger.error(f"AI Service: Error message in non-JSON response from {base_url}: {data_str}")
+                        raise Exception(f"AI API error ({base_url}): {data_str}")
+                    
+                    logger.warning(f"AI Service: Failed to parse SSE chunk: {e}")
+                    logger.debug(f"AI Service: Problematic data: {data_str[:200]}")
+                    continue
+        
+        # If we got a 200 response but no content chunks and no error was detected, something might be wrong
+        if chunk_count == 0 and not error_detected and response.status_code == 200:
+            logger.warning(f"AI Service: Received 200 response but no content chunks were yielded")
+            # Don't raise here as some APIs might legitimately return empty responses
+        
+        logger.info(f"AI Service: Streaming analysis complete - {chunk_count} chunks, {total_chars} characters")
+    
+    async def _handle_non_streaming_response(self, response, base_url: str, url: str) -> AsyncIterator[str]:
+        """Handle non-streaming JSON response."""
+        # Log detailed response if enabled
+        response_body = await response.aread()
+        response_text = response_body.decode('utf-8', errors='ignore') if response_body else ""
+        
+        self._log_detailed_response(
+            response.status_code,
+            dict(response.headers),
+            response_text
+        )
+        
+        # Log response status
+        logger.info(f"AI Service: Received response with status {response.status_code}")
+        
+        # Check status before processing
+        if response.status_code >= 400:
+            logger.error(f"AI Service: HTTP error {response.status_code} from {base_url}: {response_text}")
+            raise Exception(f"AI API error ({base_url}): {response.status_code} - {response_text}")
+        
+        # Parse JSON response
+        try:
+            data = json.loads(response_text)
+        except json.JSONDecodeError as e:
+            logger.error(f"AI Service: Failed to parse JSON response from {base_url}: {e}")
+            logger.error(f"AI Service: Response text: {response_text[:500]}")
+            raise Exception(f"AI API error ({base_url}): Invalid JSON response - {str(e)}")
+        
+        # Check for errors in the response
+        if "error" in data:
+            error_msg = data["error"]
+            if isinstance(error_msg, dict):
+                error_msg = error_msg.get("message", str(error_msg))
+            
+            # Add helpful hint for endpoint errors
+            if "endpoint" in str(error_msg).lower() or "unexpected" in str(error_msg).lower():
+                if "/v1" not in base_url:
+                    error_msg = (
+                        f"{error_msg}. "
+                        f"Hint: Your base URL might be missing '/v1'. "
+                        f"Try: {base_url}/v1"
+                    )
+            
+            logger.error(f"AI Service: API returned error from {base_url}: {error_msg}")
+            logger.error(f"AI Service: Full error data: {data}")
+            raise Exception(f"AI API error ({base_url}): {error_msg}")
+        
+        # Extract content from complete response
+        if "choices" in data and len(data["choices"]) > 0:
+            message = data["choices"][0].get("message", {})
+            content = message.get("content", "")
+            
+            if content:
+                # Yield the complete content (maintains async iterator interface)
+                # For backward compatibility, we yield it as a single chunk
+                logger.info(f"AI Service: Received complete response ({len(content)} characters)")
+                yield content
+            else:
+                logger.warning(f"AI Service: No content in response from {base_url}")
+                yield ""
+        else:
+            logger.warning(f"AI Service: No choices in response from {base_url}")
+            yield ""
+        
+        logger.info(f"AI Service: Non-streaming analysis complete")
     
     async def analyze(
         self,
@@ -466,7 +562,9 @@ Be specific and practical."""
             
             # Simple test with minimal content
             test_prompt = "Respond with 'OK' if you can read this."
-            url = f"{base_url.rstrip('/')}/chat/completions"
+            # Normalize base URL to ensure /v1 suffix
+            base_url_clean = self._normalize_base_url(base_url)
+            url = f"{base_url_clean}/chat/completions"
             
             logger.info(f"AI Service: Testing connection to {url}")
             logger.debug(f"AI Service: Test using model={model}")
@@ -578,7 +676,9 @@ Be specific and practical."""
         
         try:
             base_url = self._get_base_url()
-            url = f"{base_url.rstrip('/')}/models"
+            # Normalize base URL to ensure /v1 suffix
+            base_url_clean = self._normalize_base_url(base_url)
+            url = f"{base_url_clean}/models"
             logger.info(f"AI Service: Fetching available models from {url}")
             
             async with httpx.AsyncClient(timeout=10) as client:

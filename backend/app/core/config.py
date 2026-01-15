@@ -27,6 +27,9 @@ class AIConfig:
     # Detailed logging for AI interactions (logs full HTTP requests/responses)
     DETAILED_LOGGING: bool = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
     
+    # Streaming support for AI responses
+    STREAMING_ENABLED: bool = os.getenv("AI_STREAMING_ENABLED", "true").lower() in ("true", "1", "yes")
+    
     @classmethod
     def _reload_from_env_on_import(cls) -> None:
         """
@@ -45,7 +48,7 @@ class AIConfig:
         # This ensures we read fresh from .env file, not stale process env
         env_vars_to_clear = [
             "AI_ENABLED", "OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL",
-            "OPENAI_MAX_TOKENS", "OPENAI_TEMPERATURE", "OPENAI_TIMEOUT", "AI_DETAILED_LOGGING"
+            "OPENAI_MAX_TOKENS", "OPENAI_TEMPERATURE", "OPENAI_TIMEOUT", "AI_DETAILED_LOGGING", "AI_STREAMING_ENABLED"
         ]
         for var in env_vars_to_clear:
             if var in os.environ:
@@ -67,6 +70,7 @@ class AIConfig:
         cls.TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
         cls.TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "60"))
         cls.DETAILED_LOGGING = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
+        cls.STREAMING_ENABLED = os.getenv("AI_STREAMING_ENABLED", "true").lower() in ("true", "1", "yes")
         
         import logging
         logger = logging.getLogger(__name__)
@@ -116,6 +120,7 @@ Be specific and practical. Prioritize recommendations by severity."""
             "temperature": cls.TEMPERATURE,
             "timeout": cls.TIMEOUT,
             "detailed_logging": cls.DETAILED_LOGGING,
+            "streaming_enabled": cls.STREAMING_ENABLED,
             "is_configured": cls.is_configured()
         }
         
@@ -140,7 +145,8 @@ Be specific and practical. Prioritize recommendations by severity."""
             "model": "OPENAI_MODEL",
             "max_tokens": "OPENAI_MAX_TOKENS",
             "temperature": "OPENAI_TEMPERATURE",
-            "timeout": "OPENAI_TIMEOUT"
+            "timeout": "OPENAI_TIMEOUT",
+            "streaming_enabled": "AI_STREAMING_ENABLED"
         }
         update_env_file(updates, key_mapping)
     
@@ -175,6 +181,7 @@ Be specific and practical. Prioritize recommendations by severity."""
         cls.TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
         cls.TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "60"))
         cls.DETAILED_LOGGING = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
+        cls.STREAMING_ENABLED = os.getenv("AI_STREAMING_ENABLED", "true").lower() in ("true", "1", "yes")
         
         logger.info(f"Reloaded AIConfig from .env - enabled={cls.ENABLED}, model={cls.MODEL}, is_configured={cls.is_configured()}")
         if old_enabled != cls.ENABLED or old_api_key_set != bool(cls.API_KEY) or old_model != cls.MODEL:
@@ -234,6 +241,11 @@ Be specific and practical. Prioritize recommendations by severity."""
             old_detailed_logging = cls.DETAILED_LOGGING
             cls.DETAILED_LOGGING = bool(config["detailed_logging"])
             logger.info(f"Updated DETAILED_LOGGING: {old_detailed_logging} -> {cls.DETAILED_LOGGING}")
+        
+        if "streaming_enabled" in config:
+            old_streaming_enabled = cls.STREAMING_ENABLED
+            cls.STREAMING_ENABLED = bool(config["streaming_enabled"])
+            logger.info(f"Updated STREAMING_ENABLED: {old_streaming_enabled} -> {cls.STREAMING_ENABLED}")
         
         # Log final values after update
         logger.info(f"AIConfig.update_from_dict: Final values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")

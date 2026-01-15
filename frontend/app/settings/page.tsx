@@ -58,6 +58,7 @@ export default function SettingsPage() {
   const [isLoadingLogging, setIsLoadingLogging] = useState(false);
   const [httpLogging, setHttpLogging] = useState<boolean>(true);
   const [aiDetailedLogging, setAiDetailedLogging] = useState<boolean>(true);
+  const [aiStreamingEnabled, setAiStreamingEnabled] = useState<boolean>(true);
 
   // Model selection state
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -164,6 +165,10 @@ export default function SettingsPage() {
         // Load AI detailed logging config
         const aiDetailedLoggingConfig = await apiClient.getAIDetailedLoggingConfig();
         setAiDetailedLogging(aiDetailedLoggingConfig.detailed_logging);
+        
+        // Load AI streaming config
+        const aiConfig = await apiClient.getAIConfig();
+        setAiStreamingEnabled(aiConfig.streaming_enabled ?? true);
       } catch (error) {
         logger.error("Failed to load logging settings:", error);
       } finally {
@@ -320,7 +325,7 @@ export default function SettingsPage() {
     setTestMessage(t("settings.testing"));
     
     try {
-      // Test with CURRENT form values, not saved values
+      // Test with CURRENT form values, not saved values (including streaming setting)
       const result = await apiClient.testAIConnectionWithConfig({
         enabled: settings.enabled,
         base_url: settings.baseUrl,
@@ -328,6 +333,7 @@ export default function SettingsPage() {
         model: settings.model,
         max_tokens: settings.maxTokens,
         temperature: settings.temperature,
+        streaming_enabled: aiStreamingEnabled,
       });
       
       if (result.success) {
@@ -572,6 +578,24 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAIStreamingChange = async (enabled: boolean) => {
+    try {
+      await apiClient.updateAIConfig({ streaming_enabled: enabled });
+      setAiStreamingEnabled(enabled);
+      toast({
+        title: "Success",
+        description: `AI streaming ${enabled ? "enabled" : "disabled"}`,
+      });
+    } catch (error) {
+      logger.error("Failed to update AI streaming:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update AI streaming",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleRefreshModels = async () => {
     if (!settings.baseUrl || !settings.apiKey) {
       toast({
@@ -776,6 +800,22 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">
                   {t("settings.temperatureHint")}
                 </p>
+              </div>
+
+              {/* AI Streaming Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="ai-streaming">AI Streaming</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable streaming responses from AI service. Disable if your AI server does not support streaming.
+                  </p>
+                </div>
+                <Switch
+                  id="ai-streaming"
+                  checked={aiStreamingEnabled}
+                  onCheckedChange={handleAIStreamingChange}
+                  disabled={!settings.enabled || isLoadingLogging}
+                />
               </div>
 
               {/* Test Connection */}

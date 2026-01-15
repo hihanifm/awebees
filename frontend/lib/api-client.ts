@@ -287,83 +287,121 @@ export const apiClient = {
             throw new Error(errorMessage);
           }
 
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-
-          if (!reader) {
-            throw new Error("Response body is not readable");
-          }
-
-          let buffer = "";
-          let fullResponse = "";
-          let receivedComplete = false;
-
-          const readChunk = (): Promise<void> => {
-            return reader.read().then(({ done, value }) => {
-              if (done) {
-                // If stream ends without ai_complete, check if we have content
-                if (!receivedComplete && fullResponse.length > 0) {
-                  // We have content but no completion event - resolve anyway
-                  logger.warn("AI stream ended without completion event, but content was received");
-                  resolve(fullResponse);
-                } else if (!receivedComplete) {
-                  // No content and no completion - this is an error
-                  reject(new Error("AI stream ended unexpectedly without completion event"));
-                } else {
-                  // We already resolved on ai_complete, but stream ended normally
-                  resolve(fullResponse);
+          // Check Content-Type to determine response format
+          const contentType = response.headers.get("content-type") || "";
+          
+          if (contentType.includes("application/json")) {
+            // Non-streaming mode: parse JSON response directly
+            try {
+              const data = await response.json();
+              
+              if (data.type === "ai_complete" && data.content) {
+                // If we have an onChunk callback, call it with the full content
+                // (or optionally chunk it for better UX)
+                if (onChunk) {
+                  // Call onChunk with full content (could also chunk it for progressive display)
+                  onChunk(data.content);
                 }
-                return Promise.resolve();
+                resolve(data.content || data.full_content || "");
+              } else if (data.type === "ai_error" || data.error) {
+                reject(new Error(data.message || data.detail || "AI analysis failed"));
+              } else {
+                // Fallback: try to extract content from any field
+                resolve(data.content || data.full_content || JSON.stringify(data));
               }
+            } catch (e) {
+              logger.error("Error parsing JSON response:", e);
+              reject(new Error("Failed to parse AI response"));
+            }
+          } else if (contentType.includes("text/event-stream")) {
+            // Streaming mode: handle SSE stream
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
 
-              buffer += decoder.decode(value, { stream: true });
-              // Split on double newline (SSE event separator)
-              const events = buffer.split("\n\n");
-              // Keep the last incomplete event in buffer
-              buffer = events.pop() || "";
+            if (!reader) {
+              throw new Error("Response body is not readable");
+            }
 
-              for (const eventText of events) {
-                if (!eventText.trim()) continue;
-                
-                // SSE events can have multiple lines, but we only care about "data: " lines
-                const lines = eventText.split("\n");
-                for (const line of lines) {
-                  if (line.startsWith("data: ")) {
-                    try {
-                      const data = JSON.parse(line.slice(6));
-                      
-                      if (data.type === "ai_chunk" && data.content) {
-                        fullResponse += data.content;
-                        if (onChunk) {
-                          onChunk(data.content);
+            let buffer = "";
+            let fullResponse = "";
+            let receivedComplete = false;
+
+            const readChunk = (): Promise<void> => {
+              return reader.read().then(({ done, value }) => {
+                if (done) {
+                  // If stream ends without ai_complete, check if we have content
+                  if (!receivedComplete && fullResponse.length > 0) {
+                    // We have content but no completion event - resolve anyway
+                    logger.warn("AI stream ended without completion event, but content was received");
+                    resolve(fullResponse);
+                  } else if (!receivedComplete) {
+                    // No content and no completion - this is an error
+                    reject(new Error("AI stream ended unexpectedly without completion event"));
+                  } else {
+                    // We already resolved on ai_complete, but stream ended normally
+                    resolve(fullResponse);
+                  }
+                  return Promise.resolve();
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+                // Split on double newline (SSE event separator)
+                const events = buffer.split("\n\n");
+                // Keep the last incomplete event in buffer
+                buffer = events.pop() || "";
+
+                for (const eventText of events) {
+                  if (!eventText.trim()) continue;
+                  
+                  // SSE events can have multiple lines, but we only care about "data: " lines
+                  const lines = eventText.split("\n");
+                  for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                      try {
+                        const data = JSON.parse(line.slice(6));
+                        
+                        if (data.type === "ai_chunk" && data.content) {
+                          fullResponse += data.content;
+                          if (onChunk) {
+                            onChunk(data.content);
+                          }
+                        } else if (data.type === "ai_complete") {
+                          receivedComplete = true;
+                          // Use full_content if provided, otherwise use accumulated response
+                          const finalResponse = data.full_content || fullResponse;
+                          resolve(finalResponse);
+                          return Promise.resolve();
+                        } else if (data.type === "ai_error") {
+                          receivedComplete = true;
+                          reject(new Error(data.message || "AI analysis failed"));
+                          return Promise.resolve();
+                        } else if (data.type === "ai_start") {
+                          // Ignore start event, just log it
+                          console.debug("AI analysis started");
                         }
-                      } else if (data.type === "ai_complete") {
-                        receivedComplete = true;
-                        // Use full_content if provided, otherwise use accumulated response
-                        const finalResponse = data.full_content || fullResponse;
-                        resolve(finalResponse);
-                        return Promise.resolve();
-                      } else if (data.type === "ai_error") {
-                        receivedComplete = true;
-                        reject(new Error(data.message || "AI analysis failed"));
-                        return Promise.resolve();
-                      } else if (data.type === "ai_start") {
-                        // Ignore start event, just log it
-                        console.debug("AI analysis started");
+                      } catch (e) {
+                        logger.error("Error parsing AI SSE event:", e, "Raw line:", line);
+                        // Don't reject on parsing errors, just log and continue
                       }
-                    } catch (e) {
-                      logger.error("Error parsing AI SSE event:", e, "Raw line:", line);
-                      // Don't reject on parsing errors, just log and continue
                     }
                   }
                 }
-              }
 
-              return readChunk();
-            });
-          };
+                return readChunk();
+              });
+            };
 
-          return readChunk();
+            return readChunk();
+          } else {
+            // Unknown content type - try to handle as text
+            try {
+              const text = await response.text();
+              resolve(text);
+            } catch (e) {
+              logger.error("Error reading response:", e);
+              reject(new Error("Failed to read AI response"));
+            }
+          }
         })
         .catch(reject);
     });
@@ -386,6 +424,7 @@ export const apiClient = {
     model?: string;
     max_tokens?: number;
     temperature?: number;
+    streaming_enabled?: boolean;
   }): Promise<void> {
     await fetchJSON("/api/analyze/ai/config", {
       method: "POST",
@@ -413,6 +452,7 @@ export const apiClient = {
     model: string;
     max_tokens?: number;
     temperature?: number;
+    streaming_enabled?: boolean;
   }): Promise<{ success: boolean; message: string }> {
     return fetchJSON("/api/analyze/ai/test-config", {
       method: "POST",
