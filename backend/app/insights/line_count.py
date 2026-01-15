@@ -17,6 +17,9 @@ class LineCount(Insight):
     @property
     def description(self) -> str: return "Counts total lines, empty lines, and non-empty lines in log files"
     
+    @property
+    def author(self) -> str: return "m.hanifa"
+    
     async def analyze(
         self,
         user_path: str,

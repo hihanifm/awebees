@@ -1,7 +1,8 @@
 INSIGHT_CONFIG = {
     "metadata": {
         "name": "Error Detector",
-        "description": "Detects ERROR and FATAL log lines in log files"
+        "description": "Detects ERROR and FATAL log lines in log files",
+        "author": "m.hanifa"
     },
     "file_filters": [
         {

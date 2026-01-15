@@ -9,7 +9,8 @@ for significantly faster performance on large log files.
 INSIGHT_CONFIG = {
     "metadata": {
         "name": "Fast Error Detector (ripgrep)",
-        "description": "Ultra-fast ERROR/FATAL detection using ripgrep - 10-100x faster than Python regex"
+        "description": "Ultra-fast ERROR/FATAL detection using ripgrep - 10-100x faster than Python regex",
+        "author": "m.hanifa"
     },
     "file_filters": [
         {
