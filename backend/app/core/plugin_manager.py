@@ -630,7 +630,8 @@ class PluginManager:
                 id=insight.id,
                 name=insight.name,
                 description=insight.description,
-                folder=self._insight_folders.get(insight.id)
+                folder=self._insight_folders.get(insight.id),
+                author=insight.author if hasattr(insight, 'author') else None
             )
             for insight in self._insights.values()
         ]

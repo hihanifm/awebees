@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -10,7 +10,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Star } from "lucide-react";
+import { Star, Settings, X } from "lucide-react";
 import { useInsights } from "@/hooks/use-insights";
 import { useFavorites } from "@/hooks/use-favorites";
 import { InsightMetadata } from "@/lib/api-types";
@@ -28,6 +28,9 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
   const { t } = useTranslation();
   const { insights, loading, error, refresh } = useInsights();
   const { favorites, loading: favoritesLoading, toggleFavorite, isFavorite } = useFavorites();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedInsight, setSelectedInsight] = useState<InsightMetadata | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   
   // Load active tab from localStorage on mount
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -132,6 +135,27 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
     }
   };
 
+  const handleSettingsClick = (e: React.MouseEvent, insight: InsightMetadata) => {
+    e.stopPropagation(); // Prevent card selection
+    e.preventDefault(); // Prevent any default behavior
+    setSelectedInsight(insight);
+    setDialogOpen(true);
+    // Use native dialog showModal() method
+    setTimeout(() => {
+      if (dialogRef.current) {
+        dialogRef.current.showModal();
+      }
+    }, 0);
+  };
+
+  const handleDialogClose = () => {
+    if (dialogRef.current) {
+      dialogRef.current.close();
+    }
+    setDialogOpen(false);
+    setSelectedInsight(null);
+  };
+
   const renderInsightCards = () => {
     if (sortedFolders.length === 0) {
       if (activeTab === "favorites") {
@@ -199,6 +223,21 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
                           strokeWidth={favorited ? 0 : 2.5}
                         />
                       </button>
+
+                      {/* Settings icon - details dialog (bottom-left) */}
+                      <button
+                        onClick={(e) => handleSettingsClick(e, insight)}
+                        className="absolute bottom-1 left-1 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200 z-20
+                          opacity-60 group-hover:opacity-100
+                          hover:scale-110"
+                        aria-label="View insight details"
+                        title="View insight details"
+                      >
+                        <Settings 
+                          className="w-3.5 h-3.5 text-muted-foreground dark:text-muted-foreground"
+                          strokeWidth={2}
+                        />
+                      </button>
                       
                       <Checkbox
                         id={insight.id}
@@ -240,27 +279,71 @@ export function InsightList({ selectedInsightIds, onSelectionChange, disabled }:
   };
 
   return (
-    <div className="space-y-2">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="all">{t("insights.allInsights")}</TabsTrigger>
-          <TabsTrigger value="favorites">{t("insights.favorites")}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="all" className="mt-2">
-          <div className="max-h-[400px] overflow-y-auto pr-2 border rounded-md">
-            {renderInsightCards()}
+    <>
+      <div className="space-y-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="all">{t("insights.allInsights")}</TabsTrigger>
+            <TabsTrigger value="favorites">{t("insights.favorites")}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all" className="mt-2">
+            <div className="max-h-[400px] overflow-y-auto pr-2 border rounded-md">
+              {renderInsightCards()}
+            </div>
+          </TabsContent>
+          <TabsContent value="favorites" className="mt-2">
+            <div className="max-h-[400px] overflow-y-auto pr-2 border rounded-md">
+              {favoritesLoading ? (
+                <div className="text-center py-8 text-muted-foreground">{t("insights.loading")}</div>
+              ) : (
+                renderInsightCards()
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Insight Details Dialog - Using native HTML dialog element */}
+      <dialog
+        ref={dialogRef}
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background shadow-lg backdrop:bg-black/50 backdrop:backdrop-blur-sm max-w-md w-full max-h-[90vh] overflow-y-auto p-0 m-0 [&::backdrop]:z-[9999]"
+        onClose={handleDialogClose}
+        onClick={(e) => {
+          // Close dialog when clicking on backdrop
+          if (e.target === dialogRef.current) {
+            handleDialogClose();
+          }
+        }}
+      >
+        {selectedInsight && (
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold leading-none tracking-tight">
+                  {selectedInsight.name}
+                </h2>
+                {selectedInsight.author && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    By: {selectedInsight.author}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleDialogClose}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                aria-label="Close dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4">
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {selectedInsight.description}
+              </p>
+            </div>
           </div>
-        </TabsContent>
-        <TabsContent value="favorites" className="mt-2">
-          <div className="max-h-[400px] overflow-y-auto pr-2 border rounded-md">
-            {favoritesLoading ? (
-              <div className="text-center py-8 text-muted-foreground">{t("insights.loading")}</div>
-            ) : (
-              renderInsightCards()
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+        )}
+      </dialog>
+    </>
   );
 }

@@ -20,6 +20,7 @@ export interface InsightMetadata {
   name: string;
   description: string;
   folder?: string; // Folder name where insight is located (undefined for root-level)
+  author?: string; // Author name (optional)
 }
 
 export interface FileSelectRequest {

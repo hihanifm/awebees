@@ -85,6 +85,7 @@ class ConfigBasedInsight(FilterBasedInsight):
         self._name = metadata.get("name")
         self._description = metadata.get("description", "")
         self._folder = metadata.get("folder")
+        self._author = metadata.get("author")
         
         self._file_filter_configs = config["file_filters"]
         
@@ -222,6 +223,9 @@ class ConfigBasedInsight(FilterBasedInsight):
     
     @property
     def folder(self) -> Optional[str]: return self._folder
+    
+    @property
+    def author(self) -> Optional[str]: return self._author
     
     @property
     def ai_enabled(self) -> bool: return self._ai_enabled

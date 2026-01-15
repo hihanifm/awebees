@@ -23,6 +23,7 @@ class InsightMetadata(BaseModel):
     name: str
     description: str
     folder: Optional[str] = None  # Folder name where insight is located (None for root-level)
+    author: Optional[str] = None  # Author name (optional)
     ai_enabled: bool = True  # Whether insight supports AI analysis (default: True)
     ai_auto: bool = False  # Whether to automatically trigger AI after analysis (default: False)
     ai_prompt_type: str = "explain"  # Default AI prompt type: summarize, explain, recommend, custom
