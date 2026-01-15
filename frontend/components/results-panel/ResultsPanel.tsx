@@ -379,7 +379,7 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
       {/* Results */}
       <div className="space-y-4">
         {results.map((resultItem, insightIndex) => (
-          <Card key={resultItem.insight_id}>
+          <Card key={resultItem.insight_id} className="bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 dark:from-primary/20 dark:via-primary/15 dark:to-primary/20 border-2 border-primary/30 dark:border-primary/30">
             <CardHeader>
               <CardTitle 
                 className="text-base flex justify-between items-center cursor-pointer select-none"
