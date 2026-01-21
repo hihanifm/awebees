@@ -1,5 +1,5 @@
 from typing import List, AsyncGenerator, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import logging
@@ -432,6 +432,34 @@ class AIConfigUpdate(BaseModel):
     streaming_enabled: Optional[bool] = None
 
 
+class AIConfigCreate(BaseModel):
+    name: str
+    enabled: bool = True
+    base_url: str = "https://api.openai.com/v1"
+    api_key: str = ""
+    model: str = "gpt-4o-mini"
+    max_tokens: int = 2000
+    temperature: float = 0.7
+    timeout: int = 60
+    streaming_enabled: bool = True
+
+
+class AIConfigUpdateRequest(BaseModel):
+    name: Optional[str] = None  # If provided, renames the config
+    enabled: Optional[bool] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    model: Optional[str] = None
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+    timeout: Optional[int] = None
+    streaming_enabled: Optional[bool] = None
+
+
+class AIConfigsListResponse(BaseModel):
+    configs: List[Dict[str, Any]]
+
+
 @router.post("/ai/analyze")
 async def ai_analyze_result(request: AIAnalyzeRequest):
     """
@@ -601,59 +629,203 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
             )
 
 
-@router.get("/ai/config")
-async def get_ai_config():
-    """
-    Get current AI configuration (without sensitive data).
-    
-    Returns configuration with masked API key.
-    """
-    logger.info("AI Config API: Fetching configuration")
-    return AIConfig.to_dict(include_sensitive=False)
+# AI Config Profiles Management Endpoints
 
-
-@router.post("/ai/config")
-async def update_ai_config(config: AIConfigUpdate):
+@router.get("/ai/configs")
+async def get_ai_configs():
     """
-    Update AI configuration.
+    Get all AI configs in the exact file format.
     
-    Changes are automatically persisted to the .env file and will
-    survive application restarts.
+    Returns: {active_config_name: "...", configs: {...}}
+    Matches the structure of ~/.lensai/ai_configs.json exactly.
+    API keys are returned as-is (no masking).
     """
-    logger.info("AI Config API: Updating configuration")
-    logger.debug(f"AI Config API: Received config: {config.dict()}")
-    
+    logger.info("AI Configs API: Fetching all configs")
     try:
-        # Include all config values, even if None (to allow clearing)
-        # But filter out None values for the update
-        config_dict = {k: v for k, v in config.dict().items() if v is not None}
-        logger.info(f"AI Config API: Received config update request: {config.dict()}")
-        logger.info(f"AI Config API: Config dict to update (non-None only): {config_dict}")
-        logger.info(f"AI Config API: Current AIConfig before update - MODEL={AIConfig.MODEL}, BASE_URL={AIConfig.BASE_URL}, MAX_TOKENS={AIConfig.MAX_TOKENS}, TEMPERATURE={AIConfig.TEMPERATURE}, ENABLED={AIConfig.ENABLED}")
-        
-        # Update config
-        AIConfig.update_from_dict(config_dict, persist=True)
-        
-        # Immediately verify the update took effect
-        logger.info(f"AI Config API: After update_from_dict - MODEL={AIConfig.MODEL}, BASE_URL={AIConfig.BASE_URL}, MAX_TOKENS={AIConfig.MAX_TOKENS}, TEMPERATURE={AIConfig.TEMPERATURE}, ENABLED={AIConfig.ENABLED}, is_configured={AIConfig.is_configured()}")
-        
-        # Reset service to force recreation with new config
-        from app.services.ai_service import reset_ai_service
-        reset_ai_service()
-        logger.info("AI Config API: AI service singleton reset")
-        
-        # Reset service singleton to ensure it reads fresh config
-        from app.services.ai_service import reset_ai_service
-        reset_ai_service()
-        
-        logger.info("AI Config API: Configuration updated successfully")
-        return {"status": "success", "message": "AI configuration updated"}
-    
+        from app.core.config import _get_manager
+        manager = _get_manager()
+        logger.info(f"AI Configs API: Manager has {len(manager._configs)} config(s), active: {manager.get_active_config_name()}")
+        result = manager.get_all_configs_dict()
+        logger.info(f"AI Configs API: Returning {len(result.get('configs', {}))} config(s)")
+        return result
     except Exception as e:
-        logger.error(f"AI Config API: Error updating configuration: {e}", exc_info=True)
+        logger.error(f"AI Configs API: Error fetching configs: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Error updating AI configuration: {str(e)}"
+            detail=f"Error fetching AI configs: {str(e)}"
+        )
+
+
+@router.post("/ai/configs")
+async def create_ai_config(config: AIConfigCreate):
+    """
+    Create new AI config profile.
+    
+    Returns 400 error if duplicate name.
+    """
+    logger.info(f"AI Configs API: Creating config '{config.name}'")
+    try:
+        from app.core.config import _get_manager
+        manager = _get_manager()
+        
+        config_data = {
+            "enabled": config.enabled,
+            "base_url": config.base_url,
+            "api_key": config.api_key,
+            "model": config.model,
+            "max_tokens": config.max_tokens,
+            "temperature": config.temperature,
+            "timeout": config.timeout,
+            "streaming_enabled": config.streaming_enabled
+        }
+        
+        manager.create_config(config.name, config_data)
+        
+        # If this is the first config, make it active and reload AIConfig
+        if manager.get_active_config_name() == config.name:
+            AIConfig.reload()
+            from app.services.ai_service import reset_ai_service
+            reset_ai_service()
+        
+        return {"status": "success", "message": f"Config '{config.name}' created"}
+    except ValueError as e:
+        logger.warning(f"AI Configs API: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"AI Configs API: Error creating config: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating AI config: {str(e)}"
+        )
+
+
+@router.put("/ai/configs/{name}")
+async def update_ai_config_by_name(name: str, config: AIConfigUpdateRequest):
+    """
+    Update existing AI config (can rename).
+    
+    Returns 400 error if new name exists and differs from current name.
+    """
+    logger.info(f"AI Configs API: Updating config '{name}'")
+    try:
+        from app.core.config import _get_manager
+        manager = _get_manager()
+        
+        # Get existing config
+        existing_config = manager.get_config(name)
+        if existing_config is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Config '{name}' not found"
+            )
+        
+        # Merge updates (name is optional - if not provided, keep same name)
+        new_name = config.name if config.name is not None else name
+        updated_config = existing_config.copy()
+        
+        if config.enabled is not None:
+            updated_config["enabled"] = config.enabled
+        if config.base_url is not None:
+            updated_config["base_url"] = config.base_url
+        if config.api_key is not None:
+            updated_config["api_key"] = config.api_key
+        if config.model is not None:
+            updated_config["model"] = config.model.strip() if config.model.strip() else "gpt-4o-mini"
+        if config.max_tokens is not None:
+            updated_config["max_tokens"] = config.max_tokens
+        if config.temperature is not None:
+            updated_config["temperature"] = config.temperature
+        if config.timeout is not None:
+            updated_config["timeout"] = config.timeout
+        if config.streaming_enabled is not None:
+            updated_config["streaming_enabled"] = config.streaming_enabled
+        
+        manager.update_config(name, new_name, updated_config)
+        
+        # Reload AIConfig if this was the active config
+        if manager.get_active_config_name() == new_name:
+            AIConfig.reload()
+            from app.services.ai_service import reset_ai_service
+            reset_ai_service()
+        
+        return {"status": "success", "message": f"Config '{name}' updated"}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.warning(f"AI Configs API: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"AI Configs API: Error updating config: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating AI config: {str(e)}"
+        )
+
+
+@router.delete("/ai/configs/{name}")
+async def delete_ai_config(name: str):
+    """
+    Delete AI config profile.
+    
+    Returns 400 error if active - must switch first.
+    """
+    logger.info(f"AI Configs API: Deleting config '{name}'")
+    try:
+        from app.core.config import _get_manager
+        manager = _get_manager()
+        
+        manager.delete_config(name)
+        
+        return {"status": "success", "message": f"Config '{name}' deleted"}
+    except ValueError as e:
+        logger.warning(f"AI Configs API: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"AI Configs API: Error deleting config: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting AI config: {str(e)}"
+        )
+
+
+@router.post("/ai/configs/{name}/activate")
+async def activate_ai_config(name: str):
+    """
+    Set config as active.
+    """
+    logger.info(f"AI Configs API: Activating config '{name}'")
+    try:
+        from app.core.config import _get_manager
+        manager = _get_manager()
+        
+        manager.set_active_config(name)
+        
+        # Reload AIConfig to use new active config
+        AIConfig.reload()
+        from app.services.ai_service import reset_ai_service
+        reset_ai_service()
+        
+        return {"status": "success", "message": f"Config '{name}' activated"}
+    except ValueError as e:
+        logger.warning(f"AI Configs API: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"AI Configs API: Error activating config: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error activating AI config: {str(e)}"
         )
 
 

@@ -467,28 +467,103 @@ export const apiClient = {
   },
 
   /**
-   * Get AI configuration from backend.
+   * Get AI configuration from backend (active config).
+   * Returns the active config from the full configs response.
    */
   async getAIConfig(): Promise<any> {
-    return fetchJSON("/api/analyze/ai/config");
+    const allConfigs = await fetchJSON("/api/analyze/ai/configs");
+    const activeName = allConfigs.active_config_name;
+    if (!activeName || !allConfigs.configs || !allConfigs.configs[activeName]) {
+      throw new Error("No active config found");
+    }
+    return allConfigs.configs[activeName];
   },
 
   /**
-   * Update AI configuration.
+   * Get all AI config profiles in the exact file format.
+   * API keys are returned as-is (no masking).
+   */
+  async getAllAIConfigs(): Promise<{ active_config_name: string | null; configs: Record<string, any> }> {
+    return fetchJSON("/api/analyze/ai/configs");
+  },
+
+  /**
+   * Activate an AI config by name.
+   */
+  async activateAIConfig(name: string): Promise<void> {
+    await fetchJSON(`/api/analyze/ai/configs/${name}/activate`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Create a new AI config.
+   */
+  async createAIConfig(config: {
+    name: string;
+    enabled: boolean;
+    base_url: string;
+    api_key: string;
+    model: string;
+    max_tokens: number;
+    temperature: number;
+    timeout: number;
+    streaming_enabled: boolean;
+  }): Promise<void> {
+    await fetchJSON("/api/analyze/ai/configs", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+  },
+
+  /**
+   * Delete an AI config by name.
+   */
+  async deleteAIConfig(name: string): Promise<void> {
+    await fetchJSON(`/api/analyze/ai/configs/${name}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * Update AI configuration (updates specified config or active config if name not provided).
    */
   async updateAIConfig(config: {
+    name?: string;
     enabled?: boolean;
     base_url?: string;
     api_key?: string;
     model?: string;
     max_tokens?: number;
     temperature?: number;
+    timeout?: number;
     streaming_enabled?: boolean;
-  }): Promise<void> {
-    await fetchJSON("/api/analyze/ai/config", {
-      method: "POST",
-      body: JSON.stringify(config),
-    });
+  }, configName?: string): Promise<void> {
+    try {
+      // Use provided config name, or get active config name if not provided
+      let targetConfigName = configName;
+      
+      if (!targetConfigName) {
+        const activeConfig = await this.getAIConfig();
+        targetConfigName = activeConfig?.name;
+        
+        if (!targetConfigName) {
+          throw new Error("No config found. Please specify a config name or ensure there's an active config.");
+        }
+      }
+      
+      // Update the specified config (name in config is optional - if not provided, keeps same name)
+      await fetchJSON(`/api/analyze/ai/configs/${targetConfigName}`, {
+        method: "PUT",
+        body: JSON.stringify(config),
+      });
+    } catch (error: any) {
+      // If 404, try to create a default config
+      if (error?.status === 404 || error?.message?.includes("404")) {
+        throw new Error(`Config '${configName || 'unknown'}' not found. Please create a config first.`);
+      }
+      throw error;
+    }
   },
 
   /**
@@ -802,52 +877,20 @@ export const apiClient = {
    */
   async getAvailableModels(baseUrl: string, apiKey: string): Promise<{
     models: string[];
-    source: 'direct' | 'proxy' | 'defaults';
+    source: 'proxy';
   }> {
-    // Default models as fallback
-    const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-
-    // Try direct connection first
-    try {
-      const modelsUrl = `${baseUrl.replace(/\/$/, '')}/models`;
-      const response = await fetch(modelsUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // OpenAI format: { object: "list", data: [{id: "model-name", ...}] }
-        if (data.data && Array.isArray(data.data)) {
-          const models = data.data.map((m: any) => m.id);
-          if (models.length > 0) {
-            return { models, source: 'direct' };
-          }
-        }
-      }
-    } catch (corsError) {
-      // CORS or network error, try backend proxy
-      console.log('Direct connection failed, trying backend proxy:', corsError);
+    // Use backend proxy only
+    const response = await fetchJSON<{ models: string[] }>('/api/analyze/ai/models', {
+      method: 'POST',
+      body: JSON.stringify({ base_url: baseUrl, api_key: apiKey }),
+    });
+    
+    if (response.models && response.models.length > 0) {
+      return { models: response.models, source: 'proxy' };
     }
-
-    // Fallback to backend proxy
-    try {
-      const response = await fetchJSON<{ models: string[] }>('/api/analyze/ai/models', {
-        method: 'POST',
-        body: JSON.stringify({ base_url: baseUrl, api_key: apiKey }),
-      });
-      if (response.models && response.models.length > 0) {
-        return { models: response.models, source: 'proxy' };
-      }
-    } catch (proxyError) {
-      console.log('Backend proxy also failed, using defaults:', proxyError);
-    }
-
-    // Both failed, use defaults
-    return { models: defaultModels, source: 'defaults' };
+    
+    // Return empty if no models
+    return { models: [], source: 'proxy' };
   },
 
   /**

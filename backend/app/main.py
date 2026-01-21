@@ -146,6 +146,34 @@ async def startup_event():
     
     logger.info(f"Discovered {len(plugin_manager.get_all_insights())} insights")
     
+    # Load AI configs at startup
+    logger.info("Loading AI configurations...")
+    try:
+        from app.core.config import _get_manager, AIConfig
+        manager = _get_manager()
+        active_name = manager.get_active_config_name()
+        logger.info(f"Loaded AI configs: {len(manager._configs)} config(s), active: {active_name}")
+        
+        if active_name and active_name in manager._configs:
+            active_config = manager._configs[active_name]
+            # Log active config details (mask sensitive data)
+            config_for_log = active_config.copy()
+            if "api_key" in config_for_log:
+                api_key = config_for_log.pop("api_key", "")
+                if api_key:
+                    config_for_log["api_key"] = api_key[:8] + "..." if len(api_key) > 8 else "***"
+            
+            logger.info(f"Active AI config '{active_name}': {config_for_log}")
+        
+        # Log all config names
+        if manager._configs:
+            logger.info(f"Available AI configs: {list(manager._configs.keys())}")
+        
+        # Log AIConfig class variables (what's actually being used)
+        logger.info(f"AIConfig class state - ENABLED: {AIConfig.ENABLED}, BASE_URL: {AIConfig.BASE_URL}, MODEL: {AIConfig.MODEL}")
+    except Exception as e:
+        logger.error(f"Failed to load AI configs at startup: {e}", exc_info=True)
+    
     # Check ripgrep availability
     from app.utils.ripgrep import is_ripgrep_available
     if is_ripgrep_available():

@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { Loader2, CheckCircle2, XCircle, FolderOpen, X, RefreshCw, Palette, Languages, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { InputWithHistory } from "@/components/ui/input-with-history";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/use-toast";
@@ -31,10 +31,17 @@ export default function SettingsPage() {
     maxTokens: 2000,
     temperature: 0.7,
   });
+  const [configName, setConfigName] = useState<string>("");
+  const [allConfigNames, setAllConfigNames] = useState<string[]>([]);
+  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
+  const [newConfigName, setNewConfigName] = useState<string>("");
+  const [isSavingAs, setIsSavingAs] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
   // Theme state
   const [selectedTheme, setSelectedTheme] = useState<string>("warm");
@@ -62,7 +69,7 @@ export default function SettingsPage() {
 
   // Model selection state
   const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [modelsSource, setModelsSource] = useState<'direct' | 'proxy' | 'defaults'>('defaults');
+  const [modelsSource, setModelsSource] = useState<'proxy' | 'error'>('proxy');
   const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   // Result max lines state
@@ -71,32 +78,54 @@ export default function SettingsPage() {
 
   // Load settings on mount
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadAllConfigs = async () => {
+      setIsLoadingConfigs(true);
       try {
-        // Load from localStorage
-        const localSettings = loadAISettings();
-        logger.info("Loaded settings from localStorage:", localSettings);
+        const result = await apiClient.getAllAIConfigs();
+        const names = Object.keys(result.configs || {});
+        setAllConfigNames(names);
+        logger.info("Loaded AI config names:", names);
+        return result; // Return the result to share it
+      } catch (error) {
+        logger.error("Failed to load AI configs:", error);
+        setAllConfigNames([]);
+        return null;
+      } finally {
+        setIsLoadingConfigs(false);
+      }
+    };
+
+    const loadSettings = async (allConfigs: any) => {
+      try {
+        // Use backend configs directly - no localStorage merging needed
+        let backendConfig: any = null;
+        if (allConfigs) {
+          const activeName = allConfigs.active_config_name;
+          
+          if (activeName && allConfigs.configs && allConfigs.configs[activeName]) {
+            backendConfig = allConfigs.configs[activeName];
+            setConfigName(activeName);
+            logger.info("Loaded settings from backend:", backendConfig);
+          } else {
+            logger.warn("No active config found, using defaults");
+            setConfigName("");
+          }
+        } else {
+          logger.warn("No configs available, using defaults");
+          setConfigName("");
+        }
         
-        // Load from backend
-        const backendConfig = await getAIConfig();
-        logger.info("Loaded settings from backend:", backendConfig);
-        
-        // Merge: local overrides backend
-        // For booleans, explicitly check if localStorage has a value
-        const enabledValue = localSettings !== null && localSettings.hasOwnProperty('enabled') 
-            ? localSettings.enabled 
-            : (backendConfig.enabled ?? false);
-        
+        // Use backend values directly - treat all fields the same, including API key
         const merged: AISettings = {
-          enabled: enabledValue,
-          baseUrl: localSettings?.baseUrl ?? backendConfig.base_url ?? "https://api.openai.com/v1",
-          apiKey: localSettings?.apiKey ?? backendConfig.api_key_preview ?? "",
-          model: localSettings?.model ?? backendConfig.model ?? "gpt-4o-mini",
-          maxTokens: localSettings?.maxTokens ?? backendConfig.max_tokens ?? 2000,
-          temperature: localSettings?.temperature ?? backendConfig.temperature ?? 0.7,
+          enabled: backendConfig?.enabled ?? false,
+          baseUrl: backendConfig?.base_url ?? "https://api.openai.com/v1",
+          apiKey: backendConfig?.api_key ?? "",
+          model: backendConfig?.model ?? "gpt-4o-mini",
+          maxTokens: backendConfig?.max_tokens ?? 2000,
+          temperature: backendConfig?.temperature ?? 0.7,
         };
         
-        logger.info("Merged AI settings:", merged);
+        logger.info("Loaded AI settings from backend:", merged);
         setSettings(merged);
       } catch (error) {
         logger.error("Failed to load AI settings:", error);
@@ -147,7 +176,7 @@ export default function SettingsPage() {
       setSelectedLanguage(savedLanguage);
     };
 
-    const loadLoggingSettings = async () => {
+    const loadLoggingSettings = async (allConfigs: any) => {
       setIsLoadingLogging(true);
       try {
         // Load backend log level
@@ -166,9 +195,17 @@ export default function SettingsPage() {
         const aiDetailedLoggingConfig = await apiClient.getAIDetailedLoggingConfig();
         setAiDetailedLogging(aiDetailedLoggingConfig.detailed_logging);
         
-        // Load AI streaming config
-        const aiConfig = await apiClient.getAIConfig();
-        setAiStreamingEnabled(aiConfig.streaming_enabled ?? true);
+        // Load AI streaming config - use shared configs result
+        if (allConfigs) {
+          const activeName = allConfigs.active_config_name;
+          if (activeName && allConfigs.configs && allConfigs.configs[activeName]) {
+            setAiStreamingEnabled(allConfigs.configs[activeName].streaming_enabled ?? true);
+          } else {
+            setAiStreamingEnabled(true);
+          }
+        } else {
+          setAiStreamingEnabled(true);
+        }
       } catch (error) {
         logger.error("Failed to load logging settings:", error);
       } finally {
@@ -183,28 +220,18 @@ export default function SettingsPage() {
       const apiKey = localSettings?.apiKey || settings.apiKey;
 
       if (!baseUrl || !apiKey) {
-        // Use defaults if no config yet
-        const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-        setAvailableModels(defaultModels);
-        setModelsSource('defaults');
-        // Set first model as default if no model selected
-        // Use functional form to avoid stale state closure
-        setSettings(prev => {
-          if (!prev.model && defaultModels.length > 0) {
-            return { ...prev, model: defaultModels[0] };
-          }
-          return prev;
-        });
+        // Keep empty if no config yet
+        setAvailableModels([]);
+        setModelsSource('proxy');
         return;
       }
 
       // Only fetch models if AI is enabled
       const isEnabled = localSettings?.enabled ?? settings.enabled;
       if (!isEnabled) {
-        // Use defaults if AI is disabled
-        const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-        setAvailableModels(defaultModels);
-        setModelsSource('defaults');
+        // Keep empty if AI is disabled
+        setAvailableModels([]);
+        setModelsSource('proxy');
         return;
       }
 
@@ -229,23 +256,35 @@ export default function SettingsPage() {
         logger.info(`Loaded ${result.models.length} models via ${result.source}`);
       } catch (error) {
         logger.error("Failed to load available models:", error);
-        // Fall back to defaults
-        const defaultModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-        setAvailableModels(defaultModels);
-        setModelsSource('defaults');
+        // Keep empty on error
+        setAvailableModels([]);
+        setModelsSource('error');
       } finally {
         setIsLoadingModels(false);
       }
     };
     
-    loadSettings();
-    loadInsightPaths();
-    loadDefaultRepository();
-    loadThemeSettings();
-    loadLanguageSettings();
-    loadLoggingSettings();
-    loadAvailableModels();
-    loadResultMaxLinesSettings();
+    // Load everything in sequence to share the configs result
+    (async () => {
+      // Load AI configs first (shared across multiple functions)
+      const allConfigs = await loadAllConfigs();
+      
+      // Load all other settings in parallel (but wait for configs first)
+      await Promise.all([
+        loadSettings(allConfigs),
+        loadInsightPaths(),
+        loadDefaultRepository(),
+        Promise.resolve(loadThemeSettings()),
+        Promise.resolve(loadLanguageSettings()),
+        loadLoggingSettings(allConfigs),
+        loadResultMaxLinesSettings(),
+      ]);
+      
+      // Don't automatically fetch models from API - only when user clicks refresh
+      // Keep models empty initially - will be populated when user clicks refresh
+      setAvailableModels([]);
+      setModelsSource('proxy');
+    })();
   }, []);
 
   const loadResultMaxLinesSettings = async () => {
@@ -284,39 +323,178 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
+  const handleUpdate = async () => {
+    if (!configName) {
+      toast({
+        title: t("common.error"),
+        description: "No config selected to update",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdating(true);
     try {
-      logger.info("Saving AI settings:", settings);
+      logger.info("Updating AI config:", settings);
       
-      // Save to localStorage
-      saveAISettings(settings);
-      logger.info("Settings saved to localStorage");
-      
-      // Send to backend
-      await updateAIConfig({
+      // Update the currently selected config (not necessarily active)
+      // No localStorage needed - API key stored in backend config file
+      await apiClient.updateAIConfig({
         enabled: settings.enabled,
         base_url: settings.baseUrl,
         api_key: settings.apiKey,
         model: settings.model,
         max_tokens: settings.maxTokens,
         temperature: settings.temperature,
-      });
-      logger.info("Settings saved to backend");
+        streaming_enabled: aiStreamingEnabled,
+      }, configName);
+      logger.info("Config updated");
       
       toast({
         title: t("settings.saved"),
-        description: t("settings.saved"),
+        description: `Config '${configName}' updated`,
       });
     } catch (error) {
-      logger.error("Failed to save settings:", error);
+      logger.error("Failed to update config:", error);
       toast({
         title: t("common.error"),
-        description: t("settings.saveFailed"),
+        description: `Failed to update config: ${String(error)}`,
         variant: "destructive",
       });
     } finally {
-      setIsSaving(false);
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!configName) {
+      toast({
+        title: t("common.error"),
+        description: "No active config to delete",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete config '${configName}'?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await apiClient.deleteAIConfig(configName);
+      logger.info("Config deleted");
+      
+      // Reload configs list
+      const result = await apiClient.getAllAIConfigs();
+      const names = Object.keys(result.configs || {});
+      setAllConfigNames(names);
+      
+      // If there are other configs, activate the first one
+      if (names.length > 0) {
+        await apiClient.activateAIConfig(names[0]);
+        setConfigName(names[0]);
+        const allConfigs = await apiClient.getAllAIConfigs();
+        const activeConfig = allConfigs.configs[names[0]];
+        if (activeConfig) {
+          setSettings({
+            enabled: activeConfig.enabled ?? false,
+            baseUrl: activeConfig.base_url ?? "https://api.openai.com/v1",
+            apiKey: activeConfig.api_key ?? "",
+            model: activeConfig.model ?? "gpt-4o-mini",
+            maxTokens: activeConfig.max_tokens ?? 2000,
+            temperature: activeConfig.temperature ?? 0.7,
+          });
+          setAiStreamingEnabled(activeConfig.streaming_enabled ?? true);
+        }
+      } else {
+        setConfigName("");
+        // Reset to defaults
+        setSettings({
+          enabled: false,
+          baseUrl: "https://api.openai.com/v1",
+          apiKey: "",
+          model: "gpt-4o-mini",
+          maxTokens: 2000,
+          temperature: 0.7,
+        });
+        setAiStreamingEnabled(true);
+      }
+      
+      toast({
+        title: "Success",
+        description: `Config '${configName}' deleted`,
+      });
+    } catch (error) {
+      logger.error("Failed to delete config:", error);
+      toast({
+        title: t("common.error"),
+        description: `Failed to delete config: ${String(error)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSaveAs = async () => {
+    if (!newConfigName.trim()) {
+      toast({
+        title: t("common.error"),
+        description: "Please enter a config name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (allConfigNames.includes(newConfigName.trim())) {
+      toast({
+        title: t("common.error"),
+        description: `Config '${newConfigName.trim()}' already exists`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingAs(true);
+    try {
+      await apiClient.createAIConfig({
+        name: newConfigName.trim(),
+        enabled: settings.enabled,
+        base_url: settings.baseUrl,
+        api_key: settings.apiKey,
+        model: settings.model,
+        max_tokens: settings.maxTokens,
+        temperature: settings.temperature,
+        timeout: 60,
+        streaming_enabled: aiStreamingEnabled,
+      });
+      
+      // Reload configs list
+      const result = await apiClient.getAllAIConfigs();
+      const names = Object.keys(result.configs || {});
+      setAllConfigNames(names);
+      
+      // Activate the new config
+      await apiClient.activateAIConfig(newConfigName.trim());
+      setConfigName(newConfigName.trim());
+      
+      setShowSaveAsDialog(false);
+      setNewConfigName("");
+      
+      toast({
+        title: "Success",
+        description: `Config '${newConfigName.trim()}' created and activated`,
+      });
+    } catch (error) {
+      logger.error("Failed to save config:", error);
+      toast({
+        title: t("common.error"),
+        description: `Failed to save config: ${String(error)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingAs(false);
     }
   };
 
@@ -579,8 +757,17 @@ export default function SettingsPage() {
   };
 
   const handleAIStreamingChange = async (enabled: boolean) => {
+    if (!configName) {
+      toast({
+        title: "Error",
+        description: "No config selected",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
-      await apiClient.updateAIConfig({ streaming_enabled: enabled });
+      await apiClient.updateAIConfig({ streaming_enabled: enabled }, configName);
       setAiStreamingEnabled(enabled);
       toast({
         title: "Success",
@@ -610,7 +797,7 @@ export default function SettingsPage() {
     try {
       const result = await apiClient.getAvailableModels(settings.baseUrl, settings.apiKey);
       setAvailableModels(result.models);
-      setModelsSource(result.source);
+      setModelsSource('proxy');
       
       // Automatically select first model if current model is not in the list
       // Use functional form to avoid stale state closure
@@ -622,15 +809,18 @@ export default function SettingsPage() {
           }
           return prev;
         });
+        
+        toast({
+          title: "Models Refreshed",
+          description: `Loaded ${result.models.length} models`,
+        });
+      } else {
+        toast({
+          title: "No Models",
+          description: "No models available from the server",
+          variant: "destructive",
+        });
       }
-      
-      const sourceText = result.source === 'direct' ? 'direct connection' : 
-                        result.source === 'proxy' ? 'backend proxy' : 'defaults';
-      
-      toast({
-        title: "Models Refreshed",
-        description: `Loaded ${result.models.length} models via ${sourceText}`,
-      });
     } catch (error) {
       logger.error("Failed to refresh models:", error);
       toast({
@@ -657,6 +847,69 @@ export default function SettingsPage() {
             </TabsList>
 
             <TabsContent value="ai" className="space-y-4 mt-4">
+              {/* Config Name Dropdown */}
+              <div className="space-y-2">
+                <Label htmlFor="config-name">Active Configuration</Label>
+                <Select
+                  value={configName || undefined}
+                  onValueChange={async (value) => {
+                    if (value !== configName) {
+                      try {
+                        setIsLoadingConfigs(true);
+                        await apiClient.activateAIConfig(value);
+                        setConfigName(value);
+                        
+                        // Reload settings for the new active config
+                        const allConfigs = await apiClient.getAllAIConfigs();
+                        const activeConfig = allConfigs.configs[value];
+                        if (activeConfig) {
+                          setSettings({
+                            enabled: activeConfig.enabled ?? false,
+                            baseUrl: activeConfig.base_url ?? "https://api.openai.com/v1",
+                            apiKey: activeConfig.api_key ?? "",
+                            model: activeConfig.model ?? "gpt-4o-mini",
+                            maxTokens: activeConfig.max_tokens ?? 2000,
+                            temperature: activeConfig.temperature ?? 0.7,
+                          });
+                          setAiStreamingEnabled(activeConfig.streaming_enabled ?? true);
+                        }
+                        
+                        toast({
+                          title: t("settings.saved"),
+                          description: `Switched to config '${value}'`,
+                        });
+                      } catch (error) {
+                        logger.error("Failed to activate config:", error);
+                        toast({
+                          title: t("common.error"),
+                          description: `Failed to switch config: ${String(error)}`,
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setIsLoadingConfigs(false);
+                      }
+                    }
+                  }}
+                  disabled={isLoadingConfigs || allConfigNames.length === 0}
+                >
+                  <SelectTrigger id="config-name">
+                    <SelectValue placeholder={allConfigNames.length === 0 ? "No configs available" : "Select config"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allConfigNames.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {allConfigNames.length === 0 
+                    ? "No AI configurations available. Create one by saving settings."
+                    : "Select which AI configuration profile to use"}
+                </p>
+              </div>
+
               {/* AI Enabled Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -677,13 +930,12 @@ export default function SettingsPage() {
               {/* Base URL */}
               <div className="space-y-2">
                 <Label htmlFor="base-url">{t("settings.baseURL")}</Label>
-                <InputWithHistory
+                <Input
                   id="base-url"
                   value={settings.baseUrl}
-                  onChange={(value) =>
-                    setSettings({ ...settings, baseUrl: value })
+                  onChange={(e) =>
+                    setSettings({ ...settings, baseUrl: e.target.value })
                   }
-                  storageKey="lens_settings_base_url_history"
                   placeholder="https://api.openai.com/v1"
                   disabled={!settings.enabled}
                 />
@@ -697,7 +949,7 @@ export default function SettingsPage() {
                 <Label htmlFor="api-key">{t("settings.apiKey")}</Label>
                 <Input
                   id="api-key"
-                  type="password"
+                  type="text"
                   value={settings.apiKey}
                   onChange={(e) =>
                     setSettings({ ...settings, apiKey: e.target.value })
@@ -710,10 +962,25 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* Model Selection */}
+              {/* Model from Config */}
+              <div className="space-y-2">
+                <Label htmlFor="config-model">Model</Label>
+                <Input
+                  id="config-model"
+                  value={settings.model}
+                  readOnly
+                  disabled={!settings.enabled}
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Current model from configuration
+                </p>
+              </div>
+
+              {/* Available Models Selection */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="model">{t("settings.model")}</Label>
+                  <Label htmlFor="available-models">Available Models</Label>
                   <Button
                     type="button"
                     variant="ghost"
@@ -731,14 +998,14 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <Select
-                  value={settings.model}
+                  value={availableModels.length > 0 ? settings.model : undefined}
                   onValueChange={(value) =>
                     setSettings({ ...settings, model: value })
                   }
-                  disabled={!settings.enabled || isLoadingModels}
+                  disabled={!settings.enabled || isLoadingModels || availableModels.length === 0}
                 >
-                  <SelectTrigger id="model">
-                    <SelectValue placeholder="Select model" />
+                  <SelectTrigger id="available-models">
+                    <SelectValue placeholder={availableModels.length === 0 ? "Click refresh to load models" : "Select model"} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableModels.map((model) => (
@@ -750,9 +1017,8 @@ export default function SettingsPage() {
                 </Select>
                 {availableModels.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {modelsSource === 'direct' && `✓ ${availableModels.length} models loaded (direct connection)`}
-                    {modelsSource === 'proxy' && `✓ ${availableModels.length} models loaded via proxy`}
-                    {modelsSource === 'defaults' && `⚠ Using default models (server unreachable)`}
+                    {modelsSource === 'proxy' && availableModels.length > 0 && `✓ ${availableModels.length} models loaded`}
+                    {modelsSource === 'error' && `⚠ Failed to load models (server unreachable)`}
                   </p>
                 )}
               </div>
@@ -846,6 +1112,36 @@ export default function SettingsPage() {
                     {testMessage}
                   </p>
                 )}
+              </div>
+
+              {/* Config Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  onClick={handleUpdate}
+                  disabled={isUpdating || !configName}
+                  variant="default"
+                  className="flex-1"
+                >
+                  {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Update
+                </Button>
+                <Button
+                  onClick={() => setShowSaveAsDialog(true)}
+                  disabled={!configName}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Save As
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  disabled={isDeleting || !configName || allConfigNames.length === 0}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Delete
+                </Button>
               </div>
             </TabsContent>
 
@@ -1185,15 +1481,50 @@ export default function SettingsPage() {
               </div>
             </TabsContent>
           </Tabs>
-
-          {/* Save Button */}
-          <div className="flex justify-end pt-4 border-t">
-            <Button onClick={handleSave} disabled={isSaving} className="font-bold">
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSaving ? t("settings.saving") : t("settings.save")}
-            </Button>
-          </div>
         </div>
+
+        {/* Save As Dialog */}
+        <Dialog open={showSaveAsDialog} onOpenChange={setShowSaveAsDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Save Configuration As</DialogTitle>
+              <DialogDescription>
+                Enter a name for the new configuration. This will create a copy of the current settings.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-config-name">Configuration Name</Label>
+                <Input
+                  id="new-config-name"
+                  value={newConfigName}
+                  onChange={(e) => setNewConfigName(e.target.value)}
+                  placeholder="Enter config name"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSaveAs();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSaveAsDialog(false);
+                  setNewConfigName("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveAs} disabled={isSavingAs || !newConfigName.trim()}>
+                {isSavingAs && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

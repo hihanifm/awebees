@@ -2,80 +2,63 @@ import os
 from typing import Dict, Any, Optional
 from app.utils.env_persistence import update_env_file
 
-# Load .env file when config module is imported to ensure values are available
-# This must happen before class variables are initialized
-from dotenv import load_dotenv
-load_dotenv(override=True)
+# Module-level AIConfigsManager instance (singleton pattern)
+_manager_instance = None
+
+def _get_manager():
+    """Get or create AIConfigsManager instance."""
+    global _manager_instance
+    if _manager_instance is None:
+        from app.core.ai_configs_manager import AIConfigsManager
+        _manager_instance = AIConfigsManager()
+    return _manager_instance
 
 
 class AIConfig:
-    # Global AI toggle
-    ENABLED: bool = os.getenv("AI_ENABLED", "false").lower() == "true"
+    """AI configuration that reads from AIConfigsManager."""
     
-    # OpenAI API configuration
-    BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
-    # Ensure MODEL is never empty - strip whitespace and default to gpt-4o-mini
-    _env_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    MODEL: str = _env_model.strip() if _env_model else "gpt-4o-mini"
-    
-    # Request parameters
-    MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
-    TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
-    TIMEOUT: int = int(os.getenv("OPENAI_TIMEOUT", "60"))
-    
-    # Detailed logging for AI interactions (logs full HTTP requests/responses)
+    # Class variables (updated from manager)
+    ENABLED: bool = False
+    BASE_URL: str = "https://api.openai.com/v1"
+    API_KEY: Optional[str] = None
+    MODEL: str = "gpt-4o-mini"
+    MAX_TOKENS: int = 2000
+    TEMPERATURE: float = 0.7
+    TIMEOUT: int = 60
     DETAILED_LOGGING: bool = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
-    
-    # Streaming support for AI responses
-    STREAMING_ENABLED: bool = os.getenv("AI_STREAMING_ENABLED", "true").lower() in ("true", "1", "yes")
+    STREAMING_ENABLED: bool = True
     
     @classmethod
-    def _reload_from_env_on_import(cls) -> None:
-        """
-        Reload config from .env file when module is imported.
-        This ensures config is always fresh, especially after hot reload.
-        Forces reload by clearing environment variables first, then loading from .env.
-        """
-        from dotenv import load_dotenv
-        from pathlib import Path
+    def _update_from_manager(cls) -> None:
+        """Update class variables from manager."""
+        manager = _get_manager()
+        # Get active config from the configs dict
+        active_config_name = manager.get_active_config_name()
+        active_config = None
+        if active_config_name and active_config_name in manager._configs:
+            active_config = manager._configs[active_config_name]
         
-        # Get .env file path
-        backend_dir = Path(__file__).parent.parent.parent
-        env_file = backend_dir / ".env"
-        
-        # Force reload by clearing relevant env vars first (if they exist)
-        # This ensures we read fresh from .env file, not stale process env
-        env_vars_to_clear = [
-            "AI_ENABLED", "OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL",
-            "OPENAI_MAX_TOKENS", "OPENAI_TEMPERATURE", "OPENAI_TIMEOUT", "AI_DETAILED_LOGGING", "AI_STREAMING_ENABLED"
-        ]
-        for var in env_vars_to_clear:
-            if var in os.environ:
-                del os.environ[var]
-        
-        # Now load from .env file (this will set the env vars fresh)
-        if env_file.exists():
-            load_dotenv(dotenv_path=env_file, override=True)
+        if active_config:
+            cls.ENABLED = active_config.get("enabled", False)
+            cls.BASE_URL = active_config.get("base_url", "https://api.openai.com/v1")
+            cls.API_KEY = active_config.get("api_key")
+            model = active_config.get("model", "gpt-4o-mini")
+            cls.MODEL = model.strip() if model else "gpt-4o-mini"
+            cls.MAX_TOKENS = active_config.get("max_tokens", 2000)
+            cls.TEMPERATURE = active_config.get("temperature", 0.7)
+            cls.TIMEOUT = active_config.get("timeout", 60)
+            cls.STREAMING_ENABLED = active_config.get("streaming_enabled", True)
         else:
-            load_dotenv(override=True)
-        
-        # Reload all config values from environment (now fresh from .env)
-        cls.ENABLED = os.getenv("AI_ENABLED", "false").lower() == "true"
-        cls.BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        cls.API_KEY = os.getenv("OPENAI_API_KEY")
-        env_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        cls.MODEL = env_model.strip() if env_model else "gpt-4o-mini"
-        cls.MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
-        cls.TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
-        cls.TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "60"))
-        cls.DETAILED_LOGGING = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
-        cls.STREAMING_ENABLED = os.getenv("AI_STREAMING_ENABLED", "true").lower() in ("true", "1", "yes")
-        
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"AIConfig: Reloaded from .env file on import - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
-        logger.info(f"AIConfig: .env file path: {env_file}, exists: {env_file.exists()}")
+            # Use defaults if no active config
+            cls.ENABLED = False
+            cls.BASE_URL = "https://api.openai.com/v1"
+            cls.API_KEY = None
+            cls.MODEL = "gpt-4o-mini"
+            cls.MAX_TOKENS = 2000
+            cls.TEMPERATURE = 0.7
+            cls.TIMEOUT = 60
+            cls.STREAMING_ENABLED = True
+    
     
     # Predefined system prompts
     SYSTEM_PROMPTS: Dict[str, str] = {
@@ -108,13 +91,17 @@ Be specific and practical. Prioritize recommendations by severity."""
     }
     
     @classmethod
-    def is_configured(cls) -> bool: return bool(cls.API_KEY) and cls.ENABLED
+    def is_configured(cls) -> bool:
+        """Check if AI is configured (has API key and is enabled)."""
+        return bool(cls.API_KEY) and cls.ENABLED
     
     @classmethod
-    def to_dict(cls, include_sensitive: bool = False) -> Dict[str, Any]:
-        config = {
+    def to_dict(cls) -> Dict[str, Any]:
+        """Convert AIConfig to dictionary. API keys are included as-is (no masking)."""
+        return {
             "enabled": cls.ENABLED,
             "base_url": cls.BASE_URL,
+            "api_key": cls.API_KEY,
             "model": cls.MODEL,
             "max_tokens": cls.MAX_TOKENS,
             "temperature": cls.TEMPERATURE,
@@ -123,139 +110,70 @@ Be specific and practical. Prioritize recommendations by severity."""
             "streaming_enabled": cls.STREAMING_ENABLED,
             "is_configured": cls.is_configured()
         }
-        
-        if include_sensitive:
-            config["api_key"] = cls.API_KEY
-        else:
-            # Mask API key for display
-            if cls.API_KEY:
-                key_preview = cls.API_KEY[:8] + "..." if len(cls.API_KEY) > 8 else "***"
-                config["api_key_preview"] = key_preview
-            else:
-                config["api_key_preview"] = None
-        
-        return config
     
     @classmethod
-    def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
-        key_mapping = {
-            "enabled": "AI_ENABLED",
-            "base_url": "OPENAI_BASE_URL",
-            "api_key": "OPENAI_API_KEY",
-            "model": "OPENAI_MODEL",
-            "max_tokens": "OPENAI_MAX_TOKENS",
-            "temperature": "OPENAI_TEMPERATURE",
-            "timeout": "OPENAI_TIMEOUT",
-            "streaming_enabled": "AI_STREAMING_ENABLED"
-        }
-        update_env_file(updates, key_mapping)
-    
-    @classmethod
-    def reload_from_env(cls, force: bool = False) -> None:
-        """
-        Reload configuration from .env file.
-        
-        Args:
-            force: If True, reload even if config was manually updated. 
-                   If False (default), skip reload if config was updated via update_from_dict.
-        """
+    def reload(cls) -> None:
+        """Reload configuration from JSON file."""
         import logging
-        from dotenv import load_dotenv
         logger = logging.getLogger(__name__)
         
-        # Don't reload if config was manually updated (unless forced)
-        # No flag needed - AIService reads directly from AIConfig, so reload is always safe
+        # Reload manager to get fresh data
+        global _manager_instance
+        _manager_instance = None
+        manager = _get_manager()
+        manager.load()
         
-        load_dotenv(override=True)
+        # Update class variables from manager
+        cls._update_from_manager()
         
-        old_enabled = cls.ENABLED
-        old_api_key_set = bool(cls.API_KEY)
-        old_model = cls.MODEL
-        
-        cls.ENABLED = os.getenv("AI_ENABLED", "false").lower() == "true"
-        cls.BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        cls.API_KEY = os.getenv("OPENAI_API_KEY")
-        env_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        cls.MODEL = env_model.strip() if env_model else "gpt-4o-mini"
-        cls.MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
-        cls.TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
-        cls.TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "60"))
-        cls.DETAILED_LOGGING = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
-        cls.STREAMING_ENABLED = os.getenv("AI_STREAMING_ENABLED", "true").lower() in ("true", "1", "yes")
-        
-        logger.info(f"Reloaded AIConfig from .env - enabled={cls.ENABLED}, model={cls.MODEL}, is_configured={cls.is_configured()}")
-        if old_enabled != cls.ENABLED or old_api_key_set != bool(cls.API_KEY) or old_model != cls.MODEL:
-            logger.info(f"Config changed: enabled {old_enabled}->{cls.ENABLED}, api_key {'set' if old_api_key_set else 'not set'}->{'set' if cls.API_KEY else 'not set'}, model {old_model}->{cls.MODEL}")
+        logger.info(f"Reloaded AIConfig from JSON - enabled={cls.ENABLED}, model={cls.MODEL}, is_configured={cls.is_configured()}")
     
     @classmethod
     def update_from_dict(cls, config: Dict[str, Any], persist: bool = True) -> None:
+        """Update active config from dictionary."""
         import logging
         logger = logging.getLogger(__name__)
         
+        manager = _get_manager()
+        active_name = manager.get_active_config_name()
+        
+        if not active_name:
+            raise ValueError("No active config name found.")
+        
+        # Get active config from the configs dict
+        active_config = None
+        if active_name in manager._configs:
+            active_config = manager._configs[active_name]
+        
+        if not active_config:
+            raise ValueError("No active config found. Please create or activate a config first.")
+        
         # Log current values before update
         logger.info(f"AIConfig.update_from_dict: Current values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
-        logger.info(f"AIConfig.update_from_dict: Updating with - {config}")
+        logger.info(f"AIConfig.update_from_dict: Updating active config '{active_name}' with - {config}")
         
-        if "enabled" in config:
-            old_enabled = cls.ENABLED
-            cls.ENABLED = bool(config["enabled"])
-            logger.info(f"Updated ENABLED: {old_enabled} -> {cls.ENABLED}")
+        # Merge updates into active config
+        updated_config = active_config.copy()
+        for key, value in config.items():
+            if value is not None:  # Only update non-None values
+                if key == "model" and isinstance(value, str):
+                    value = value.strip()
+                    if not value:
+                        value = "gpt-4o-mini"
+                updated_config[key] = value
         
-        if "base_url" in config:
-            old_base_url = cls.BASE_URL
-            cls.BASE_URL = str(config["base_url"]).strip()
-            logger.info(f"Updated BASE_URL: {old_base_url} -> {cls.BASE_URL}")
+        # Ensure name is preserved
+        updated_config["name"] = active_name
         
-        if "api_key" in config and config["api_key"]:
-            old_api_key_set = bool(cls.API_KEY)
-            cls.API_KEY = str(config["api_key"])
-            logger.info(f"Updated API_KEY: {'set' if old_api_key_set else 'not set'} -> {'set' if cls.API_KEY else 'not set'}")
-        
-        if "model" in config:
-            old_model = cls.MODEL
-            model_value = str(config["model"]).strip()
-            if model_value:
-                cls.MODEL = model_value
-            else:
-                # Empty model - use default
-                cls.MODEL = "gpt-4o-mini"
-                logger.warning(f"Empty model provided, using default: {cls.MODEL}")
-            logger.info(f"Updated MODEL: {old_model} -> {cls.MODEL}")
-        
-        if "max_tokens" in config:
-            old_max_tokens = cls.MAX_TOKENS
-            cls.MAX_TOKENS = int(config["max_tokens"])
-            logger.info(f"Updated MAX_TOKENS: {old_max_tokens} -> {cls.MAX_TOKENS}")
-        
-        if "temperature" in config:
-            old_temperature = cls.TEMPERATURE
-            cls.TEMPERATURE = float(config["temperature"])
-            logger.info(f"Updated TEMPERATURE: {old_temperature} -> {cls.TEMPERATURE}")
-        
-        if "timeout" in config:
-            old_timeout = cls.TIMEOUT
-            cls.TIMEOUT = int(config["timeout"])
-            logger.info(f"Updated TIMEOUT: {old_timeout} -> {cls.TIMEOUT}")
-        
-        if "detailed_logging" in config:
-            old_detailed_logging = cls.DETAILED_LOGGING
-            cls.DETAILED_LOGGING = bool(config["detailed_logging"])
-            logger.info(f"Updated DETAILED_LOGGING: {old_detailed_logging} -> {cls.DETAILED_LOGGING}")
-        
-        if "streaming_enabled" in config:
-            old_streaming_enabled = cls.STREAMING_ENABLED
-            cls.STREAMING_ENABLED = bool(config["streaming_enabled"])
-            logger.info(f"Updated STREAMING_ENABLED: {old_streaming_enabled} -> {cls.STREAMING_ENABLED}")
-        
-        # Log final values after update
-        logger.info(f"AIConfig.update_from_dict: Final values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
-        
+        # Update the config
         if persist:
-            logger.info(f"AIConfig.update_from_dict: Persisting to .env file")
-            cls._persist_to_env(config)
-            logger.info(f"AIConfig.update_from_dict: Persisted to .env file. Current AIConfig.MODEL={cls.MODEL}")
-            # Verify the persisted values match what we set
-            logger.info(f"AIConfig.update_from_dict: Verification - AIConfig.MODEL={cls.MODEL} (should match persisted value)")
+            manager.update_config(active_name, active_name, updated_config)
+            logger.info(f"AIConfig.update_from_dict: Updated active config '{active_name}' in JSON")
+            
+            # Reload to get fresh values
+            cls.reload()
+            
+            logger.info(f"AIConfig.update_from_dict: Final values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
 
 
 class AppConfig:
@@ -405,8 +323,8 @@ class SafeModeConfig:
         logger.info("Safe mode disabled (in-memory). Restart required for changes to take effect.")
 
 
-# Reload AIConfig from .env when module is imported (ensures fresh config after hot reload)
-AIConfig._reload_from_env_on_import()
+# Initialize AIConfig from manager when module is imported
+AIConfig._update_from_manager()
 
 # Export config classes
 __all__ = ["AIConfig", "AppConfig", "ZipSecurityConfig", "SafeModeConfig"]
