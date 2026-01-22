@@ -18,8 +18,11 @@ class HTTPLoggingMiddleware(BaseHTTPMiddleware):
         """Process request and log details."""
         from app.core.config import AppConfig
         
+        # Initialize AppConfig to load from config.json
+        AppConfig._initialize()
+        
         # Check if HTTP logging is enabled
-        if not AppConfig.HTTP_LOGGING:
+        if not AppConfig.get_http_logging():
             return await call_next(request)
         
         # Record start time

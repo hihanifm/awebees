@@ -2,7 +2,6 @@
   "active_config_name": "openai",
   "configs": {
     "openai": {
-      "enabled": true,
       "base_url": "https://api.openai.com/v1",
       "api_key": "",
       "model": "gpt-4o-mini",

@@ -96,7 +96,6 @@ class AIConfigsManager:
         # Hardcoded fallback defaults
         logger.warning("Using hardcoded defaults - default_ai_configs.json not found")
         return {
-            "enabled": True,
             "base_url": "https://api.openai.com/v1",
             "api_key": "",
             "model": "gpt-4o-mini",
@@ -110,8 +109,8 @@ class AIConfigsManager:
         """Get default config values (from default_ai_configs.json)."""
         defaults = self._load_defaults()
         # Ensure all required fields are present (name is not stored - it's the dict key)
+        # Note: enabled is removed - use global AppConfig.AI_PROCESSING_ENABLED instead
         return {
-            "enabled": defaults.get("enabled", True),
             "base_url": defaults.get("base_url", "https://api.openai.com/v1"),
             "api_key": defaults.get("api_key", ""),
             "model": defaults.get("model", "gpt-4o-mini"),

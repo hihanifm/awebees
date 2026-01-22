@@ -1,6 +1,5 @@
 import os
 from typing import Dict, Any, Optional
-from app.utils.env_persistence import update_env_file
 
 # Module-level AIConfigsManager instance (singleton pattern)
 _manager_instance = None
@@ -13,12 +12,23 @@ def _get_manager():
         _manager_instance = AIConfigsManager()
     return _manager_instance
 
+# Module-level AppConfigManager instance (singleton pattern)
+_app_config_manager_instance = None
+
+def _get_app_config_manager():
+    """Get or create AppConfigManager instance."""
+    global _app_config_manager_instance
+    if _app_config_manager_instance is None:
+        from app.core.app_config_manager import AppConfigManager
+        _app_config_manager_instance = AppConfigManager()
+    return _app_config_manager_instance
+
 
 class AIConfig:
     """AI configuration that reads from AIConfigsManager."""
     
     # Class variables (updated from manager)
-    ENABLED: bool = False
+    # Note: ENABLED removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     BASE_URL: str = "https://api.openai.com/v1"
     API_KEY: Optional[str] = None
     MODEL: str = "gpt-4o-mini"
@@ -39,7 +49,7 @@ class AIConfig:
             active_config = manager._configs[active_config_name]
         
         if active_config:
-            cls.ENABLED = active_config.get("enabled", False)
+            # Note: ENABLED is no longer part of configs - use global AppConfig.AI_PROCESSING_ENABLED
             cls.BASE_URL = active_config.get("base_url", "https://api.openai.com/v1")
             cls.API_KEY = active_config.get("api_key")
             model = active_config.get("model", "gpt-4o-mini")
@@ -50,7 +60,6 @@ class AIConfig:
             cls.STREAMING_ENABLED = active_config.get("streaming_enabled", True)
         else:
             # Use defaults if no active config
-            cls.ENABLED = False
             cls.BASE_URL = "https://api.openai.com/v1"
             cls.API_KEY = None
             cls.MODEL = "gpt-4o-mini"
@@ -92,14 +101,17 @@ Be specific and practical. Prioritize recommendations by severity."""
     
     @classmethod
     def is_configured(cls) -> bool:
-        """Check if AI is configured (has API key and is enabled)."""
-        return bool(cls.API_KEY) and cls.ENABLED
+        """Check if AI is configured (has API key and AI processing is globally enabled)."""
+        from app.core.config import AppConfig
+        # Ensure AppConfig is initialized to load from config.json
+        AppConfig._initialize()
+        return bool(cls.API_KEY) and AppConfig.get_ai_processing_enabled()
     
     @classmethod
     def to_dict(cls) -> Dict[str, Any]:
         """Convert AIConfig to dictionary. API keys are included as-is (no masking)."""
+        from app.core.config import AppConfig
         return {
-            "enabled": cls.ENABLED,
             "base_url": cls.BASE_URL,
             "api_key": cls.API_KEY,
             "model": cls.MODEL,
@@ -108,7 +120,9 @@ Be specific and practical. Prioritize recommendations by severity."""
             "timeout": cls.TIMEOUT,
             "detailed_logging": cls.DETAILED_LOGGING,
             "streaming_enabled": cls.STREAMING_ENABLED,
-            "is_configured": cls.is_configured()
+            "is_configured": cls.is_configured(),
+            # Note: enabled is now a global setting (AppConfig.AI_PROCESSING_ENABLED)
+            "ai_processing_enabled": AppConfig.get_ai_processing_enabled()
         }
     
     @classmethod
@@ -126,7 +140,8 @@ Be specific and practical. Prioritize recommendations by severity."""
         # Update class variables from manager
         cls._update_from_manager()
         
-        logger.info(f"Reloaded AIConfig from JSON - enabled={cls.ENABLED}, model={cls.MODEL}, is_configured={cls.is_configured()}")
+        from app.core.config import AppConfig
+        logger.info(f"Reloaded AIConfig from JSON - ai_processing_enabled={AppConfig.get_ai_processing_enabled()}, model={cls.MODEL}, is_configured={cls.is_configured()}")
     
     @classmethod
     def update_from_dict(cls, config: Dict[str, Any], persist: bool = True) -> None:
@@ -149,7 +164,8 @@ Be specific and practical. Prioritize recommendations by severity."""
             raise ValueError("No active config found. Please create or activate a config first.")
         
         # Log current values before update
-        logger.info(f"AIConfig.update_from_dict: Current values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
+        from app.core.config import AppConfig
+        logger.info(f"AIConfig.update_from_dict: Current values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, AI_PROCESSING_ENABLED={AppConfig.get_ai_processing_enabled()}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
         logger.info(f"AIConfig.update_from_dict: Updating active config '{active_name}' with - {config}")
         
         # Merge updates into active config
@@ -173,23 +189,25 @@ Be specific and practical. Prioritize recommendations by severity."""
             # Reload to get fresh values
             cls.reload()
             
-            logger.info(f"AIConfig.update_from_dict: Final values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, ENABLED={cls.ENABLED}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
+            from app.core.config import AppConfig
+            logger.info(f"AIConfig.update_from_dict: Final values - MODEL={cls.MODEL}, BASE_URL={cls.BASE_URL}, AI_PROCESSING_ENABLED={AppConfig.get_ai_processing_enabled()}, MAX_TOKENS={cls.MAX_TOKENS}, TEMPERATURE={cls.TEMPERATURE}")
 
 
 class AppConfig:
+    """
+    Application configuration.
     
-    # Server settings
+    Settings are loaded from ~/.lensai/config.json (user settings) with fallback to .env (build-time defaults).
+    User-modifiable settings are persisted to config.json, not .env.
+    """
+    
+    # Server settings (read-only from .env)
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "34001"))
     
-    # Frontend settings
+    # Frontend settings (read-only from .env)
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:34000")
     SERVE_FRONTEND: bool = os.getenv("SERVE_FRONTEND", "false").lower() == "true"
-    
-    # Logging - default to DEBUG for now (even in production)
-    # Can be overridden with LOG_LEVEL env var (e.g., LOG_LEVEL=INFO to reduce verbosity)
-    _default_log_level = "DEBUG"  # Always DEBUG for now
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", _default_log_level)
     
     # CORS
     CORS_ORIGINS: list = [
@@ -198,27 +216,59 @@ class AppConfig:
         FRONTEND_URL
     ]
     
-    # Enable profiling
+    # Enable profiling (read-only from .env)
     ENABLE_PROFILING: bool = os.getenv("ENABLE_PROFILING", "false").lower() == "true"
     
-    # HTTP request/response logging (logs all HTTP requests and responses)
-    HTTP_LOGGING: bool = os.getenv("HTTP_LOGGING", "true").lower() in ("true", "1", "yes")
-    
-    # Insight file limit - maximum number of files allowed per insight analysis
+    # Insight file limit (read-only from .env)
     MAX_FILES: int = int(os.getenv("INSIGHT_MAX_FILES", "20"))
     
-    # Result display limit - maximum number of lines to display in result windows (in-memory only)
+    # User-modifiable settings (loaded from config.json, fallback to .env defaults)
+    _default_log_level = "DEBUG"
+    LOG_LEVEL: str = _default_log_level
+    HTTP_LOGGING: bool = True
+    AI_PROCESSING_ENABLED: bool = True
     RESULT_MAX_LINES: int = 500
     
     # Valid log levels
     VALID_LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     
+    _initialized: bool = False
+    
     @classmethod
-    def get_log_level(cls) -> str: return cls.LOG_LEVEL.upper()
+    def _initialize(cls) -> None:
+        """Initialize AppConfig by loading from config.json (with .env fallback)."""
+        if cls._initialized:
+            return
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Get config manager
+        manager = _get_app_config_manager()
+        
+        # Load settings from config.json (with .env fallback for defaults)
+        cls.LOG_LEVEL = manager.get("log_level", os.getenv("LOG_LEVEL", cls._default_log_level))
+        cls.HTTP_LOGGING = manager.get("http_logging", os.getenv("HTTP_LOGGING", "true").lower() in ("true", "1", "yes"))
+        cls.AI_PROCESSING_ENABLED = manager.get("ai_processing_enabled", os.getenv("AI_PROCESSING_ENABLED", "true").lower() in ("true", "1", "yes"))
+        cls.RESULT_MAX_LINES = manager.get("result_max_lines", 500)
+        
+        # Apply log level immediately
+        numeric_level = getattr(logging, cls.LOG_LEVEL.upper(), logging.DEBUG)
+        logging.getLogger().setLevel(numeric_level)
+        
+        logger.info(f"AppConfig._initialize(): Loaded from config.json - LOG_LEVEL={cls.LOG_LEVEL}, HTTP_LOGGING={cls.HTTP_LOGGING}, AI_PROCESSING_ENABLED={cls.AI_PROCESSING_ENABLED}, RESULT_MAX_LINES={cls.RESULT_MAX_LINES}")
+        
+        cls._initialized = True
+    
+    @classmethod
+    def get_log_level(cls) -> str:
+        cls._initialize()
+        return cls.LOG_LEVEL.upper()
     
     @classmethod
     def update_log_level(cls, log_level: str, persist: bool = True) -> None:
-        # Valid log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+        """Update log level and persist to config.json."""
+        cls._initialize()
         import logging
         
         log_level = log_level.upper()
@@ -232,18 +282,21 @@ class AppConfig:
         numeric_level = getattr(logging, log_level)
         logging.getLogger().setLevel(numeric_level)
         
-        # Persist to .env file if requested
+        # Persist to config.json if requested
         if persist:
-            cls._persist_to_env({"log_level": log_level})
+            manager = _get_app_config_manager()
+            manager.set("log_level", log_level, save=True)
     
     @classmethod
     def get_result_max_lines(cls) -> int:
         """Get the current result max lines limit."""
+        cls._initialize()
         return cls.RESULT_MAX_LINES
     
     @classmethod
     def set_result_max_lines(cls, value: int) -> None:
-        """Set the result max lines limit (in-memory only, no persistence)."""
+        """Set the result max lines limit and persist to config.json."""
+        cls._initialize()
         import logging
         logger = logging.getLogger(__name__)
         
@@ -254,14 +307,54 @@ class AppConfig:
         
         old_value = cls.RESULT_MAX_LINES
         cls.RESULT_MAX_LINES = value
+        
+        # Persist to config.json
+        manager = _get_app_config_manager()
+        manager.set("result_max_lines", value, save=True)
+        
         logger.info(f"Updated RESULT_MAX_LINES: {old_value} -> {value}")
     
     @classmethod
-    def _persist_to_env(cls, updates: Dict[str, Any]) -> None:
-        key_mapping = {
-            "log_level": "LOG_LEVEL"
-        }
-        update_env_file(updates, key_mapping)
+    def set_ai_processing_enabled(cls, enabled: bool) -> None:
+        """Set AI processing enabled (global setting) and persist to config.json."""
+        cls._initialize()
+        import logging
+        logger = logging.getLogger(__name__)
+        old_value = cls.AI_PROCESSING_ENABLED
+        cls.AI_PROCESSING_ENABLED = enabled
+        
+        # Persist to config.json
+        manager = _get_app_config_manager()
+        manager.set("ai_processing_enabled", enabled, save=True)
+        
+        logger.info(f"Updated AI_PROCESSING_ENABLED: {old_value} -> {enabled}")
+    
+    @classmethod
+    def get_ai_processing_enabled(cls) -> bool:
+        """Get AI processing enabled (global setting)."""
+        cls._initialize()
+        return cls.AI_PROCESSING_ENABLED
+    
+    @classmethod
+    def get_http_logging(cls) -> bool:
+        """Get HTTP logging setting."""
+        cls._initialize()
+        return cls.HTTP_LOGGING
+    
+    @classmethod
+    def set_http_logging(cls, enabled: bool) -> None:
+        """Set HTTP logging and persist to config.json."""
+        cls._initialize()
+        import logging
+        logger = logging.getLogger(__name__)
+        old_value = cls.HTTP_LOGGING
+        cls.HTTP_LOGGING = enabled
+        
+        # Persist to config.json
+        manager = _get_app_config_manager()
+        manager.set("http_logging", enabled, save=True)
+        
+        logger.info(f"Updated HTTP_LOGGING: {old_value} -> {enabled}")
 
 
 class ZipSecurityConfig:

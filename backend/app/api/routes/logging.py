@@ -55,6 +55,14 @@ class AIDetailedLoggingConfigUpdate(BaseModel):
     detailed_logging: bool
 
 
+class AIProcessingEnabledConfigResponse(BaseModel):
+    ai_processing_enabled: bool
+
+
+class AIProcessingEnabledConfigUpdate(BaseModel):
+    ai_processing_enabled: bool
+
+
 @router.get("/config", response_model=LoggingConfigResponse)
 async def get_logging_config():
     logger.debug("Getting logging configuration")
@@ -94,7 +102,7 @@ async def get_result_max_lines_config():
 
 @router.put("/result-max-lines", response_model=ResultMaxLinesConfigResponse)
 async def update_result_max_lines_config(config: ResultMaxLinesConfigUpdate):
-    """Update the result max lines configuration (in-memory only)."""
+    """Update the result max lines configuration and persist to config.json."""
     try:
         logger.info(f"Updating result max lines to: {config.result_max_lines}")
         AppConfig.set_result_max_lines(config.result_max_lines)
@@ -116,7 +124,7 @@ async def get_http_logging_config():
     """Get the current HTTP logging configuration."""
     logger.debug("Getting HTTP logging configuration")
     return HTTPLoggingConfigResponse(
-        http_logging=AppConfig.HTTP_LOGGING
+        http_logging=AppConfig.get_http_logging()
     )
 
 
@@ -125,11 +133,11 @@ async def update_http_logging_config(config: HTTPLoggingConfigUpdate):
     """Update the HTTP logging configuration."""
     try:
         logger.info(f"Updating HTTP logging to: {config.http_logging}")
-        AppConfig.HTTP_LOGGING = config.http_logging
+        AppConfig.set_http_logging(config.http_logging)
         logger.info(f"HTTP logging updated successfully to: {config.http_logging}")
         
         return HTTPLoggingConfigResponse(
-            http_logging=AppConfig.HTTP_LOGGING
+            http_logging=AppConfig.get_http_logging()
         )
     except Exception as e:
         logger.error(f"Unexpected error updating HTTP logging: {e}", exc_info=True)
@@ -159,4 +167,29 @@ async def update_ai_detailed_logging_config(config: AIDetailedLoggingConfigUpdat
     except Exception as e:
         logger.error(f"Unexpected error updating AI detailed logging: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update AI detailed logging: {str(e)}")
+
+
+@router.get("/ai-processing-enabled", response_model=AIProcessingEnabledConfigResponse)
+async def get_ai_processing_enabled_config():
+    """Get the current AI processing enabled configuration (global setting)."""
+    logger.debug("Getting AI processing enabled configuration")
+    return AIProcessingEnabledConfigResponse(
+        ai_processing_enabled=AppConfig.get_ai_processing_enabled()
+    )
+
+
+@router.put("/ai-processing-enabled", response_model=AIProcessingEnabledConfigResponse)
+async def update_ai_processing_enabled_config(config: AIProcessingEnabledConfigUpdate):
+    """Update the AI processing enabled configuration (global setting)."""
+    try:
+        logger.info(f"Updating AI processing enabled to: {config.ai_processing_enabled}")
+        AppConfig.set_ai_processing_enabled(config.ai_processing_enabled)
+        logger.info(f"AI processing enabled updated successfully to: {config.ai_processing_enabled}")
+        
+        return AIProcessingEnabledConfigResponse(
+            ai_processing_enabled=AppConfig.get_ai_processing_enabled()
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error updating AI processing enabled: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update AI processing enabled: {str(e)}")
 

@@ -99,7 +99,10 @@ frontend_url = os.getenv("FRONTEND_URL", "http://localhost:34000")
 serve_frontend = os.getenv("SERVE_FRONTEND", "false").lower() in ("true", "1", "yes")
 
 # Add HTTP logging middleware (should be added before CORS to log all requests)
-if AppConfig.HTTP_LOGGING:
+# Initialize AppConfig to load from config.json
+AppConfig._initialize()
+
+if AppConfig.get_http_logging():
     app.add_middleware(HTTPLoggingMiddleware)
 
 if serve_frontend:
@@ -169,8 +172,13 @@ async def startup_event():
         if manager._configs:
             logger.info(f"Available AI configs: {list(manager._configs.keys())}")
         
+        # Initialize AppConfig to load from config.json
+        from app.core.config import AppConfig
+        AppConfig._initialize()
+        
         # Log AIConfig class variables (what's actually being used)
-        logger.info(f"AIConfig class state - ENABLED: {AIConfig.ENABLED}, BASE_URL: {AIConfig.BASE_URL}, MODEL: {AIConfig.MODEL}")
+        logger.info(f"AIConfig class state - AI_PROCESSING_ENABLED: {AppConfig.get_ai_processing_enabled()}, BASE_URL: {AIConfig.BASE_URL}, MODEL: {AIConfig.MODEL}")
+        logger.info(f"AppConfig state - LOG_LEVEL: {AppConfig.get_log_level()}, HTTP_LOGGING: {AppConfig.get_http_logging()}, RESULT_MAX_LINES: {AppConfig.get_result_max_lines()}")
     except Exception as e:
         logger.error(f"Failed to load AI configs at startup: {e}", exc_info=True)
     

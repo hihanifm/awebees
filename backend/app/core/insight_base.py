@@ -231,7 +231,8 @@ Path: {user_path}"""
             # Check if AI is configured via AIConfig (which checks both API_KEY and ENABLED)
             # Import here to avoid circular import (config -> utils -> insight_base)
             from app.core.config import AIConfig
-            logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, ENABLED={AIConfig.ENABLED}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}, base_url={AIConfig.BASE_URL}")
+            from app.core.config import AppConfig
+            logger.info(f"AI Auto-trigger: AIConfig.is_configured()={AIConfig.is_configured()}, AI_PROCESSING_ENABLED={AppConfig.get_ai_processing_enabled()}, API_KEY={'set' if AIConfig.API_KEY else 'not set'}, base_url={AIConfig.BASE_URL}")
             
             # Use AIConfig.is_configured() which checks both ENABLED and API_KEY
             # ai_service.is_configured() only checks API_KEY, not ENABLED

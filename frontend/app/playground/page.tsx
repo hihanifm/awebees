@@ -327,33 +327,35 @@ export default function PlaygroundPage() {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      const localSettings = loadAISettings();
-      
-      if (localSettings && localSettings.apiKey && localSettings.apiKey.trim() !== "") {
-        const enabled = localSettings.enabled;
-        const baseUrl = localSettings.baseUrl;
-        
-        if (!enabled) {
-          return {
-            isValid: false,
-            message: "AI processing is not enabled. Please enable it in settings."
-          };
-        }
-        
-        if (!baseUrl || baseUrl.trim() === "") {
-          return {
-            isValid: false,
-            message: "AI Base URL is not configured. Please set it in settings."
-          };
-        }
-        
-        return { isValid: true };
+      // Check global AI processing enabled setting from backend
+      const aiProcessingConfig = await apiClient.getAIProcessingEnabledConfig();
+      if (!aiProcessingConfig.ai_processing_enabled) {
+        return {
+          isValid: false,
+          message: "AI processing is not enabled. Please enable it in settings."
+        };
       }
       
+      // Check if AI config has API key and is configured
       const backendConfig = await getAIConfig();
       
       if (backendConfig.is_configured) {
         return { isValid: true };
+      }
+      
+      // If not configured, check what's missing
+      if (!backendConfig.api_key || backendConfig.api_key.trim() === "") {
+        return {
+          isValid: false,
+          message: "AI API key is not configured. Please set it in settings."
+        };
+      }
+      
+      if (!backendConfig.base_url || backendConfig.base_url.trim() === "") {
+        return {
+          isValid: false,
+          message: "AI Base URL is not configured. Please set it in settings."
+        };
       }
       
       return {

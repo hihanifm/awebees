@@ -4,7 +4,7 @@
  */
 
 export interface AISettings {
-  enabled: boolean;
+  // Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -73,7 +73,7 @@ export function mergeWithDefaults(
   backend: Partial<AISettings>
 ): AISettings {
   return {
-    enabled: local?.enabled ?? backend.enabled ?? false,
+    // Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     baseUrl: local?.baseUrl ?? backend.baseUrl ?? "https://api.openai.com/v1",
     apiKey: local?.apiKey ?? backend.apiKey ?? "",
     model: local?.model ?? backend.model ?? "gpt-4o-mini",

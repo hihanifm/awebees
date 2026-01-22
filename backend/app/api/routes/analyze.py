@@ -423,7 +423,7 @@ class AIAnalyzeRequest(BaseModel):
 
 
 class AIConfigUpdate(BaseModel):
-    enabled: Optional[bool] = None
+    # Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
@@ -434,7 +434,7 @@ class AIConfigUpdate(BaseModel):
 
 class AIConfigCreate(BaseModel):
     name: str
-    enabled: bool = True
+    # Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     base_url: str = "https://api.openai.com/v1"
     api_key: str = ""
     model: str = "gpt-4o-mini"
@@ -446,7 +446,7 @@ class AIConfigCreate(BaseModel):
 
 class AIConfigUpdateRequest(BaseModel):
     name: Optional[str] = None  # If provided, renames the config
-    enabled: Optional[bool] = None
+    # Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
@@ -473,7 +473,7 @@ async def ai_analyze_result(request: AIAnalyzeRequest):
     if not AIConfig.is_configured():
         raise HTTPException(
             status_code=503,
-            detail="AI service is not configured. Please set OPENAI_API_KEY and enable AI_ENABLED=true"
+            detail="AI service is not configured. Please set OPENAI_API_KEY and enable AI processing in settings"
         )
     
     # Limit to configured max lines to control API costs and token usage
@@ -669,7 +669,6 @@ async def create_ai_config(config: AIConfigCreate):
         manager = _get_manager()
         
         config_data = {
-            "enabled": config.enabled,
             "base_url": config.base_url,
             "api_key": config.api_key,
             "model": config.model,
@@ -678,6 +677,7 @@ async def create_ai_config(config: AIConfigCreate):
             "timeout": config.timeout,
             "streaming_enabled": config.streaming_enabled
         }
+        # Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
         
         manager.create_config(config.name, config_data)
         
@@ -726,8 +726,8 @@ async def update_ai_config_by_name(name: str, config: AIConfigUpdateRequest):
         new_name = config.name if config.name is not None else name
         updated_config = existing_config.copy()
         
-        if config.enabled is not None:
-            updated_config["enabled"] = config.enabled
+        # Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
+        # Ignore enabled field if present in request
         if config.base_url is not None:
             updated_config["base_url"] = config.base_url
         if config.api_key is not None:

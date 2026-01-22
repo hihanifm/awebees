@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { t, setLanguage: setLanguageState } = useTranslation();
   const [settings, setSettings] = useState<AISettings>({
-    enabled: false,
+    // Note: enabled removed - use global aiProcessingEnabled state instead
     baseUrl: "https://api.openai.com/v1",
     apiKey: "sk-no-key-required",
     model: "gpt-4o-mini",
@@ -66,6 +66,9 @@ export default function SettingsPage() {
   const [httpLogging, setHttpLogging] = useState<boolean>(true);
   const [aiDetailedLogging, setAiDetailedLogging] = useState<boolean>(true);
   const [aiStreamingEnabled, setAiStreamingEnabled] = useState<boolean>(true);
+  
+  // Global AI processing enabled state (separate from AI configs)
+  const [aiProcessingEnabled, setAiProcessingEnabled] = useState<boolean>(true);
 
   // Model selection state
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -116,8 +119,8 @@ export default function SettingsPage() {
         }
         
         // Use backend values directly - treat all fields the same, including API key
+        // Note: enabled removed - use global aiProcessingEnabled state instead
         const merged: AISettings = {
-          enabled: backendConfig?.enabled ?? false,
           baseUrl: backendConfig?.base_url ?? "https://api.openai.com/v1",
           apiKey: backendConfig?.api_key ?? "",
           model: backendConfig?.model ?? "gpt-4o-mini",
@@ -195,6 +198,10 @@ export default function SettingsPage() {
         const aiDetailedLoggingConfig = await apiClient.getAIDetailedLoggingConfig();
         setAiDetailedLogging(aiDetailedLoggingConfig.detailed_logging);
         
+        // Load global AI processing enabled config
+        const aiProcessingEnabledConfig = await apiClient.getAIProcessingEnabledConfig();
+        setAiProcessingEnabled(aiProcessingEnabledConfig.ai_processing_enabled);
+        
         // Load AI streaming config - use shared configs result
         if (allConfigs) {
           const activeName = allConfigs.active_config_name;
@@ -226,10 +233,9 @@ export default function SettingsPage() {
         return;
       }
 
-      // Only fetch models if AI is enabled
-      const isEnabled = localSettings?.enabled ?? settings.enabled;
-      if (!isEnabled) {
-        // Keep empty if AI is disabled
+      // Only fetch models if AI processing is globally enabled
+      if (!aiProcessingEnabled) {
+        // Keep empty if AI processing is disabled
         setAvailableModels([]);
         setModelsSource('proxy');
         return;
@@ -339,8 +345,8 @@ export default function SettingsPage() {
       
       // Update the currently selected config (not necessarily active)
       // No localStorage needed - API key stored in backend config file
+      // Note: enabled removed - use global aiProcessingEnabled state instead
       await apiClient.updateAIConfig({
-        enabled: settings.enabled,
         base_url: settings.baseUrl,
         api_key: settings.apiKey,
         model: settings.model,
@@ -397,8 +403,8 @@ export default function SettingsPage() {
         const allConfigs = await apiClient.getAllAIConfigs();
         const activeConfig = allConfigs.configs[names[0]];
         if (activeConfig) {
+          // Note: enabled removed - use global aiProcessingEnabled state instead
           setSettings({
-            enabled: activeConfig.enabled ?? false,
             baseUrl: activeConfig.base_url ?? "https://api.openai.com/v1",
             apiKey: activeConfig.api_key ?? "",
             model: activeConfig.model ?? "gpt-4o-mini",
@@ -410,8 +416,8 @@ export default function SettingsPage() {
       } else {
         setConfigName("");
         // Reset to defaults
+        // Note: enabled removed - use global aiProcessingEnabled state instead
         setSettings({
-          enabled: false,
           baseUrl: "https://api.openai.com/v1",
           apiKey: "",
           model: "gpt-4o-mini",
@@ -458,9 +464,9 @@ export default function SettingsPage() {
 
     setIsSavingAs(true);
     try {
+      // Note: enabled removed - use global aiProcessingEnabled state instead
       await apiClient.createAIConfig({
         name: newConfigName.trim(),
-        enabled: settings.enabled,
         base_url: settings.baseUrl,
         api_key: settings.apiKey,
         model: settings.model,
@@ -504,8 +510,8 @@ export default function SettingsPage() {
     
     try {
       // Test with CURRENT form values, not saved values (including streaming setting)
+      // Note: enabled removed - use global aiProcessingEnabled state instead
       const result = await apiClient.testAIConnectionWithConfig({
-        enabled: settings.enabled,
         base_url: settings.baseUrl,
         api_key: settings.apiKey,
         model: settings.model,
@@ -783,6 +789,24 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAIProcessingEnabledChange = async (enabled: boolean) => {
+    try {
+      await apiClient.updateAIProcessingEnabledConfig(enabled);
+      setAiProcessingEnabled(enabled);
+      toast({
+        title: t("settings.saved"),
+        description: `AI processing ${enabled ? "enabled" : "disabled"}`,
+      });
+    } catch (error) {
+      logger.error("Failed to update AI processing enabled:", error);
+      toast({
+        title: t("common.error"),
+        description: `Failed to update AI processing enabled: ${String(error)}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleRefreshModels = async () => {
     if (!settings.baseUrl || !settings.apiKey) {
       toast({
@@ -863,8 +887,8 @@ export default function SettingsPage() {
                         const allConfigs = await apiClient.getAllAIConfigs();
                         const activeConfig = allConfigs.configs[value];
                         if (activeConfig) {
+                          // Note: enabled removed - use global aiProcessingEnabled state instead
                           setSettings({
-                            enabled: activeConfig.enabled ?? false,
                             baseUrl: activeConfig.base_url ?? "https://api.openai.com/v1",
                             apiKey: activeConfig.api_key ?? "",
                             model: activeConfig.model ?? "gpt-4o-mini",
@@ -910,20 +934,18 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* AI Enabled Toggle */}
+              {/* Global AI Processing Enabled Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="ai-enabled">{t("settings.aiEnabled")}</Label>
+                  <Label htmlFor="ai-processing-enabled">{t("settings.aiEnabled")}</Label>
                   <p className="text-sm text-muted-foreground">
                     {t("settings.aiEnabledHint")}
                   </p>
                 </div>
                 <Switch
-                  id="ai-enabled"
-                  checked={settings.enabled}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, enabled: checked })
-                  }
+                  id="ai-processing-enabled"
+                  checked={aiProcessingEnabled}
+                  onCheckedChange={handleAIProcessingEnabledChange}
                 />
               </div>
 
@@ -937,7 +959,7 @@ export default function SettingsPage() {
                     setSettings({ ...settings, baseUrl: e.target.value })
                   }
                   placeholder="https://api.openai.com/v1"
-                  disabled={!settings.enabled}
+                  disabled={!aiProcessingEnabled}
                 />
                 <p className="text-xs text-muted-foreground">
                   {t("settings.baseURLHint")}
@@ -955,7 +977,7 @@ export default function SettingsPage() {
                     setSettings({ ...settings, apiKey: e.target.value })
                   }
                   placeholder="sk-..."
-                  disabled={!settings.enabled}
+                  disabled={!aiProcessingEnabled}
                 />
                 <p className="text-xs text-muted-foreground">
                   {t("settings.apiKeyHint")}
@@ -969,7 +991,7 @@ export default function SettingsPage() {
                   id="config-model"
                   value={settings.model}
                   readOnly
-                  disabled={!settings.enabled}
+                  disabled={!aiProcessingEnabled}
                   className="bg-muted"
                 />
                 <p className="text-xs text-muted-foreground">
@@ -986,7 +1008,7 @@ export default function SettingsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={handleRefreshModels}
-                    disabled={!settings.enabled || isLoadingModels || !settings.baseUrl}
+                    disabled={!aiProcessingEnabled || isLoadingModels || !settings.baseUrl}
                     className="h-7 px-2"
                   >
                     {isLoadingModels ? (
@@ -1002,7 +1024,7 @@ export default function SettingsPage() {
                   onValueChange={(value) =>
                     setSettings({ ...settings, model: value })
                   }
-                  disabled={!settings.enabled || isLoadingModels || availableModels.length === 0}
+                  disabled={!aiProcessingEnabled || isLoadingModels || availableModels.length === 0}
                 >
                   <SelectTrigger id="available-models">
                     <SelectValue placeholder={availableModels.length === 0 ? "Click refresh to load models" : "Select model"} />
@@ -1040,7 +1062,7 @@ export default function SettingsPage() {
                   onValueChange={([value]) =>
                     setSettings({ ...settings, maxTokens: value })
                   }
-                  disabled={!settings.enabled}
+                  disabled={!aiProcessingEnabled}
                 />
               </div>
 
@@ -1061,7 +1083,7 @@ export default function SettingsPage() {
                   onValueChange={([value]) =>
                     setSettings({ ...settings, temperature: value })
                   }
-                  disabled={!settings.enabled}
+                  disabled={!aiProcessingEnabled}
                 />
                 <p className="text-xs text-muted-foreground">
                   {t("settings.temperatureHint")}
@@ -1080,7 +1102,7 @@ export default function SettingsPage() {
                   id="ai-streaming"
                   checked={aiStreamingEnabled}
                   onCheckedChange={handleAIStreamingChange}
-                  disabled={!settings.enabled || isLoadingLogging}
+                  disabled={!aiProcessingEnabled || isLoadingLogging}
                 />
               </div>
 
@@ -1089,7 +1111,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleTest}
-                  disabled={!settings.enabled || !settings.apiKey || testStatus === "testing"}
+                  disabled={!aiProcessingEnabled || !settings.apiKey || testStatus === "testing"}
                   className="w-full font-bold"
                 >
                   {testStatus === "testing" && (

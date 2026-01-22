@@ -501,7 +501,7 @@ export const apiClient = {
    */
   async createAIConfig(config: {
     name: string;
-    enabled: boolean;
+    // Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     base_url: string;
     api_key: string;
     model: string;
@@ -530,7 +530,7 @@ export const apiClient = {
    */
   async updateAIConfig(config: {
     name?: string;
-    enabled?: boolean;
+    // Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     base_url?: string;
     api_key?: string;
     model?: string;
@@ -580,7 +580,7 @@ export const apiClient = {
    * @param config Configuration to test with
    */
   async testAIConnectionWithConfig(config: {
-    enabled: boolean;
+    // Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
     base_url: string;
     api_key: string;
     model: string;
@@ -849,6 +849,24 @@ export const apiClient = {
     return fetchJSON("/api/logging/ai-detailed-logging", {
       method: "PUT",
       body: JSON.stringify({ detailed_logging: enabled }),
+    });
+  },
+
+  /**
+   * Get AI processing enabled configuration (global setting).
+   */
+  async getAIProcessingEnabledConfig(): Promise<{ ai_processing_enabled: boolean }> {
+    return fetchJSON("/api/logging/ai-processing-enabled");
+  },
+
+  /**
+   * Update AI processing enabled configuration (global setting).
+   * @param enabled Whether to enable AI processing globally
+   */
+  async updateAIProcessingEnabledConfig(enabled: boolean): Promise<{ ai_processing_enabled: boolean }> {
+    return fetchJSON("/api/logging/ai-processing-enabled", {
+      method: "PUT",
+      body: JSON.stringify({ ai_processing_enabled: enabled }),
     });
   },
 
