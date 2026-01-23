@@ -15,6 +15,7 @@ import { AnalysisResponse, ProgressEvent, ErrorEvent } from "@/lib/api-types";
 import { useTranslation } from "@/lib/i18n";
 import { logger } from "@/lib/logger";
 import { getMostRecentInput } from "@/lib/input-history-storage";
+import { useInsights } from "@/hooks/use-insights";
 
 /**
  * Strip surrounding quotes from a string if they match at both ends.
@@ -45,6 +46,7 @@ const HOME_STORAGE_KEYS = {
 
 export default function Home() {
   const { t } = useTranslation();
+  const { insights, loading: insightsLoading } = useInsights();
   const [filePaths, setFilePaths] = useState<string>("");
   const [selectedInsightIds, setSelectedInsightIds] = useState<string[]>([]);
   const [analysisResponse, setAnalysisResponse] = useState<AnalysisResponse | null>(null);
@@ -85,18 +87,7 @@ export default function Home() {
       setFilePaths(lastPath);
     }
 
-    // Load selected insight IDs
-    try {
-      const savedInsightIds = localStorage.getItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS);
-      if (savedInsightIds) {
-        const parsed = JSON.parse(savedInsightIds);
-        if (Array.isArray(parsed)) {
-          setSelectedInsightIds(parsed);
-        }
-      }
-    } catch (err) {
-      logger.error("Failed to load selected insight IDs:", err);
-    }
+    // Load selected insight IDs will be validated after insights are loaded
 
     // Load analysis response
     try {
@@ -148,6 +139,39 @@ export default function Home() {
     
     loadSamples();
   }, []);
+
+  // Validate and filter saved insight IDs against available insights
+  useEffect(() => {
+    if (!insightsLoading && insights.length > 0) {
+      try {
+        const savedInsightIds = localStorage.getItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS);
+        if (savedInsightIds) {
+          const parsed = JSON.parse(savedInsightIds);
+          if (Array.isArray(parsed)) {
+            // Filter out insight IDs that don't exist in the current insights list
+            const availableInsightIds = new Set(insights.map(insight => insight.id));
+            const validInsightIds = parsed.filter((id: string) => availableInsightIds.has(id));
+            
+            if (validInsightIds.length !== parsed.length) {
+              const removedIds = parsed.filter((id: string) => !availableInsightIds.has(id));
+              logger.warn(`Filtered out ${removedIds.length} invalid insight ID(s) from localStorage: ${removedIds.join(', ')}`);
+              
+              // Update localStorage with only valid insights
+              if (validInsightIds.length > 0) {
+                localStorage.setItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS, JSON.stringify(validInsightIds));
+              } else {
+                localStorage.removeItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS);
+              }
+            }
+            
+            setSelectedInsightIds(validInsightIds);
+          }
+        }
+      } catch (err) {
+        logger.error("Failed to validate selected insight IDs:", err);
+      }
+    }
+  }, [insights, insightsLoading]);
 
   // Auto-load sample when selection changes
   useEffect(() => {
@@ -211,9 +235,23 @@ export default function Home() {
 
 
   const handleAnalyze = async () => {
-    if (selectedInsightIds.length === 0) {
-      setError("Please select at least one insight");
+    // Filter out invalid insight IDs before sending request
+    const availableInsightIds = new Set(insights.map(insight => insight.id));
+    const validInsightIds = selectedInsightIds.filter(id => availableInsightIds.has(id));
+    
+    if (validInsightIds.length === 0) {
+      setError("Please select at least one valid insight");
+      // Clear invalid selections
+      setSelectedInsightIds([]);
+      localStorage.removeItem(HOME_STORAGE_KEYS.SELECTED_INSIGHT_IDS);
       return;
+    }
+    
+    // If some insights were filtered out, update the selection
+    if (validInsightIds.length !== selectedInsightIds.length) {
+      const removedIds = selectedInsightIds.filter(id => !availableInsightIds.has(id));
+      logger.warn(`Filtered out ${removedIds.length} invalid insight ID(s) before analysis: ${removedIds.join(', ')}`);
+      setSelectedInsightIds(validInsightIds);
     }
 
     const paths = filePaths
@@ -285,8 +323,9 @@ export default function Home() {
       let taskIdExtracted = false;
 
       // Run analysis with progress tracking (API will call analyze() once per path)
+      // Use validInsightIds (already filtered at the start of handleAnalyze)
       const response = await apiClient.analyzeWithProgress(
-        selectedInsightIds,
+        validInsightIds,
         selectResponse.files,
         (event: ProgressEvent) => {
           setProgressEvents((prev) => [...prev, event]);
