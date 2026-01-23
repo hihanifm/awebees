@@ -83,13 +83,14 @@ export function mergeWithDefaults(
   local: AISettings | null,
   backend: Partial<AISettings>
 ): AISettings {
+  // Honor backend values exactly - no hardcoded defaults
+  // Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
   return {
-    // Note: enabled removed - use global AppConfig.AI_PROCESSING_ENABLED instead
-    baseUrl: local?.baseUrl ?? backend.baseUrl ?? "https://api.openai.com/v1",
+    baseUrl: local?.baseUrl ?? backend.baseUrl ?? "",
     apiKey: local?.apiKey ?? backend.apiKey ?? "",
-    model: local?.model ?? backend.model ?? "gpt-4o-mini",
-    maxTokens: local?.maxTokens ?? backend.maxTokens ?? 2000,
-    temperature: local?.temperature ?? backend.temperature ?? 0.7,
+    model: local?.model ?? backend.model ?? "",
+    maxTokens: local?.maxTokens ?? backend.maxTokens ?? 0,
+    temperature: local?.temperature ?? backend.temperature ?? 0,
   };
 }
 

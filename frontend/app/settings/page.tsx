@@ -24,12 +24,12 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { t, setLanguage: setLanguageState } = useTranslation();
   const [settings, setSettings] = useState<AISettings>({
-    // Note: enabled removed - use global aiProcessingEnabled state instead
-    baseUrl: "https://api.openai.com/v1",
-    apiKey: "sk-no-key-required",
-    model: "gpt-4o-mini",
-    maxTokens: 2000,
-    temperature: 0.7,
+    // No defaults - will be loaded from backend, empty if no config exists
+    baseUrl: "",
+    apiKey: "",
+    model: "",
+    maxTokens: 0,
+    temperature: 0,
   });
   const [configName, setConfigName] = useState<string>("");
   const [allConfigNames, setAllConfigNames] = useState<string[]>([]);
@@ -118,14 +118,14 @@ export default function SettingsPage() {
           setConfigName("");
         }
         
-        // Use backend values directly - treat all fields the same, including API key
+        // Use backend values directly - no defaults, honor backend exactly
         // Note: enabled removed - use global aiProcessingEnabled state instead
         const merged: AISettings = {
-          baseUrl: backendConfig?.base_url ?? "https://api.openai.com/v1",
+          baseUrl: backendConfig?.base_url ?? "",
           apiKey: backendConfig?.api_key ?? "",
-          model: backendConfig?.model ?? "gpt-4o-mini",
-          maxTokens: backendConfig?.max_tokens ?? 2000,
-          temperature: backendConfig?.temperature ?? 0.7,
+          model: backendConfig?.model ?? "",
+          maxTokens: backendConfig?.max_tokens ?? 0,
+          temperature: backendConfig?.temperature ?? 0,
         };
         
         logger.info("Loaded AI settings from backend:", merged);
@@ -407,25 +407,26 @@ export default function SettingsPage() {
         const activeConfig = allConfigs.configs[names[0]];
         if (activeConfig) {
           // Note: enabled removed - use global aiProcessingEnabled state instead
+          // Honor backend values exactly - no defaults
           setSettings({
-            baseUrl: activeConfig.base_url ?? "https://api.openai.com/v1",
+            baseUrl: activeConfig.base_url ?? "",
             apiKey: activeConfig.api_key ?? "",
-            model: activeConfig.model ?? "gpt-4o-mini",
-            maxTokens: activeConfig.max_tokens ?? 2000,
-            temperature: activeConfig.temperature ?? 0.7,
+            model: activeConfig.model ?? "",
+            maxTokens: activeConfig.max_tokens ?? 0,
+            temperature: activeConfig.temperature ?? 0,
           });
           setAiStreamingEnabled(activeConfig.streaming_enabled ?? true);
         }
       } else {
         setConfigName("");
-        // Reset to defaults
+        // Reset to empty - no defaults, honor backend
         // Note: enabled removed - use global aiProcessingEnabled state instead
         setSettings({
-          baseUrl: "https://api.openai.com/v1",
+          baseUrl: "",
           apiKey: "",
-          model: "gpt-4o-mini",
-          maxTokens: 2000,
-          temperature: 0.7,
+          model: "",
+          maxTokens: 0,
+          temperature: 0,
         });
         setAiStreamingEnabled(true);
       }
@@ -916,12 +917,13 @@ export default function SettingsPage() {
                         const activeConfig = allConfigs.configs[value];
                         if (activeConfig) {
                           // Note: enabled removed - use global aiProcessingEnabled state instead
+                          // Honor backend values exactly - no defaults
                           setSettings({
-                            baseUrl: activeConfig.base_url ?? "https://api.openai.com/v1",
+                            baseUrl: activeConfig.base_url ?? "",
                             apiKey: activeConfig.api_key ?? "",
-                            model: activeConfig.model ?? "gpt-4o-mini",
-                            maxTokens: activeConfig.max_tokens ?? 2000,
-                            temperature: activeConfig.temperature ?? 0.7,
+                            model: activeConfig.model ?? "",
+                            maxTokens: activeConfig.max_tokens ?? 0,
+                            temperature: activeConfig.temperature ?? 0,
                           });
                           setAiStreamingEnabled(activeConfig.streaming_enabled ?? true);
                         }
