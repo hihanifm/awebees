@@ -33,7 +33,7 @@ async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T>
     throw new Error(`API error: ${response.status} ${errorText}`);
   }
 
-  return response.json();
+  return (await response.json()) as T;
 }
 
 export const apiClient = {
@@ -881,10 +881,6 @@ export const apiClient = {
     });
   },
 
-  /**
-   * Get all app config settings (log level, AI processing enabled, HTTP logging, result max lines).
-   * This is cached in memory on the frontend.
-   */
   /**
    * Get app config (log_level, ai_processing_enabled, http_logging, result_max_lines).
    * Automatically uses cache - checks cache first, fetches from API if cache is empty/expired.
