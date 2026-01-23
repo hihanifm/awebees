@@ -307,10 +307,10 @@ export default function SettingsPage() {
       
       // If localStorage has a different value, sync it
       if (localValue !== null && localValue !== appConfig.result_max_lines) {
-        // Update backend to match localStorage (user preference)
+        // Update backend to match localStorage (user preference) using unified config API
         try {
-          await apiClient.updateResultMaxLines(localValue);
-          // Refresh cache - apiClient.getAppConfig() handles cache automatically
+          await apiClient.updateAppConfig({ result_max_lines: localValue });
+          // Refresh cache - apiClient.updateAppConfig() handles cache automatically
           const freshConfig = await apiClient.getAppConfig();
           setResultMaxLines(freshConfig.result_max_lines);
         } catch (error) {
@@ -731,16 +731,10 @@ export default function SettingsPage() {
 
   const handleBackendLogLevelChange = async (newLevel: string) => {
     try {
-      await apiClient.updateLoggingConfig(newLevel);
+      // Use unified app-config API
+      await apiClient.updateAppConfig({ log_level: newLevel });
       setBackendLogLevel(newLevel);
-      // Update cache
-      const currentConfig = loadAppConfig();
-      if (currentConfig) {
-        saveAppConfig({ ...currentConfig, log_level: newLevel });
-      } else {
-          const freshConfig = await apiClient.getAppConfig();
-          // Cache automatically updated by apiClient.getAppConfig()
-      }
+      // Cache automatically updated by apiClient.updateAppConfig()
       toast({
         title: "Success",
         description: `Backend log level updated to ${newLevel}`,
@@ -767,16 +761,10 @@ export default function SettingsPage() {
 
   const handleHTTPLoggingChange = async (enabled: boolean) => {
     try {
-      await apiClient.updateHTTPLoggingConfig(enabled);
+      // Use unified app-config API
+      await apiClient.updateAppConfig({ http_logging: enabled });
       setHttpLogging(enabled);
-      // Update cache
-      const currentConfig = loadAppConfig();
-      if (currentConfig) {
-        saveAppConfig({ ...currentConfig, http_logging: enabled });
-      } else {
-          const freshConfig = await apiClient.getAppConfig();
-          // Cache automatically updated by apiClient.getAppConfig()
-      }
+      // Cache automatically updated by apiClient.updateAppConfig()
       toast({
         title: "Success",
         description: `HTTP logging ${enabled ? "enabled" : "disabled"}`,
@@ -794,16 +782,9 @@ export default function SettingsPage() {
   const handleAIDetailedLoggingChange = async (enabled: boolean) => {
     try {
       // Update via unified app-config API
-      await apiClient.updateAIDetailedLoggingConfig(enabled);
-      // Also update cache
-      const currentConfig = loadAppConfig();
-      if (currentConfig) {
-        saveAppConfig({ ...currentConfig, detailed_logging: enabled });
-      } else {
-        const freshConfig = await apiClient.getAppConfig();
-        // Cache automatically updated by apiClient.getAppConfig()
-      }
+      await apiClient.updateAppConfig({ detailed_logging: enabled });
       setAiDetailedLogging(enabled);
+      // Cache automatically updated by apiClient.updateAppConfig()
       toast({
         title: "Success",
         description: `AI detailed logging ${enabled ? "enabled" : "disabled"}`,
@@ -847,17 +828,10 @@ export default function SettingsPage() {
 
   const handleAIProcessingEnabledChange = async (enabled: boolean) => {
     try {
-      await apiClient.updateAIProcessingEnabledConfig(enabled);
+      // Use unified app-config API
+      await apiClient.updateAppConfig({ ai_processing_enabled: enabled });
       setAiProcessingEnabled(enabled);
-      // Update cache immediately
-      const currentConfig = loadAppConfig();
-      if (currentConfig) {
-        saveAppConfig({ ...currentConfig, ai_processing_enabled: enabled });
-      } else {
-        // If cache miss, fetch fresh config
-          const freshConfig = await apiClient.getAppConfig();
-          // Cache automatically updated by apiClient.getAppConfig()
-      }
+      // Cache automatically updated by apiClient.updateAppConfig()
       toast({
         title: t("settings.saved"),
         description: `AI processing ${enabled ? "enabled" : "disabled"}`,
@@ -936,6 +910,21 @@ export default function SettingsPage() {
             </TabsList>
 
             <TabsContent value="ai" className="space-y-4 mt-4">
+              {/* Global AI Processing Enabled Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="ai-processing-enabled">{t("settings.aiEnabled")}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("settings.aiEnabledHint")}
+                  </p>
+                </div>
+                <Switch
+                  id="ai-processing-enabled"
+                  checked={aiProcessingEnabled}
+                  onCheckedChange={handleAIProcessingEnabledChange}
+                />
+              </div>
+
               {/* Config Name Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="config-name">Active Configuration</Label>
@@ -1001,21 +990,6 @@ export default function SettingsPage() {
                     ? "No AI configurations available. Create one by saving settings."
                     : "Select which AI configuration profile to use"}
                 </p>
-              </div>
-
-              {/* Global AI Processing Enabled Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="ai-processing-enabled">{t("settings.aiEnabled")}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t("settings.aiEnabledHint")}
-                  </p>
-                </div>
-                <Switch
-                  id="ai-processing-enabled"
-                  checked={aiProcessingEnabled}
-                  onCheckedChange={handleAIProcessingEnabledChange}
-                />
               </div>
 
               {/* Base URL */}
@@ -1547,15 +1521,9 @@ export default function SettingsPage() {
                           // Save on blur
                           try {
                             saveResultMaxLines(resultMaxLines);
-                            await apiClient.updateResultMaxLines(resultMaxLines);
-                            // Update cache
-                            const currentConfig = loadAppConfig();
-                            if (currentConfig) {
-                              saveAppConfig({ ...currentConfig, result_max_lines: resultMaxLines });
-                            } else {
-          const freshConfig = await apiClient.getAppConfig();
-          // Cache automatically updated by apiClient.getAppConfig()
-                            }
+                            // Use unified app-config API
+                            await apiClient.updateAppConfig({ result_max_lines: resultMaxLines });
+                            // Cache automatically updated by apiClient.updateAppConfig()
                             toast({
                               title: "Success",
                               description: `Result max lines updated to ${resultMaxLines}`,

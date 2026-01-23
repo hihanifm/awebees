@@ -792,96 +792,6 @@ export const apiClient = {
   },
 
   /**
-   * Get logging configuration from backend.
-   */
-  async getLoggingConfig(): Promise<{ log_level: string; available_levels: string[] }> {
-    return fetchJSON("/api/logging/config");
-  },
-
-  /**
-   * Update backend logging configuration.
-   * @param logLevel New log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-   */
-  async updateLoggingConfig(logLevel: string): Promise<{ log_level: string; available_levels: string[] }> {
-    return fetchJSON("/api/logging/config", {
-      method: "PUT",
-      body: JSON.stringify({ log_level: logLevel }),
-    });
-  },
-
-  /**
-   * Get result max lines configuration from backend.
-   */
-  async getResultMaxLines(): Promise<{ result_max_lines: number }> {
-    return fetchJSON("/api/logging/result-max-lines");
-  },
-
-  /**
-   * Update result max lines configuration in backend (in-memory only).
-   * @param value New result max lines value (1-100000)
-   */
-  async updateResultMaxLines(value: number): Promise<{ result_max_lines: number }> {
-    return fetchJSON("/api/logging/result-max-lines", {
-      method: "PUT",
-      body: JSON.stringify({ result_max_lines: value }),
-    });
-  },
-
-  /**
-   * Get HTTP logging configuration from backend.
-   */
-  async getHTTPLoggingConfig(): Promise<{ http_logging: boolean }> {
-    return fetchJSON("/api/logging/http-logging");
-  },
-
-  /**
-   * Update HTTP logging configuration in backend.
-   * @param enabled Whether to enable HTTP request/response logging
-   */
-  async updateHTTPLoggingConfig(enabled: boolean): Promise<{ http_logging: boolean }> {
-    return fetchJSON("/api/logging/http-logging", {
-      method: "PUT",
-      body: JSON.stringify({ http_logging: enabled }),
-    });
-  },
-
-  /**
-   * Get AI detailed logging configuration from backend.
-   */
-  async getAIDetailedLoggingConfig(): Promise<{ detailed_logging: boolean }> {
-    return fetchJSON("/api/logging/ai-detailed-logging");
-  },
-
-  /**
-   * Update AI detailed logging configuration in backend.
-   * @param enabled Whether to enable detailed AI interaction logging
-   */
-  async updateAIDetailedLoggingConfig(enabled: boolean): Promise<{ detailed_logging: boolean }> {
-    return fetchJSON("/api/logging/ai-detailed-logging", {
-      method: "PUT",
-      body: JSON.stringify({ detailed_logging: enabled }),
-    });
-  },
-
-  /**
-   * Get AI processing enabled configuration (global setting).
-   */
-  async getAIProcessingEnabledConfig(): Promise<{ ai_processing_enabled: boolean }> {
-    return fetchJSON("/api/logging/ai-processing-enabled");
-  },
-
-  /**
-   * Update AI processing enabled configuration (global setting).
-   * @param enabled Whether to enable AI processing globally
-   */
-  async updateAIProcessingEnabledConfig(enabled: boolean): Promise<{ ai_processing_enabled: boolean }> {
-    return fetchJSON("/api/logging/ai-processing-enabled", {
-      method: "PUT",
-      body: JSON.stringify({ ai_processing_enabled: enabled }),
-    });
-  },
-
-  /**
    * Get app config (log_level, ai_processing_enabled, http_logging, result_max_lines, detailed_logging).
    * Automatically uses cache - checks cache first, fetches from API if cache is empty/expired.
    */
@@ -903,6 +813,30 @@ export const apiClient = {
     }
     
     return config;
+  },
+
+  /**
+   * Update app config using unified endpoint (all fields optional).
+   * Updates cache automatically after successful update.
+   */
+  async updateAppConfig(updates: {
+    log_level?: string;
+    ai_processing_enabled?: boolean;
+    http_logging?: boolean;
+    result_max_lines?: number;
+    detailed_logging?: boolean;
+  }): Promise<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number; detailed_logging: boolean }> {
+    const response = await fetchJSON<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number; detailed_logging: boolean }>("/api/logging/app-config", {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
+    
+    // Update cache with response
+    if (response) {
+      saveAppConfig(response);
+    }
+    
+    return response;
   },
 
   /**
