@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AnalysisResponse } from "@/lib/api-types";
-import { analyzeWithAI, getAIConfig } from "@/lib/api-client";
+import { analyzeWithAI, getAIConfig, apiClient } from "@/lib/api-client";
 import { loadAISettings } from "@/lib/settings-storage";
 import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, AlertCircle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -57,44 +57,37 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Frontend localStorage is the source of truth once user saves valid settings
-      const localSettings = loadAISettings();
-      
-      // Check if localStorage has valid settings (user has explicitly configured)
-      if (localSettings && localSettings.apiKey && localSettings.apiKey.trim() !== "") {
-        // User has saved settings - localStorage is source of truth
-        const enabled = localSettings.enabled;
-        const baseUrl = localSettings.baseUrl;
-        const apiKey = localSettings.apiKey;
-        
-        // Check if AI is enabled
-        if (!enabled) {
-          return {
-            isValid: false,
-            message: t("playground.enableAI") + ". " + t("playground.openSettings")
-          };
-        }
-        
-        // Check if base URL is configured
-        if (!baseUrl || baseUrl.trim() === "") {
-          return {
-            isValid: false,
-            message: t("playground.setBaseURL") + ". " + t("playground.openSettings")
-          };
-        }
-        
-        return { isValid: true };
+      // Check global AI processing enabled setting from backend
+      const aiProcessingConfig = await apiClient.getAIProcessingEnabledConfig();
+      if (!aiProcessingConfig.ai_processing_enabled) {
+        return {
+          isValid: false,
+          message: t("playground.enableAI") + ". " + t("playground.openSettings")
+        };
       }
       
-      // No valid localStorage settings - check backend config (initial load or backend .env)
+      // Check if AI config has API key and is configured
       const backendConfig = await getAIConfig();
       
-      // If backend says it's configured, trust it (backend uses .env file)
       if (backendConfig.is_configured) {
         return { isValid: true };
       }
       
-      // Backend is not configured either
+      // If not configured, check what's missing
+      if (!backendConfig.api_key || backendConfig.api_key.trim() === "") {
+        return {
+          isValid: false,
+          message: "AI API key is not configured. Please set it in settings."
+        };
+      }
+      
+      if (!backendConfig.base_url || backendConfig.base_url.trim() === "") {
+        return {
+          isValid: false,
+          message: t("playground.setBaseURL") + ". " + t("playground.openSettings")
+        };
+      }
+      
       return {
         isValid: false,
         message: t("playground.aiNotConfigured")
