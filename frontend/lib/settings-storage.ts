@@ -1,6 +1,6 @@
 /**
- * Local storage management for AI settings.
- * Settings are stored in browser localStorage and merged with backend defaults.
+ * In-memory cache management for all settings.
+ * All settings are cached in memory after being read from the server.
  */
 
 export interface AISettings {
@@ -12,7 +12,6 @@ export interface AISettings {
   temperature: number;
 }
 
-const STORAGE_KEY = "lens_ai_settings";
 const RESULT_MAX_LINES_STORAGE_KEY = "lens_result_max_lines";
 
 // In-memory cache for all config.json settings
@@ -23,56 +22,52 @@ interface AppConfigCache {
   result_max_lines: number;
 }
 
+// In-memory cache for AI settings
+let aiSettingsCache: { value: AISettings; timestamp: number } | null = null;
 let appConfigCache: { value: AppConfigCache; timestamp: number } | null = null;
+// In-memory cache for all AI configs (from getAllAIConfigs)
+let allAIConfigsCache: { value: { active_config_name: string | null; configs: Record<string, any> }; timestamp: number } | null = null;
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes cache
 
 /**
- * Save AI settings to localStorage.
+ * Save AI settings to in-memory cache.
+ * @param settings AI settings to cache
  */
 export function saveAISettings(settings: AISettings): void {
-  try {
-    const serialized = JSON.stringify(settings);
-    console.log("[settings-storage] Saving to localStorage:", settings);
-    localStorage.setItem(STORAGE_KEY, serialized);
-    // Verify it was saved
-    const verified = localStorage.getItem(STORAGE_KEY);
-    console.log("[settings-storage] Verified saved data:", verified);
-  } catch (error) {
-    console.error("Failed to save AI settings to localStorage:", error);
-    throw error; // Re-throw so caller knows save failed
-  }
+  aiSettingsCache = {
+    value: settings,
+    timestamp: Date.now()
+  };
+  console.log("[settings-storage] Cached AI settings in memory:", settings);
 }
 
 /**
- * Load AI settings from localStorage.
+ * Load AI settings from in-memory cache.
+ * Returns null if cache is expired or not found.
+ * @returns Cached settings or null if cache is invalid/expired
  */
 export function loadAISettings(): AISettings | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    console.log("[settings-storage] Raw data from localStorage:", stored);
-    if (!stored) {
-      console.log("[settings-storage] No settings found in localStorage");
-      return null;
-    }
-    
-    const parsed = JSON.parse(stored) as AISettings;
-    console.log("[settings-storage] Parsed settings:", parsed);
-    return parsed;
-  } catch (error) {
-    console.error("Failed to load AI settings from localStorage:", error);
+  if (!aiSettingsCache) {
     return null;
   }
+  
+  // Check if cache is expired
+  const cacheAge = Date.now() - aiSettingsCache.timestamp;
+  if (cacheAge > CACHE_DURATION_MS) {
+    console.log("[settings-storage] AI settings cache expired, clearing");
+    aiSettingsCache = null;
+    return null;
+  }
+  
+  console.log("[settings-storage] Loaded AI settings from memory cache");
+  return aiSettingsCache.value;
 }
 
 /**
- * Clear AI settings from localStorage.
+ * Clear AI settings cache from memory.
  */
 export function clearAISettings(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error("Failed to clear AI settings from localStorage:", error);
-  }
+  aiSettingsCache = null;
 }
 
 /**
@@ -95,41 +90,25 @@ export function mergeWithDefaults(
 }
 
 /**
- * Save result max lines setting to localStorage.
+ * Save result max lines setting to in-memory cache (via appConfigCache).
+ * This is now part of AppConfigCache, but kept for backward compatibility.
  */
 export function saveResultMaxLines(value: number): void {
-  try {
-    localStorage.setItem(RESULT_MAX_LINES_STORAGE_KEY, value.toString());
-    console.log("[settings-storage] Saved result max lines:", value);
-  } catch (error) {
-    console.error("Failed to save result max lines to localStorage:", error);
-    throw error;
+  // Update appConfigCache if it exists
+  if (appConfigCache) {
+    appConfigCache.value.result_max_lines = value;
+    appConfigCache.timestamp = Date.now();
+    console.log("[settings-storage] Updated result max lines in app config cache:", value);
   }
 }
 
 /**
- * Load result max lines setting from localStorage.
+ * Load result max lines setting from in-memory cache (via appConfigCache).
  * Returns null if not set, otherwise returns the number.
  */
 export function loadResultMaxLines(): number | null {
-  try {
-    const stored = localStorage.getItem(RESULT_MAX_LINES_STORAGE_KEY);
-    if (!stored) {
-      return null;
-    }
-    
-    const value = parseInt(stored, 10);
-    if (isNaN(value) || value < 1) {
-      console.warn("[settings-storage] Invalid result max lines value, removing");
-      localStorage.removeItem(RESULT_MAX_LINES_STORAGE_KEY);
-      return null;
-    }
-    
-    return value;
-  } catch (error) {
-    console.error("Failed to load result max lines from localStorage:", error);
-    return null;
-  }
+  const appConfig = loadAppConfig();
+  return appConfig?.result_max_lines ?? null;
 }
 
 /**
@@ -181,5 +160,99 @@ export function clearAppConfig(): void {
 export function getAppConfigValue<K extends keyof AppConfigCache>(key: K): AppConfigCache[K] | null {
   const config = loadAppConfig();
   return config ? config[key] : null;
+}
+
+/**
+ * Save all AI configs to in-memory cache.
+ * @param configs All AI configs from getAllAIConfigs
+ */
+export function saveAllAIConfigs(configs: { active_config_name: string | null; configs: Record<string, any> }): void {
+  allAIConfigsCache = {
+    value: configs,
+    timestamp: Date.now()
+  };
+  console.log("[settings-storage] Cached all AI configs in memory");
+  
+  // Also update aiSettingsCache with the active config
+  if (configs.active_config_name && configs.configs[configs.active_config_name]) {
+    const activeConfig = configs.configs[configs.active_config_name];
+    const aiSettings: AISettings = {
+      baseUrl: activeConfig.base_url ?? "",
+      apiKey: activeConfig.api_key ?? "",
+      model: activeConfig.model ?? "",
+      maxTokens: activeConfig.max_tokens ?? 0,
+      temperature: activeConfig.temperature ?? 0,
+    };
+    saveAISettings(aiSettings);
+  }
+}
+
+/**
+ * Load all AI configs from in-memory cache.
+ * Returns null if cache is expired or not found.
+ * @returns Cached configs or null if cache is invalid/expired
+ */
+export function loadAllAIConfigs(): { active_config_name: string | null; configs: Record<string, any> } | null {
+  if (!allAIConfigsCache) {
+    return null;
+  }
+  
+  // Check if cache is expired
+  const cacheAge = Date.now() - allAIConfigsCache.timestamp;
+  if (cacheAge > CACHE_DURATION_MS) {
+    console.log("[settings-storage] All AI configs cache expired, clearing");
+    allAIConfigsCache = null;
+    return null;
+  }
+  
+  console.log("[settings-storage] Loaded all AI configs from memory cache");
+  return allAIConfigsCache.value;
+}
+
+/**
+ * Clear all AI configs cache from memory.
+ */
+export function clearAllAIConfigs(): void {
+  allAIConfigsCache = null;
+}
+
+/**
+ * Get all AI configs with cache support.
+ * Checks cache first, then calls API if cache is empty/expired.
+ * This is a wrapper that should be used instead of direct API calls.
+ */
+export async function getAllAIConfigsWithCache(
+  apiClient: { getAllAIConfigs: () => Promise<{ active_config_name: string | null; configs: Record<string, any> }> }
+): Promise<{ active_config_name: string | null; configs: Record<string, any> }> {
+  // Check cache first
+  let configs = loadAllAIConfigs();
+  
+  // If cache miss or expired, fetch from API
+  if (!configs) {
+    configs = await apiClient.getAllAIConfigs();
+    saveAllAIConfigs(configs);
+  }
+  
+  return configs;
+}
+
+/**
+ * Get app config with cache support.
+ * Checks cache first, then calls API if cache is empty/expired.
+ * This is a wrapper that should be used instead of direct API calls.
+ */
+export async function getAppConfigWithCache(
+  apiClient: { getAppConfig: () => Promise<AppConfigCache> }
+): Promise<AppConfigCache> {
+  // Check cache first
+  let config = loadAppConfig();
+  
+  // If cache miss or expired, fetch from API
+  if (!config) {
+    config = await apiClient.getAppConfig();
+    saveAppConfig(config);
+  }
+  
+  return config;
 }
 

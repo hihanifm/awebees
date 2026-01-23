@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines, loadAppConfig, saveAppConfig } from "@/lib/settings-storage";
+import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines, loadAppConfig, saveAppConfig, getAllAIConfigsWithCache, getAppConfigWithCache, saveAllAIConfigs, clearAllAIConfigs, clearAISettings } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/use-toast";
 import { themes } from "@/lib/themes";
@@ -84,7 +84,7 @@ export default function SettingsPage() {
     const loadAllConfigs = async () => {
       setIsLoadingConfigs(true);
       try {
-        const result = await apiClient.getAllAIConfigs();
+        const result = await getAllAIConfigsWithCache(apiClient);
         const names = Object.keys(result.configs || {});
         setAllConfigNames(names);
         logger.info("Loaded AI config names:", names);
@@ -130,6 +130,11 @@ export default function SettingsPage() {
         
         logger.info("Loaded AI settings from backend:", merged);
         setSettings(merged);
+        
+        // Save to in-memory cache so checkAIConfiguration can use it
+        if (backendConfig) {
+          saveAISettings(merged);
+        }
       } catch (error) {
         logger.error("Failed to load AI settings:", error);
       }
@@ -183,11 +188,7 @@ export default function SettingsPage() {
       setIsLoadingLogging(true);
       try {
         // Load all app config (cached in memory) - single API call for all config.json settings
-        let appConfig = loadAppConfig();
-        if (!appConfig) {
-          appConfig = await apiClient.getAppConfig();
-          saveAppConfig(appConfig);
-        }
+        const appConfig = await getAppConfigWithCache(apiClient);
         
         // Use cached config values
         setBackendLogLevel(appConfig.log_level);
@@ -297,11 +298,7 @@ export default function SettingsPage() {
     setIsLoadingResultMaxLines(true);
     try {
       // Check cache first (from unified app config)
-      let appConfig = loadAppConfig();
-      if (!appConfig) {
-        appConfig = await apiClient.getAppConfig();
-        saveAppConfig(appConfig);
-      }
+      const appConfig = await getAppConfigWithCache(apiClient);
       
       // Use cached value
       setResultMaxLines(appConfig.result_max_lines);
@@ -315,8 +312,7 @@ export default function SettingsPage() {
         try {
           await apiClient.updateResultMaxLines(localValue);
           // Refresh cache
-          const freshConfig = await apiClient.getAppConfig();
-          saveAppConfig(freshConfig);
+          const freshConfig = await getAppConfigWithCache(apiClient);
           setResultMaxLines(freshConfig.result_max_lines);
         } catch (error) {
           logger.error("Failed to sync result max lines:", error);
@@ -347,7 +343,6 @@ export default function SettingsPage() {
       logger.info("Updating AI config:", settings);
       
       // Update the currently selected config (not necessarily active)
-      // No localStorage needed - API key stored in backend config file
       // Note: enabled removed - use global aiProcessingEnabled state instead
       await apiClient.updateAIConfig({
         base_url: settings.baseUrl,
@@ -358,6 +353,20 @@ export default function SettingsPage() {
         streaming_enabled: aiStreamingEnabled,
       }, configName);
       logger.info("Config updated");
+      
+      // Update in-memory cache - reload from server to get latest state
+      const allConfigs = await getAllAIConfigsWithCache(apiClient);
+      if (allConfigs.configs[configName]) {
+        const updatedConfig = allConfigs.configs[configName];
+        const updatedSettings: AISettings = {
+          baseUrl: updatedConfig.base_url ?? "",
+          apiKey: updatedConfig.api_key ?? "",
+          model: updatedConfig.model ?? "",
+          maxTokens: updatedConfig.max_tokens ?? 0,
+          temperature: updatedConfig.temperature ?? 0,
+        };
+        saveAISettings(updatedSettings);
+      }
       
       toast({
         title: t("settings.saved"),
@@ -394,8 +403,10 @@ export default function SettingsPage() {
       await apiClient.deleteAIConfig(configName);
       logger.info("Config deleted");
       
-      // Reload configs list
-      const result = await apiClient.getAllAIConfigs();
+      // Clear cache and reload configs list
+      clearAllAIConfigs();
+      clearAISettings();
+      const result = await getAllAIConfigsWithCache(apiClient);
       const names = Object.keys(result.configs || {});
       setAllConfigNames(names);
       
@@ -403,19 +414,22 @@ export default function SettingsPage() {
       if (names.length > 0) {
         await apiClient.activateAIConfig(names[0]);
         setConfigName(names[0]);
-        const allConfigs = await apiClient.getAllAIConfigs();
+        const allConfigs = await getAllAIConfigsWithCache(apiClient);
         const activeConfig = allConfigs.configs[names[0]];
         if (activeConfig) {
           // Note: enabled removed - use global aiProcessingEnabled state instead
           // Honor backend values exactly - no defaults
-          setSettings({
+          const newSettings = {
             baseUrl: activeConfig.base_url ?? "",
             apiKey: activeConfig.api_key ?? "",
             model: activeConfig.model ?? "",
             maxTokens: activeConfig.max_tokens ?? 0,
             temperature: activeConfig.temperature ?? 0,
-          });
+          };
+          setSettings(newSettings);
           setAiStreamingEnabled(activeConfig.streaming_enabled ?? true);
+          // Save to in-memory cache
+          saveAISettings(newSettings);
         }
       } else {
         setConfigName("");
@@ -481,13 +495,27 @@ export default function SettingsPage() {
       });
       
       // Reload configs list
-      const result = await apiClient.getAllAIConfigs();
+      const result = await getAllAIConfigsWithCache(apiClient);
       const names = Object.keys(result.configs || {});
       setAllConfigNames(names);
       
       // Activate the new config
       await apiClient.activateAIConfig(newConfigName.trim());
       setConfigName(newConfigName.trim());
+      
+      // Reload configs to update cache with the new config
+      const allConfigs = await getAllAIConfigsWithCache(apiClient);
+      if (allConfigs.configs[newConfigName.trim()]) {
+        const newConfig = allConfigs.configs[newConfigName.trim()];
+        const newSettings: AISettings = {
+          baseUrl: newConfig.base_url ?? "",
+          apiKey: newConfig.api_key ?? "",
+          model: newConfig.model ?? "",
+          maxTokens: newConfig.max_tokens ?? 0,
+          temperature: newConfig.temperature ?? 0,
+        };
+        saveAISettings(newSettings);
+      }
       
       setShowSaveAsDialog(false);
       setNewConfigName("");
@@ -711,8 +739,8 @@ export default function SettingsPage() {
       if (currentConfig) {
         saveAppConfig({ ...currentConfig, log_level: newLevel });
       } else {
-        const freshConfig = await apiClient.getAppConfig();
-        saveAppConfig(freshConfig);
+        const freshConfig = await getAppConfigWithCache(apiClient);
+        // Cache already updated by getAppConfigWithCache
       }
       toast({
         title: "Success",
@@ -747,8 +775,8 @@ export default function SettingsPage() {
       if (currentConfig) {
         saveAppConfig({ ...currentConfig, http_logging: enabled });
       } else {
-        const freshConfig = await apiClient.getAppConfig();
-        saveAppConfig(freshConfig);
+        const freshConfig = await getAppConfigWithCache(apiClient);
+        // Cache already updated by getAppConfigWithCache
       }
       toast({
         title: "Success",
@@ -819,8 +847,8 @@ export default function SettingsPage() {
         saveAppConfig({ ...currentConfig, ai_processing_enabled: enabled });
       } else {
         // If cache miss, fetch fresh config
-        const freshConfig = await apiClient.getAppConfig();
-        saveAppConfig(freshConfig);
+        const freshConfig = await getAppConfigWithCache(apiClient);
+        // Cache already updated by getAppConfigWithCache
       }
       toast({
         title: t("settings.saved"),
@@ -913,19 +941,22 @@ export default function SettingsPage() {
                         setConfigName(value);
                         
                         // Reload settings for the new active config
-                        const allConfigs = await apiClient.getAllAIConfigs();
+                        const allConfigs = await getAllAIConfigsWithCache(apiClient);
                         const activeConfig = allConfigs.configs[value];
                         if (activeConfig) {
                           // Note: enabled removed - use global aiProcessingEnabled state instead
                           // Honor backend values exactly - no defaults
-                          setSettings({
+                          const newSettings = {
                             baseUrl: activeConfig.base_url ?? "",
                             apiKey: activeConfig.api_key ?? "",
                             model: activeConfig.model ?? "",
                             maxTokens: activeConfig.max_tokens ?? 0,
                             temperature: activeConfig.temperature ?? 0,
-                          });
+                          };
+                          setSettings(newSettings);
                           setAiStreamingEnabled(activeConfig.streaming_enabled ?? true);
+                          // Save to in-memory cache
+                          saveAISettings(newSettings);
                         }
                         
                         toast({
@@ -1514,8 +1545,8 @@ export default function SettingsPage() {
                             if (currentConfig) {
                               saveAppConfig({ ...currentConfig, result_max_lines: resultMaxLines });
                             } else {
-                              const freshConfig = await apiClient.getAppConfig();
-                              saveAppConfig(freshConfig);
+                              const freshConfig = await getAppConfigWithCache(apiClient);
+                              // Cache already updated by getAppConfigWithCache
                             }
                             toast({
                               title: "Success",

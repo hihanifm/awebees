@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AnalysisResponse } from "@/lib/api-types";
-import { analyzeWithAI, getAIConfig, apiClient } from "@/lib/api-client";
-import { loadAISettings, loadAppConfig, saveAppConfig, getAppConfigValue } from "@/lib/settings-storage";
+import { analyzeWithAI, apiClient } from "@/lib/api-client";
+import { loadAISettings, loadAppConfig, getAppConfigValue } from "@/lib/settings-storage";
 import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, AlertCircle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
@@ -57,14 +57,14 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Check cache first to avoid unnecessary API calls
-      let appConfig = loadAppConfig();
+      // Only use local cache - no remote API calls
+      const appConfig = loadAppConfig();
       
-      // If cache miss or expired, fetch from backend
       if (!appConfig) {
-        appConfig = await apiClient.getAppConfig();
-        // Cache the result
-        saveAppConfig(appConfig);
+        return {
+          isValid: false,
+          message: t("playground.aiNotConfigured")
+        };
       }
       
       if (!appConfig.ai_processing_enabled) {
@@ -74,32 +74,32 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
         };
       }
       
-      // Check if AI config has API key and is configured
-      const backendConfig = await getAIConfig();
+      // Check AI config from local cache only
+      const localAISettings = loadAISettings();
       
-      if (backendConfig.is_configured) {
-        return { isValid: true };
+      if (!localAISettings) {
+        return {
+          isValid: false,
+          message: t("playground.aiNotConfigured")
+        };
       }
       
-      // If not configured, check what's missing
-      if (!backendConfig.api_key || backendConfig.api_key.trim() === "") {
+      // Check what's missing
+      if (!localAISettings.apiKey || localAISettings.apiKey.trim() === "") {
         return {
           isValid: false,
           message: "AI API key is not configured. Please set it in settings."
         };
       }
       
-      if (!backendConfig.base_url || backendConfig.base_url.trim() === "") {
+      if (!localAISettings.baseUrl || localAISettings.baseUrl.trim() === "") {
         return {
           isValid: false,
           message: t("playground.setBaseURL") + ". " + t("playground.openSettings")
         };
       }
       
-      return {
-        isValid: false,
-        message: t("playground.aiNotConfigured")
-      };
+      return { isValid: true };
     } catch (error) {
       console.error("[ResultsPanel] Error checking configuration:", error);
       return {

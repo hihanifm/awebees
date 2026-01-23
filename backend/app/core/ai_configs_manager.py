@@ -202,6 +202,13 @@ class AIConfigsManager:
                 self._configs = data.get("configs", {})
                 self._active_config_name = data.get("active_config_name")
                 
+                # Strip 'enabled' field from all configs (backward compatibility)
+                # All configs are enabled by default - errors are shown to user
+                for config_name, config in self._configs.items():
+                    if isinstance(config, dict) and "enabled" in config:
+                        logger.info(f"AIConfigsManager.load(): Removing 'enabled' field from config '{config_name}' (backward compatibility)")
+                        config.pop("enabled", None)
+                
                 logger.info(f"AIConfigsManager.load(): Extracted configs: {list(self._configs.keys())}")
                 logger.info(f"AIConfigsManager.load(): Active config name: {self._active_config_name}")
                 
@@ -244,9 +251,17 @@ class AIConfigsManager:
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
             logger.info(f"AIConfigsManager.save(): Directory exists: {self.config_file.parent}")
             
+            # Strip 'enabled' field from all configs before saving
+            # All configs are enabled by default - errors are shown to user
+            configs_to_save = {}
+            for name, config in self._configs.items():
+                config_copy = config.copy()
+                config_copy.pop("enabled", None)
+                configs_to_save[name] = config_copy
+            
             data = {
                 "active_config_name": self._active_config_name,
-                "configs": self._configs
+                "configs": configs_to_save
             }
             
             logger.debug(f"AIConfigsManager.save(): Data to save: {data}")
@@ -261,9 +276,13 @@ class AIConfigsManager:
     def get_all_configs_dict(self) -> Dict[str, Any]:
         """Get all configs in the exact file format: {active_config_name: ..., configs: {...}}."""
         # Return configs as-is, no masking - API keys are shown directly
+        # Strip 'enabled' field if present (all configs are enabled by default)
         configs_dict = {}
         for name, config in self._configs.items():
-            configs_dict[name] = config.copy()
+            config_copy = config.copy()
+            # Remove 'enabled' field if present - all configs are enabled
+            config_copy.pop("enabled", None)
+            configs_dict[name] = config_copy
         
         return {
             "active_config_name": self._active_config_name,
@@ -276,7 +295,10 @@ class AIConfigsManager:
             return None
         
         # Return config as-is, no masking - API keys are shown directly
-        return self._configs[name].copy()
+        # Strip 'enabled' field if present (all configs are enabled by default)
+        config = self._configs[name].copy()
+        config.pop("enabled", None)
+        return config
     
     def create_config(self, name: str, config_data: Dict[str, Any]) -> None:
         """Create new config. Raises error if name already exists."""
@@ -285,6 +307,8 @@ class AIConfigsManager:
         
         # Remove 'name' field if present (redundant - key is the name)
         config_data.pop("name", None)
+        # Remove 'enabled' field - all configs are enabled by default, errors are shown to user
+        config_data.pop("enabled", None)
         self._configs[name] = config_data
         
         # If this is the first config, make it active
@@ -305,6 +329,8 @@ class AIConfigsManager:
         
         # Remove 'name' field if present (redundant - key is the name)
         config_data.pop("name", None)
+        # Remove 'enabled' field - all configs are enabled by default, errors are shown to user
+        config_data.pop("enabled", None)
         
         # If renaming, remove old key and create new one
         if new_name != old_name:

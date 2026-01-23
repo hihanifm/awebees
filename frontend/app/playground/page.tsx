@@ -13,8 +13,8 @@ import { ProgressWidget } from "@/components/progress/ProgressWidget";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { AIResponsePanel } from "@/components/playground/AIResponsePanel";
 import { PromptManager } from "@/components/playground/PromptManager";
-import { apiClient, getAIConfig } from "@/lib/api-client";
-import { loadAISettings, loadAppConfig, saveAppConfig } from "@/lib/settings-storage";
+import { apiClient } from "@/lib/api-client";
+import { loadAISettings, loadAppConfig } from "@/lib/settings-storage";
 import { AnalysisResponse, ProgressEvent, AISystemPrompts } from "@/lib/api-types";
 import { Play, Sparkles, Search, FileText, X, AlertCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
@@ -327,14 +327,14 @@ export default function PlaygroundPage() {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Check cache first to avoid unnecessary API calls
-      let appConfig = loadAppConfig();
+      // Only use local cache - no remote API calls
+      const appConfig = loadAppConfig();
       
-      // If cache miss or expired, fetch from backend
       if (!appConfig) {
-        appConfig = await apiClient.getAppConfig();
-        // Cache the result
-        saveAppConfig(appConfig);
+        return {
+          isValid: false,
+          message: "AI configuration not available. Please configure it in settings."
+        };
       }
       
       if (!appConfig.ai_processing_enabled) {
@@ -344,32 +344,32 @@ export default function PlaygroundPage() {
         };
       }
       
-      // Check if AI config has API key and is configured
-      const backendConfig = await getAIConfig();
+      // Check AI config from local cache only
+      const localAISettings = loadAISettings();
       
-      if (backendConfig.is_configured) {
-        return { isValid: true };
+      if (!localAISettings) {
+        return {
+          isValid: false,
+          message: "AI is not configured. Please configure it in settings."
+        };
       }
       
-      // If not configured, check what's missing
-      if (!backendConfig.api_key || backendConfig.api_key.trim() === "") {
+      // Check what's missing
+      if (!localAISettings.apiKey || localAISettings.apiKey.trim() === "") {
         return {
           isValid: false,
           message: "AI API key is not configured. Please set it in settings."
         };
       }
       
-      if (!backendConfig.base_url || backendConfig.base_url.trim() === "") {
+      if (!localAISettings.baseUrl || localAISettings.baseUrl.trim() === "") {
         return {
           isValid: false,
           message: "AI Base URL is not configured. Please set it in settings."
         };
       }
       
-      return {
-        isValid: false,
-        message: "AI is not configured. Please configure it in settings."
-      };
+      return { isValid: true };
     } catch (error) {
       return {
         isValid: false,
