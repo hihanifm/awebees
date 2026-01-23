@@ -15,6 +15,17 @@ export interface AISettings {
 const STORAGE_KEY = "lens_ai_settings";
 const RESULT_MAX_LINES_STORAGE_KEY = "lens_result_max_lines";
 
+// In-memory cache for all config.json settings
+interface AppConfigCache {
+  log_level: string;
+  ai_processing_enabled: boolean;
+  http_logging: boolean;
+  result_max_lines: number;
+}
+
+let appConfigCache: { value: AppConfigCache; timestamp: number } | null = null;
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes cache
+
 /**
  * Save AI settings to localStorage.
  */
@@ -118,5 +129,56 @@ export function loadResultMaxLines(): number | null {
     console.error("Failed to load result max lines from localStorage:", error);
     return null;
   }
+}
+
+/**
+ * Save all app config settings to in-memory cache.
+ * @param config All config.json settings
+ */
+export function saveAppConfig(config: AppConfigCache): void {
+  appConfigCache = {
+    value: config,
+    timestamp: Date.now()
+  };
+  console.log("[settings-storage] Cached app config in memory:", config);
+}
+
+/**
+ * Load all app config settings from in-memory cache.
+ * Returns null if cache is expired or not found.
+ * @returns Cached config or null if cache is invalid/expired
+ */
+export function loadAppConfig(): AppConfigCache | null {
+  if (!appConfigCache) {
+    return null;
+  }
+  
+  // Check if cache is expired
+  const cacheAge = Date.now() - appConfigCache.timestamp;
+  if (cacheAge > CACHE_DURATION_MS) {
+    console.log("[settings-storage] App config cache expired, clearing");
+    appConfigCache = null;
+    return null;
+  }
+  
+  console.log("[settings-storage] Loaded app config from memory cache");
+  return appConfigCache.value;
+}
+
+/**
+ * Clear app config cache from memory.
+ */
+export function clearAppConfig(): void {
+  appConfigCache = null;
+}
+
+/**
+ * Get a specific setting from cache (convenience method).
+ * @param key Setting key to retrieve
+ * @returns Cached value or null if cache is invalid/expired
+ */
+export function getAppConfigValue<K extends keyof AppConfigCache>(key: K): AppConfigCache[K] | null {
+  const config = loadAppConfig();
+  return config ? config[key] : null;
 }
 

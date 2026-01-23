@@ -193,3 +193,23 @@ async def update_ai_processing_enabled_config(config: AIProcessingEnabledConfigU
         logger.error(f"Unexpected error updating AI processing enabled: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update AI processing enabled: {str(e)}")
 
+
+class AppConfigResponse(BaseModel):
+    """Unified response for all config.json settings."""
+    log_level: str
+    ai_processing_enabled: bool
+    http_logging: bool
+    result_max_lines: int
+
+
+@router.get("/app-config", response_model=AppConfigResponse)
+async def get_app_config():
+    """Get all config.json settings in one call (for caching)."""
+    logger.debug("Getting all app configuration")
+    return AppConfigResponse(
+        log_level=AppConfig.get_log_level(),
+        ai_processing_enabled=AppConfig.get_ai_processing_enabled(),
+        http_logging=AppConfig.get_http_logging(),
+        result_max_lines=AppConfig.get_result_max_lines()
+    )
+

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AnalysisResponse } from "@/lib/api-types";
 import { analyzeWithAI, getAIConfig, apiClient } from "@/lib/api-client";
-import { loadAISettings } from "@/lib/settings-storage";
+import { loadAISettings, loadAppConfig, saveAppConfig, getAppConfigValue } from "@/lib/settings-storage";
 import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, AlertCircle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
@@ -57,9 +57,17 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Check global AI processing enabled setting from backend
-      const aiProcessingConfig = await apiClient.getAIProcessingEnabledConfig();
-      if (!aiProcessingConfig.ai_processing_enabled) {
+      // Check cache first to avoid unnecessary API calls
+      let appConfig = loadAppConfig();
+      
+      // If cache miss or expired, fetch from backend
+      if (!appConfig) {
+        appConfig = await apiClient.getAppConfig();
+        // Cache the result
+        saveAppConfig(appConfig);
+      }
+      
+      if (!appConfig.ai_processing_enabled) {
         return {
           isValid: false,
           message: t("playground.enableAI") + ". " + t("playground.openSettings")

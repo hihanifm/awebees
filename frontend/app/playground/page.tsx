@@ -14,7 +14,7 @@ import { ErrorBanner } from "@/components/ErrorBanner";
 import { AIResponsePanel } from "@/components/playground/AIResponsePanel";
 import { PromptManager } from "@/components/playground/PromptManager";
 import { apiClient, getAIConfig } from "@/lib/api-client";
-import { loadAISettings } from "@/lib/settings-storage";
+import { loadAISettings, loadAppConfig, saveAppConfig } from "@/lib/settings-storage";
 import { AnalysisResponse, ProgressEvent, AISystemPrompts } from "@/lib/api-types";
 import { Play, Sparkles, Search, FileText, X, AlertCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
@@ -327,9 +327,17 @@ export default function PlaygroundPage() {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Check global AI processing enabled setting from backend
-      const aiProcessingConfig = await apiClient.getAIProcessingEnabledConfig();
-      if (!aiProcessingConfig.ai_processing_enabled) {
+      // Check cache first to avoid unnecessary API calls
+      let appConfig = loadAppConfig();
+      
+      // If cache miss or expired, fetch from backend
+      if (!appConfig) {
+        appConfig = await apiClient.getAppConfig();
+        // Cache the result
+        saveAppConfig(appConfig);
+      }
+      
+      if (!appConfig.ai_processing_enabled) {
         return {
           isValid: false,
           message: "AI processing is not enabled. Please enable it in settings."

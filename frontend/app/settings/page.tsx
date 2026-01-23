@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines } from "@/lib/settings-storage";
+import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines, loadAppConfig, saveAppConfig } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/use-toast";
 import { themes } from "@/lib/themes";
@@ -182,25 +182,25 @@ export default function SettingsPage() {
     const loadLoggingSettings = async (allConfigs: any) => {
       setIsLoadingLogging(true);
       try {
-        // Load backend log level
-        const backendConfig = await apiClient.getLoggingConfig();
-        setBackendLogLevel(backendConfig.log_level);
-
-        // Load frontend log level
+        // Load all app config (cached in memory) - single API call for all config.json settings
+        let appConfig = loadAppConfig();
+        if (!appConfig) {
+          appConfig = await apiClient.getAppConfig();
+          saveAppConfig(appConfig);
+        }
+        
+        // Use cached config values
+        setBackendLogLevel(appConfig.log_level);
+        setHttpLogging(appConfig.http_logging);
+        setAiProcessingEnabled(appConfig.ai_processing_enabled);
+        
+        // Load frontend log level (not in config.json, it's frontend-only)
         const frontendLevel = loadLogLevel();
         setFrontendLogLevel(frontendLevel);
 
-        // Load HTTP logging config
-        const httpLoggingConfig = await apiClient.getHTTPLoggingConfig();
-        setHttpLogging(httpLoggingConfig.http_logging);
-
-        // Load AI detailed logging config
+        // Load AI detailed logging config (not in config.json, it's in AIConfig)
         const aiDetailedLoggingConfig = await apiClient.getAIDetailedLoggingConfig();
         setAiDetailedLogging(aiDetailedLoggingConfig.detailed_logging);
-        
-        // Load global AI processing enabled config
-        const aiProcessingEnabledConfig = await apiClient.getAIProcessingEnabledConfig();
-        setAiProcessingEnabled(aiProcessingEnabledConfig.ai_processing_enabled);
         
         // Load AI streaming config - use shared configs result
         if (allConfigs) {
@@ -296,34 +296,37 @@ export default function SettingsPage() {
   const loadResultMaxLinesSettings = async () => {
     setIsLoadingResultMaxLines(true);
     try {
-      // Load from localStorage first
+      // Check cache first (from unified app config)
+      let appConfig = loadAppConfig();
+      if (!appConfig) {
+        appConfig = await apiClient.getAppConfig();
+        saveAppConfig(appConfig);
+      }
+      
+      // Use cached value
+      setResultMaxLines(appConfig.result_max_lines);
+      
+      // Also check localStorage for backward compatibility
       const localValue = loadResultMaxLines();
       
-      // Try to sync with backend
-      try {
-        const backendConfig = await apiClient.getResultMaxLines();
-        const backendValue = backendConfig.result_max_lines;
-        
-        // If localStorage has a value, use it and sync to backend
-        if (localValue !== null) {
-          setResultMaxLines(localValue);
-          // Sync to backend if different
-          if (localValue !== backendValue) {
-            await apiClient.updateResultMaxLines(localValue);
-          }
-        } else {
-          // No localStorage value, use backend value
-          setResultMaxLines(backendValue);
-          saveResultMaxLines(backendValue);
+      // If localStorage has a different value, sync it
+      if (localValue !== null && localValue !== appConfig.result_max_lines) {
+        // Update backend to match localStorage (user preference)
+        try {
+          await apiClient.updateResultMaxLines(localValue);
+          // Refresh cache
+          const freshConfig = await apiClient.getAppConfig();
+          saveAppConfig(freshConfig);
+          setResultMaxLines(freshConfig.result_max_lines);
+        } catch (error) {
+          logger.error("Failed to sync result max lines:", error);
         }
-      } catch (error) {
-        logger.error("Failed to load result max lines from backend:", error);
-        // Fall back to localStorage or default
-        setResultMaxLines(localValue ?? 500);
       }
     } catch (error) {
       logger.error("Failed to load result max lines settings:", error);
-      setResultMaxLines(500);
+      // Fallback to cached value or default
+      const cached = loadAppConfig();
+      setResultMaxLines(cached?.result_max_lines ?? 500);
     } finally {
       setIsLoadingResultMaxLines(false);
     }
@@ -702,6 +705,14 @@ export default function SettingsPage() {
     try {
       await apiClient.updateLoggingConfig(newLevel);
       setBackendLogLevel(newLevel);
+      // Update cache
+      const currentConfig = loadAppConfig();
+      if (currentConfig) {
+        saveAppConfig({ ...currentConfig, log_level: newLevel });
+      } else {
+        const freshConfig = await apiClient.getAppConfig();
+        saveAppConfig(freshConfig);
+      }
       toast({
         title: "Success",
         description: `Backend log level updated to ${newLevel}`,
@@ -730,6 +741,14 @@ export default function SettingsPage() {
     try {
       await apiClient.updateHTTPLoggingConfig(enabled);
       setHttpLogging(enabled);
+      // Update cache
+      const currentConfig = loadAppConfig();
+      if (currentConfig) {
+        saveAppConfig({ ...currentConfig, http_logging: enabled });
+      } else {
+        const freshConfig = await apiClient.getAppConfig();
+        saveAppConfig(freshConfig);
+      }
       toast({
         title: "Success",
         description: `HTTP logging ${enabled ? "enabled" : "disabled"}`,
@@ -793,6 +812,15 @@ export default function SettingsPage() {
     try {
       await apiClient.updateAIProcessingEnabledConfig(enabled);
       setAiProcessingEnabled(enabled);
+      // Update cache immediately
+      const currentConfig = loadAppConfig();
+      if (currentConfig) {
+        saveAppConfig({ ...currentConfig, ai_processing_enabled: enabled });
+      } else {
+        // If cache miss, fetch fresh config
+        const freshConfig = await apiClient.getAppConfig();
+        saveAppConfig(freshConfig);
+      }
       toast({
         title: t("settings.saved"),
         description: `AI processing ${enabled ? "enabled" : "disabled"}`,
@@ -1479,6 +1507,14 @@ export default function SettingsPage() {
                           try {
                             saveResultMaxLines(resultMaxLines);
                             await apiClient.updateResultMaxLines(resultMaxLines);
+                            // Update cache
+                            const currentConfig = loadAppConfig();
+                            if (currentConfig) {
+                              saveAppConfig({ ...currentConfig, result_max_lines: resultMaxLines });
+                            } else {
+                              const freshConfig = await apiClient.getAppConfig();
+                              saveAppConfig(freshConfig);
+                            }
                             toast({
                               title: "Success",
                               description: `Result max lines updated to ${resultMaxLines}`,

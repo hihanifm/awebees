@@ -871,6 +871,14 @@ export const apiClient = {
   },
 
   /**
+   * Get all app config settings (log level, AI processing enabled, HTTP logging, result max lines).
+   * This is cached in memory on the frontend.
+   */
+  async getAppConfig(): Promise<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number }> {
+    return fetchJSON("/api/logging/app-config");
+  },
+
+  /**
    * Open a log file in the system default editor.
    * @param logType Type of log file to open ("backend" or "frontend")
    */
