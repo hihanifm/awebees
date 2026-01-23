@@ -146,23 +146,24 @@ async def update_http_logging_config(config: HTTPLoggingConfigUpdate):
 
 @router.get("/ai-detailed-logging", response_model=AIDetailedLoggingConfigResponse)
 async def get_ai_detailed_logging_config():
-    """Get the current AI detailed logging configuration."""
+    """Get the current AI detailed logging configuration (now unified with app-config)."""
     logger.debug("Getting AI detailed logging configuration")
     return AIDetailedLoggingConfigResponse(
-        detailed_logging=AIConfig.DETAILED_LOGGING
+        detailed_logging=AppConfig.get_detailed_logging()
     )
 
 
 @router.put("/ai-detailed-logging", response_model=AIDetailedLoggingConfigResponse)
 async def update_ai_detailed_logging_config(config: AIDetailedLoggingConfigUpdate):
-    """Update the AI detailed logging configuration."""
+    """Update the AI detailed logging configuration (now unified with app-config)."""
     try:
         logger.info(f"Updating AI detailed logging to: {config.detailed_logging}")
-        AIConfig.DETAILED_LOGGING = config.detailed_logging
+        # Use AppConfig.set_detailed_logging which persists to config.json and syncs AIConfig
+        AppConfig.set_detailed_logging(config.detailed_logging, persist=True)
         logger.info(f"AI detailed logging updated successfully to: {config.detailed_logging}")
         
         return AIDetailedLoggingConfigResponse(
-            detailed_logging=AIConfig.DETAILED_LOGGING
+            detailed_logging=AppConfig.get_detailed_logging()
         )
     except Exception as e:
         logger.error(f"Unexpected error updating AI detailed logging: {e}", exc_info=True)
@@ -200,6 +201,7 @@ class AppConfigResponse(BaseModel):
     ai_processing_enabled: bool
     http_logging: bool
     result_max_lines: int
+    detailed_logging: bool
 
 
 @router.get("/app-config", response_model=AppConfigResponse)
@@ -210,6 +212,7 @@ async def get_app_config():
         log_level=AppConfig.get_log_level(),
         ai_processing_enabled=AppConfig.get_ai_processing_enabled(),
         http_logging=AppConfig.get_http_logging(),
-        result_max_lines=AppConfig.get_result_max_lines()
+        result_max_lines=AppConfig.get_result_max_lines(),
+        detailed_logging=AppConfig.get_detailed_logging()
     )
 

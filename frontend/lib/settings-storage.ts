@@ -20,6 +20,7 @@ interface AppConfigCache {
   ai_processing_enabled: boolean;
   http_logging: boolean;
   result_max_lines: number;
+  detailed_logging: boolean;
 }
 
 // In-memory cache for AI settings

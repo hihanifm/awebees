@@ -35,7 +35,8 @@ class AIConfig:
     MAX_TOKENS: int = 2000
     TEMPERATURE: float = 0.7
     TIMEOUT: int = 60
-    DETAILED_LOGGING: bool = os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes")
+    # Note: DETAILED_LOGGING moved to AppConfig - use AppConfig.get_detailed_logging() instead
+    DETAILED_LOGGING: bool = True  # Will be synced from AppConfig
     STREAMING_ENABLED: bool = True
     
     @classmethod
@@ -67,6 +68,9 @@ class AIConfig:
             cls.TEMPERATURE = 0.7
             cls.TIMEOUT = 60
             cls.STREAMING_ENABLED = True
+        
+        # Always sync DETAILED_LOGGING from AppConfig (regardless of active config)
+        cls.DETAILED_LOGGING = AppConfig.get_detailed_logging()
     
     
     # Predefined system prompts
@@ -251,12 +255,13 @@ class AppConfig:
         cls.HTTP_LOGGING = manager.get("http_logging", os.getenv("HTTP_LOGGING", "true").lower() in ("true", "1", "yes"))
         cls.AI_PROCESSING_ENABLED = manager.get("ai_processing_enabled", os.getenv("AI_PROCESSING_ENABLED", "true").lower() in ("true", "1", "yes"))
         cls.RESULT_MAX_LINES = manager.get("result_max_lines", 500)
+        cls.DETAILED_LOGGING = manager.get("detailed_logging", os.getenv("AI_DETAILED_LOGGING", "true").lower() in ("true", "1", "yes"))
         
         # Apply log level immediately
         numeric_level = getattr(logging, cls.LOG_LEVEL.upper(), logging.DEBUG)
         logging.getLogger().setLevel(numeric_level)
         
-        logger.info(f"AppConfig._initialize(): Loaded from config.json - LOG_LEVEL={cls.LOG_LEVEL}, HTTP_LOGGING={cls.HTTP_LOGGING}, AI_PROCESSING_ENABLED={cls.AI_PROCESSING_ENABLED}, RESULT_MAX_LINES={cls.RESULT_MAX_LINES}")
+        logger.info(f"AppConfig._initialize(): Loaded from config.json - LOG_LEVEL={cls.LOG_LEVEL}, HTTP_LOGGING={cls.HTTP_LOGGING}, AI_PROCESSING_ENABLED={cls.AI_PROCESSING_ENABLED}, RESULT_MAX_LINES={cls.RESULT_MAX_LINES}, DETAILED_LOGGING={cls.DETAILED_LOGGING}")
         
         cls._initialized = True
     
@@ -292,6 +297,33 @@ class AppConfig:
         """Get the current result max lines limit."""
         cls._initialize()
         return cls.RESULT_MAX_LINES
+    
+    @classmethod
+    def get_detailed_logging(cls) -> bool:
+        """Get AI detailed logging setting."""
+        cls._initialize()
+        return cls.DETAILED_LOGGING
+    
+    @classmethod
+    def set_detailed_logging(cls, enabled: bool, persist: bool = True) -> None:
+        """Set AI detailed logging and persist to config.json."""
+        cls._initialize()
+        import logging
+        logger = logging.getLogger(__name__)
+        old_value = cls.DETAILED_LOGGING
+        
+        # Update class variable
+        cls.DETAILED_LOGGING = enabled
+        
+        # Also update AIConfig for backward compatibility
+        AIConfig.DETAILED_LOGGING = enabled
+        
+        # Persist to config.json if requested
+        if persist:
+            manager = _get_app_config_manager()
+            manager.set("detailed_logging", enabled, save=True)
+        
+        logger.info(f"Updated DETAILED_LOGGING: {old_value} -> {enabled}")
     
     @classmethod
     def set_result_max_lines(cls, value: int) -> None:

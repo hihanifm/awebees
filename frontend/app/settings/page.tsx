@@ -199,9 +199,8 @@ export default function SettingsPage() {
         const frontendLevel = loadLogLevel();
         setFrontendLogLevel(frontendLevel);
 
-        // Load AI detailed logging config (not in config.json, it's in AIConfig)
-        const aiDetailedLoggingConfig = await apiClient.getAIDetailedLoggingConfig();
-        setAiDetailedLogging(aiDetailedLoggingConfig.detailed_logging);
+        // Load AI detailed logging config (now unified with app-config)
+        setAiDetailedLogging(appConfig.detailed_logging);
         
         // Load AI streaming config - use shared configs result
         if (allConfigs) {
@@ -794,7 +793,16 @@ export default function SettingsPage() {
 
   const handleAIDetailedLoggingChange = async (enabled: boolean) => {
     try {
+      // Update via unified app-config API
       await apiClient.updateAIDetailedLoggingConfig(enabled);
+      // Also update cache
+      const currentConfig = loadAppConfig();
+      if (currentConfig) {
+        saveAppConfig({ ...currentConfig, detailed_logging: enabled });
+      } else {
+        const freshConfig = await apiClient.getAppConfig();
+        // Cache automatically updated by apiClient.getAppConfig()
+      }
       setAiDetailedLogging(enabled);
       toast({
         title: "Success",

@@ -882,16 +882,16 @@ export const apiClient = {
   },
 
   /**
-   * Get app config (log_level, ai_processing_enabled, http_logging, result_max_lines).
+   * Get app config (log_level, ai_processing_enabled, http_logging, result_max_lines, detailed_logging).
    * Automatically uses cache - checks cache first, fetches from API if cache is empty/expired.
    */
-  async getAppConfig(): Promise<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number }> {
+  async getAppConfig(): Promise<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number; detailed_logging: boolean }> {
     // Check cache first
     let config = loadAppConfig();
     
     // If cache miss or expired, fetch from API
     if (!config) {
-      config = await fetchJSON<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number }>("/api/logging/app-config");
+      config = await fetchJSON<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number; detailed_logging: boolean }>("/api/logging/app-config");
       if (config) {
         saveAppConfig(config);
       }

@@ -85,6 +85,7 @@ class AppConfigManager:
             "ai_processing_enabled": True,
             "http_logging": True,
             "result_max_lines": 500,
+            "detailed_logging": True,
         }
         self.save()
         logger.info(f"AppConfigManager._create_default_config(): Created default config")
