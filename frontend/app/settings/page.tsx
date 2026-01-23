@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines, loadAppConfig, saveAppConfig, getAllAIConfigsWithCache, getAppConfigWithCache, saveAllAIConfigs, clearAllAIConfigs, clearAISettings } from "@/lib/settings-storage";
+import { AISettings, loadAISettings, saveAISettings, loadResultMaxLines, saveResultMaxLines, saveAppConfig, saveAllAIConfigs, clearAllAIConfigs, clearAISettings, loadAppConfig } from "@/lib/settings-storage";
 import { getAIConfig, updateAIConfig, apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/use-toast";
 import { themes } from "@/lib/themes";
@@ -84,7 +84,7 @@ export default function SettingsPage() {
     const loadAllConfigs = async () => {
       setIsLoadingConfigs(true);
       try {
-        const result = await getAllAIConfigsWithCache(apiClient);
+        const result = await apiClient.getAllAIConfigs();
         const names = Object.keys(result.configs || {});
         setAllConfigNames(names);
         logger.info("Loaded AI config names:", names);
@@ -188,7 +188,7 @@ export default function SettingsPage() {
       setIsLoadingLogging(true);
       try {
         // Load all app config (cached in memory) - single API call for all config.json settings
-        const appConfig = await getAppConfigWithCache(apiClient);
+        const appConfig = await apiClient.getAppConfig();
         
         // Use cached config values
         setBackendLogLevel(appConfig.log_level);
@@ -297,8 +297,8 @@ export default function SettingsPage() {
   const loadResultMaxLinesSettings = async () => {
     setIsLoadingResultMaxLines(true);
     try {
-      // Check cache first (from unified app config)
-      const appConfig = await getAppConfigWithCache(apiClient);
+      // Check cache first (from unified app config) - apiClient.getAppConfig() handles cache automatically
+      const appConfig = await apiClient.getAppConfig();
       
       // Use cached value
       setResultMaxLines(appConfig.result_max_lines);
@@ -311,8 +311,8 @@ export default function SettingsPage() {
         // Update backend to match localStorage (user preference)
         try {
           await apiClient.updateResultMaxLines(localValue);
-          // Refresh cache
-          const freshConfig = await getAppConfigWithCache(apiClient);
+          // Refresh cache - apiClient.getAppConfig() handles cache automatically
+          const freshConfig = await apiClient.getAppConfig();
           setResultMaxLines(freshConfig.result_max_lines);
         } catch (error) {
           logger.error("Failed to sync result max lines:", error);
@@ -354,8 +354,8 @@ export default function SettingsPage() {
       }, configName);
       logger.info("Config updated");
       
-      // Update in-memory cache - reload from server to get latest state
-      const allConfigs = await getAllAIConfigsWithCache(apiClient);
+      // Update in-memory cache - reload from server to get latest state (cache handled automatically)
+      const allConfigs = await apiClient.getAllAIConfigs();
       if (allConfigs.configs[configName]) {
         const updatedConfig = allConfigs.configs[configName];
         const updatedSettings: AISettings = {
@@ -403,10 +403,10 @@ export default function SettingsPage() {
       await apiClient.deleteAIConfig(configName);
       logger.info("Config deleted");
       
-      // Clear cache and reload configs list
+      // Clear cache and reload configs list - apiClient.getAllAIConfigs() handles cache automatically
       clearAllAIConfigs();
       clearAISettings();
-      const result = await getAllAIConfigsWithCache(apiClient);
+      const result = await apiClient.getAllAIConfigs();
       const names = Object.keys(result.configs || {});
       setAllConfigNames(names);
       
@@ -414,7 +414,7 @@ export default function SettingsPage() {
       if (names.length > 0) {
         await apiClient.activateAIConfig(names[0]);
         setConfigName(names[0]);
-        const allConfigs = await getAllAIConfigsWithCache(apiClient);
+        const allConfigs = await apiClient.getAllAIConfigs();
         const activeConfig = allConfigs.configs[names[0]];
         if (activeConfig) {
           // Note: enabled removed - use global aiProcessingEnabled state instead
@@ -494,8 +494,8 @@ export default function SettingsPage() {
         streaming_enabled: aiStreamingEnabled,
       });
       
-      // Reload configs list
-      const result = await getAllAIConfigsWithCache(apiClient);
+      // Reload configs list - apiClient.getAllAIConfigs() handles cache automatically
+      const result = await apiClient.getAllAIConfigs();
       const names = Object.keys(result.configs || {});
       setAllConfigNames(names);
       
@@ -503,8 +503,8 @@ export default function SettingsPage() {
       await apiClient.activateAIConfig(newConfigName.trim());
       setConfigName(newConfigName.trim());
       
-      // Reload configs to update cache with the new config
-      const allConfigs = await getAllAIConfigsWithCache(apiClient);
+      // Reload configs to update cache with the new config - apiClient.getAllAIConfigs() handles cache automatically
+      const allConfigs = await apiClient.getAllAIConfigs();
       if (allConfigs.configs[newConfigName.trim()]) {
         const newConfig = allConfigs.configs[newConfigName.trim()];
         const newSettings: AISettings = {
@@ -739,8 +739,8 @@ export default function SettingsPage() {
       if (currentConfig) {
         saveAppConfig({ ...currentConfig, log_level: newLevel });
       } else {
-        const freshConfig = await getAppConfigWithCache(apiClient);
-        // Cache already updated by getAppConfigWithCache
+          const freshConfig = await apiClient.getAppConfig();
+          // Cache automatically updated by apiClient.getAppConfig()
       }
       toast({
         title: "Success",
@@ -775,8 +775,8 @@ export default function SettingsPage() {
       if (currentConfig) {
         saveAppConfig({ ...currentConfig, http_logging: enabled });
       } else {
-        const freshConfig = await getAppConfigWithCache(apiClient);
-        // Cache already updated by getAppConfigWithCache
+          const freshConfig = await apiClient.getAppConfig();
+          // Cache automatically updated by apiClient.getAppConfig()
       }
       toast({
         title: "Success",
@@ -847,8 +847,8 @@ export default function SettingsPage() {
         saveAppConfig({ ...currentConfig, ai_processing_enabled: enabled });
       } else {
         // If cache miss, fetch fresh config
-        const freshConfig = await getAppConfigWithCache(apiClient);
-        // Cache already updated by getAppConfigWithCache
+          const freshConfig = await apiClient.getAppConfig();
+          // Cache automatically updated by apiClient.getAppConfig()
       }
       toast({
         title: t("settings.saved"),
@@ -941,7 +941,7 @@ export default function SettingsPage() {
                         setConfigName(value);
                         
                         // Reload settings for the new active config
-                        const allConfigs = await getAllAIConfigsWithCache(apiClient);
+                        const allConfigs = await apiClient.getAllAIConfigs();
                         const activeConfig = allConfigs.configs[value];
                         if (activeConfig) {
                           // Note: enabled removed - use global aiProcessingEnabled state instead
@@ -1545,8 +1545,8 @@ export default function SettingsPage() {
                             if (currentConfig) {
                               saveAppConfig({ ...currentConfig, result_max_lines: resultMaxLines });
                             } else {
-                              const freshConfig = await getAppConfigWithCache(apiClient);
-                              // Cache already updated by getAppConfigWithCache
+          const freshConfig = await apiClient.getAppConfig();
+          // Cache automatically updated by apiClient.getAppConfig()
                             }
                             toast({
                               title: "Success",

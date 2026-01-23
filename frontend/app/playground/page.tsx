@@ -14,7 +14,6 @@ import { ErrorBanner } from "@/components/ErrorBanner";
 import { AIResponsePanel } from "@/components/playground/AIResponsePanel";
 import { PromptManager } from "@/components/playground/PromptManager";
 import { apiClient } from "@/lib/api-client";
-import { loadAISettings, loadAppConfig } from "@/lib/settings-storage";
 import { AnalysisResponse, ProgressEvent, AISystemPrompts } from "@/lib/api-types";
 import { Play, Sparkles, Search, FileText, X, AlertCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
@@ -327,15 +326,8 @@ export default function PlaygroundPage() {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Only use local cache - no remote API calls
-      const appConfig = loadAppConfig();
-      
-      if (!appConfig) {
-        return {
-          isValid: false,
-          message: "AI configuration not available. Please configure it in settings."
-        };
-      }
+      // API client methods automatically use cache (check cache first, fetch if needed)
+      const appConfig = await apiClient.getAppConfig();
       
       if (!appConfig.ai_processing_enabled) {
         return {
@@ -344,25 +336,28 @@ export default function PlaygroundPage() {
         };
       }
       
-      // Check AI config from local cache only
-      const localAISettings = loadAISettings();
+      // Get all AI configs (automatically uses cache)
+      const allConfigs = await apiClient.getAllAIConfigs();
+      const activeName = allConfigs.active_config_name;
       
-      if (!localAISettings) {
+      if (!activeName || !allConfigs.configs || !allConfigs.configs[activeName]) {
         return {
           isValid: false,
           message: "AI is not configured. Please configure it in settings."
         };
       }
       
+      const activeConfig = allConfigs.configs[activeName];
+      
       // Check what's missing
-      if (!localAISettings.apiKey || localAISettings.apiKey.trim() === "") {
+      if (!activeConfig.api_key || activeConfig.api_key.trim() === "") {
         return {
           isValid: false,
           message: "AI API key is not configured. Please set it in settings."
         };
       }
       
-      if (!localAISettings.baseUrl || localAISettings.baseUrl.trim() === "") {
+      if (!activeConfig.base_url || activeConfig.base_url.trim() === "") {
         return {
           isValid: false,
           message: "AI Base URL is not configured. Please set it in settings."

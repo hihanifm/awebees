@@ -11,6 +11,7 @@ import {
       ErrorEvent,
     } from "./api-types";
 import { logger } from "./logger";
+import { loadAllAIConfigs, saveAllAIConfigs, loadAppConfig, saveAppConfig } from "./settings-storage";
 
 // Use relative path in production (when served from same origin) or configured URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -471,7 +472,7 @@ export const apiClient = {
    * Returns the active config from the full configs response.
    */
   async getAIConfig(): Promise<any> {
-    const allConfigs = await fetchJSON("/api/analyze/ai/configs");
+    const allConfigs = await this.getAllAIConfigs();
     const activeName = allConfigs.active_config_name;
     if (!activeName || !allConfigs.configs || !allConfigs.configs[activeName]) {
       throw new Error("No active config found");
@@ -482,9 +483,19 @@ export const apiClient = {
   /**
    * Get all AI config profiles in the exact file format.
    * API keys are returned as-is (no masking).
+   * Automatically uses cache - checks cache first, fetches from API if cache is empty/expired.
    */
   async getAllAIConfigs(): Promise<{ active_config_name: string | null; configs: Record<string, any> }> {
-    return fetchJSON("/api/analyze/ai/configs");
+    // Check cache first
+    let configs = loadAllAIConfigs();
+    
+    // If cache miss or expired, fetch from API
+    if (!configs) {
+      configs = await fetchJSON<{ active_config_name: string | null; configs: Record<string, any> }>("/api/analyze/ai/configs");
+      saveAllAIConfigs(configs);
+    }
+    
+    return configs;
   },
 
   /**
@@ -874,8 +885,28 @@ export const apiClient = {
    * Get all app config settings (log level, AI processing enabled, HTTP logging, result max lines).
    * This is cached in memory on the frontend.
    */
+  /**
+   * Get app config (log_level, ai_processing_enabled, http_logging, result_max_lines).
+   * Automatically uses cache - checks cache first, fetches from API if cache is empty/expired.
+   */
   async getAppConfig(): Promise<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number }> {
-    return fetchJSON("/api/logging/app-config");
+    // Check cache first
+    let config = loadAppConfig();
+    
+    // If cache miss or expired, fetch from API
+    if (!config) {
+      config = await fetchJSON<{ log_level: string; ai_processing_enabled: boolean; http_logging: boolean; result_max_lines: number }>("/api/logging/app-config");
+      if (config) {
+        saveAppConfig(config);
+      }
+    }
+    
+    // If still no config (shouldn't happen, but TypeScript needs this)
+    if (!config) {
+      throw new Error("Failed to load app config");
+    }
+    
+    return config;
   },
 
   /**

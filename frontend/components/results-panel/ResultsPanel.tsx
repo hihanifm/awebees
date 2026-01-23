@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AnalysisResponse } from "@/lib/api-types";
 import { analyzeWithAI, apiClient } from "@/lib/api-client";
-import { loadAISettings, loadAppConfig, getAppConfigValue } from "@/lib/settings-storage";
+import { getAppConfigValue } from "@/lib/settings-storage";
 import { Sparkles, Copy, RefreshCw, ChevronDown, ChevronUp, Loader2, AlertCircle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
@@ -57,15 +57,8 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
 
   const checkAIConfiguration = async (): Promise<{ isValid: boolean; message?: string }> => {
     try {
-      // Only use local cache - no remote API calls
-      const appConfig = loadAppConfig();
-      
-      if (!appConfig) {
-        return {
-          isValid: false,
-          message: t("playground.aiNotConfigured")
-        };
-      }
+      // API client methods automatically use cache (check cache first, fetch if needed)
+      const appConfig = await apiClient.getAppConfig();
       
       if (!appConfig.ai_processing_enabled) {
         return {
@@ -74,25 +67,28 @@ export function ResultsPanel({ analysisResponse, loading }: ResultsPanelProps) {
         };
       }
       
-      // Check AI config from local cache only
-      const localAISettings = loadAISettings();
+      // Get all AI configs (automatically uses cache)
+      const allConfigs = await apiClient.getAllAIConfigs();
+      const activeName = allConfigs.active_config_name;
       
-      if (!localAISettings) {
+      if (!activeName || !allConfigs.configs || !allConfigs.configs[activeName]) {
         return {
           isValid: false,
           message: t("playground.aiNotConfigured")
         };
       }
       
+      const activeConfig = allConfigs.configs[activeName];
+      
       // Check what's missing
-      if (!localAISettings.apiKey || localAISettings.apiKey.trim() === "") {
+      if (!activeConfig.api_key || activeConfig.api_key.trim() === "") {
         return {
           isValid: false,
           message: "AI API key is not configured. Please set it in settings."
         };
       }
       
-      if (!localAISettings.baseUrl || localAISettings.baseUrl.trim() === "") {
+      if (!activeConfig.base_url || activeConfig.base_url.trim() === "") {
         return {
           isValid: false,
           message: t("playground.setBaseURL") + ". " + t("playground.openSettings")
