@@ -119,8 +119,9 @@ async def _run_analysis_with_progress(
                 task_manager.update_task_status(task_id, "cancelled")
                 raise CancelledError("Analysis cancelled")
             
-            insight = plugin_manager.get_insight(insight_id)
-            if not insight:
+            try:
+                insight = plugin_manager.get_insight(insight_id)
+            except KeyError:
                 await progress_queue.put(ProgressEvent(
                     type="error",
                     message=f"Insight '{insight_id}' not found",
@@ -364,16 +365,19 @@ async def analyze(request: AnalysisRequest):
     
     plugin_manager = get_plugin_manager()
     results = []
+    invalid_insights = []
     
     for insight_idx, insight_id in enumerate(request.insight_ids, 1):
         insight_start_time = time.time()
         logger.info(f"Analyze API: Executing insight {insight_idx}/{len(request.insight_ids)}: '{insight_id}'")
         
         try:
-            insight = plugin_manager.get_insight(insight_id)
-            if not insight:
-                logger.warning(f"Analyze API: Insight '{insight_id}' not found in plugin manager")
-                raise HTTPException(status_code=404, detail=f"Insight not found: {insight_id}")
+            try:
+                insight = plugin_manager.get_insight(insight_id)
+            except KeyError:
+                logger.warning(f"Analyze API: Insight '{insight_id}' not found in plugin manager - skipping")
+                invalid_insights.append(insight_id)
+                continue
             
             path_results = []
             total_elapsed = 0.0
@@ -406,10 +410,22 @@ async def analyze(request: AnalysisRequest):
     
     total_elapsed = time.time() - start_time
     logger.info(f"Analyze API: Request complete - {len(results)} result(s) in {total_elapsed:.2f}s")
+    
+    # If all insights were invalid, return an error
+    if len(results) == 0 and len(invalid_insights) > 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"All insights not found: {', '.join(invalid_insights)}"
+        )
+    
+    # If some insights were invalid, log a warning but continue
+    if len(invalid_insights) > 0:
+        logger.warning(f"Analyze API: Skipped {len(invalid_insights)} invalid insight(s): {', '.join(invalid_insights)}")
+    
     return AnalysisResponse(
         results=results,
         total_time=total_elapsed,
-        insights_count=len(request.insight_ids)
+        insights_count=len(results)
     )
 
 
